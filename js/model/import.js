@@ -59,7 +59,9 @@ export function matchTrack(...names) {
   return { trackId: 'other', track: titleCase(names.find(Boolean) || ''), layout: '', cc: null };
 }
 
-export function transformExport(files) {
+// existing: { psnLower: uid } of people who already have a profile on the new site. Their old
+// history is attached to that profile instead of creating a second one.
+export function transformExport(files, { existing = {} } = {}) {
   const warnings = [];
   const profiles = files.profiles || [], cups = files.cups || [], races = files.races || [], results = files.race_results || [], apps = files.cup_applications || [];
 
@@ -71,6 +73,10 @@ export function transformExport(files) {
     const keep = g.find((p) => p.psn_id === p.psn_id.toUpperCase()) || g.slice().sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
     g.filter((p) => p !== keep).forEach((p) => { remap[p.id] = keep.id; merged.push({ kept: keep.psn_id, dropped: p.psn_id, keptId: keep.id, droppedId: p.id, droppedHadEmail: !!p.email }); });
   });
+  // Already on the new site (same PSN ID): keep their new account, move the history onto it.
+  const linked = [];
+  profiles.forEach((p) => { const k = (p.psn_id || '').trim().toLowerCase(); const uid = k && existing[k]; if (uid && !remap[p.id]) { remap[p.id] = uid; linked.push({ psn: p.psn_id, from: p.id, to: uid }); } });
+  Object.keys(remap).forEach((k) => { if (remap[remap[k]]) remap[k] = remap[remap[k]]; });
   const pid = (id) => remap[id] || id;
   // The old site's own system account isn't a driver.
   const live = profiles.filter((p) => !remap[p.id] && !/^superuser/i.test(p.psn_id || ''));
@@ -99,6 +105,7 @@ export function transformExport(files) {
       ...(p.role === 'admin' ? { roles: { admin: true } } : {}),
     };
     data.complete = isComplete(data);
+    Object.keys(data).forEach((k) => { if (data[k] == null) delete data[k]; });
     if (!data.complete) warnings.push({ key: 'impWarnIncomplete', psn: psn || p.id });
     users.push({ id: p.id, data, email: (p.email || '').trim().toLowerCase() || null });
     if (p.email) authUsers.push({ uid: p.id, email: p.email.trim().toLowerCase(), displayName: `${data.lastName} ${data.firstName}`.trim() });
@@ -163,7 +170,7 @@ export function transformExport(files) {
     });
   });
 
-  return { users, authUsers, noEmail, merged, teams: Object.values(teams), gtTeams: Object.values(gtTeams), seasons, entries, rounds, pq, warnings };
+  return { users, authUsers, noEmail, merged, linked, teams: Object.values(teams), gtTeams: Object.values(gtTeams), seasons, entries, rounds, pq, warnings };
 }
 
 // Firestore writes for a plan. existing: ids of profiles already claimed (left untouched).

@@ -207,7 +207,7 @@ export const hu = {
   carSearchPh: 'Kezdd el gépelni az autó nevét…', carPickerHint: 'Az autólistából ajánl (Admin → GT7 adatok), de bármit beírhatsz.', ratingsSynced: 'DR/SR frissítve', notSyncedYet: 'Kézzel megadva',
   'audit_content.rules': 'módosította a szabályzatot:', 'audit_gt7.cars': 'letöltötte az autólistát:', 'audit_gt7.ratings': 'frissítette a DR/SR értékeket:',
   carsImported: '{n} autó mentve, ebből {c} versenyosztállyal (Gr.1–Gr.4, Gr.B).', carsFetchFailed: 'Nem sikerült letölteni az autólistát a GT7 Info oldaláról. Próbáld újra később.',
-  drGaugeLabel: 'Driver Rating: {dr}, {pts} pont', drNoPoints: 'Pontos DR-érték a GridStats szinkron után.', drNext: 'Következő szint: {cls}, még {n} pont', drTop: 'Csúcskategória: A+', syncedAt: 'Frissítve: {date}', srNote: 'Az SR pontos értékét a játék sem mutatja, csak a betűt.', gt7Career: 'GT7 karrier', statRaces: 'futam', wins: 'győzelem', statClean: 'tiszta futam', rulesReadFailed: 'A mentett szabályzatot nem sikerült betölteni, ezért az alapértelmezett látszik. Valószínűleg frissíteni kell a Firestore szabályokat (firestore.rules).', permRulesHint: 'Nincs jogosultság: töltsd fel a legújabb firestore.rules fájlt a Firebase konzolban (Firestore → Rules → Publish).',
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} pont', drNoPoints: 'Pontos DR-érték a GridStats szinkron után.', drNext: 'Következő szint: {cls}, még {n} pont', drTop: 'Csúcskategória: A+', syncedAt: 'Frissítve: {date}', gt7Career: 'GT7 karrier', statRaces: 'futam', wins: 'győzelem', statClean: 'tiszta futam', rulesReadFailed: 'A mentett szabályzatot nem sikerült betölteni, ezért az alapértelmezett látszik. Valószínűleg frissíteni kell a Firestore szabályokat (firestore.rules).', permRulesHint: 'Nincs jogosultság: töltsd fel a legújabb firestore.rules fájlt a Firebase konzolban (Firestore → Rules → Publish).',
   drPointsCap: 'DR PONT',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
@@ -238,4 +238,14 @@ export const hu = {
   nt_claimDispute: 'Profil-vita: {psn} szerint az importált profil nem az övé', nt_roleGranted: 'Új szerepköröd: {role}',
   photoTitle: 'Profilkép', photoHelp: 'Négyzetesre vágjuk és kicsinyítjük; bárki láthatja.', photoChange: 'Profilkép módosítása', photoChoose: 'Kép kiválasztása', photoSaved: 'Profilkép mentve', photoRemove: 'Profilkép törlése', photoRemoved: 'Profilkép törölve',
   coverUpload: 'Borítókép feltöltése', logoUpload: 'Logó feltöltése', teamLogo: 'Logó',
+
+  // ----- 0.6.1 -----
+  gsTokenSaved: 'Token elmentve', tracksDiag: '{p} pályához van fotó, {m} pályához térkép. Lent egy minta: ha itt nem látszik a fotó, a GridStats nem engedi más oldalon megjeleníteni.',
+  impLinked: 'Már regisztráltak az új oldalon (a régi eredményeik a meglévő fiókjukhoz kerülnek)', advanced: 'Haladó', settingsTitle: 'Kapcsolatok', settingsSub: 'Felhőfüggvény és telefonos értesítések beállítása.',
+  coverImage: 'Borítókép', coverUpload: 'Borítókép feltöltése', coverReplace: 'Borítókép cseréje', coverDropHint: 'Koppints, vagy húzz ide egy képet. Ha nincs borító, az első forduló pályafotója látszik.', coverRemove: 'Borítókép törlése',
+  fnTitle: 'Felhőfüggvény', fnHelp: 'A fiókok importálásához és a telefonos értesítésekhez kell (functions/README.md).',
+  pushTitle: 'Telefonos értesítések', pushAdminHelp: 'A Firebase konzolban: Project settings → Cloud Messaging → Web Push certificates → Generate key pair. Másold ide a kulcsot (nem titkos).',
+  vapidKey: 'Web Push kulcs (VAPID)', vapidHint: 'Hosszú, BL… kezdetű szöveg.', pushOnToast: 'Értesítések bekapcsolva', pushOffToast: 'Értesítések kikapcsolva',
+  pushState_on: 'Bekapcsolva ezen az eszközön', pushState_off: 'Kikapcsolva', pushState_blocked: 'A böngésző tiltja: engedélyezd az oldal beállításaiban', pushState_unsupported: 'Ez a böngésző nem támogatja', 'pushState_ios-home': 'iPhone-on: Megosztás → Főképernyőhöz adás, majd onnan nyisd meg',
+  pushDenied: 'Nem kaptunk engedélyt az értesítésekhez.', pushNoKey: 'Az adminok még nem állították be (Admin → Haladó → Kapcsolatok).',
 };

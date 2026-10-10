@@ -29,15 +29,15 @@ import { loadRace } from '../core/race-data.js';
 /* ---------- list ---------- */
 export function screenSeasons() {
   const box = h('div', null, skelRows(3, 220));
-  loadSeasons().then((all) => {
+  Promise.all([loadSeasons(), loadTracks()]).then(([all, cat]) => {
     const live = all.filter((s) => LIVE_STATES.includes(s.state)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.no - a.no);
     const drafts = all.filter((s) => s.state === 'draft');
     const past = all.filter((s) => ['finished', 'archived'].includes(s.state));
     box.replaceChildren(...[
       isAdmin() ? h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px' }, h('a', { class: 'btn primary', href: '#/admin/szezon/uj' + (all[0] ? '?masol=' + all[0].id : ''), 'data-haptic': '' }, icon('plus'), t('newSeason'))) : null,
-      live.length ? h('div', { class: 'season-list' }, live.map((s) => seasonCard(s))) : empty(t('noLiveSeasons')),
-      drafts.length ? frag(secHead(t('drafts')), h('div', { class: 'season-list' }, drafts.map((s) => seasonCard(s)))) : null,
-      past.length ? frag(secHead(t('archive')), h('div', { class: 'season-list' }, past.map((s) => seasonCard(s)))) : null,
+      live.length ? h('div', { class: 'season-list' }, live.map((s) => seasonCard(s, null, cat))) : empty(t('noLiveSeasons')),
+      drafts.length ? frag(secHead(t('drafts')), h('div', { class: 'season-list' }, drafts.map((s) => seasonCard(s, null, cat)))) : null,
+      past.length ? frag(secHead(t('archive')), h('div', { class: 'season-list' }, past.map((s) => seasonCard(s, null, cat)))) : null,
     ].filter(Boolean));
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
   return frag(pageTitle(t('seasons'), t('seasonsSub')), box);
@@ -51,9 +51,9 @@ export function screenSeason({ id, tab }) {
   const root = h('div', null, skelRows(1, 260), h('div', { style: 'height:16px' }), skelRows(3, 70));
   let state = null;
   const load = async () => {
-    const [season, list, tmap, gts] = await Promise.all([backend.seasons.get(id), backend.entries.list(id), teamMap(), gtTeams()]);
+    const [season, list, tmap, gts, cat] = await Promise.all([backend.seasons.get(id), backend.entries.list(id), teamMap(), gtTeams(), loadTracks()]);
     if (!season) { root.replaceChildren(empty(t('notFound'))); return; }
-    state = { season, entries: list, tmap, gts, table: entryTable(season, list) };
+    state = { season, entries: list, tmap, gts, table: entryTable(season, list), cat };
     paint();
   };
   let curTab = TABS.includes(tab) ? tab : 'attekintes';
@@ -77,12 +77,12 @@ export function screenSeason({ id, tab }) {
   return frag(backLink(t('seasons'), '#/szezonok'), root);
 }
 
-function seasonHero({ season: s, table }) {
+function seasonHero({ season: s, table, cat }) {
   const filled = table.inList.length;
   const kerb = h('div', { class: 'kerb', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(s.cap), 'aria-valuenow': String(filled) }, h('i', { style: `width:${Math.min(100, (filled / (s.cap || 1)) * 100)}%` }));
   if (!reduced()) requestAnimationFrame(() => kerb.firstChild.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 900, easing: 'cubic-bezier(.2,.8,.2,1)' }));
   const champs = [t('champDrivers'), s.championships && s.championships.teams ? t('champTeams') : null, ...((s.championships && s.championships.gt) || [])].filter(Boolean).join(', ');
-  return h('section', { class: 'season-hero' }, seasonCover(s),
+  return h('section', { class: 'season-hero' }, seasonCover(s, 'img', cat),
     h('div', { class: 'body' }, seasonPill(s),
       h('h1', { class: 'display' }, 'MCSM' + s.no, h('br'), s.name || t('untitled')),
       h('dl', { class: 'facts' },

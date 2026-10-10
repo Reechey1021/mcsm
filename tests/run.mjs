@@ -125,7 +125,7 @@ await test('every t() key exists', () => {
   dyn.push(...raceErrs, ...['filed', 'review', 'decided', 'published', 'notInvestigated', 'withdrawn'].map((k) => 'pst_' + k),
     ...['none', 'warning', 'time', 'dsq', 'other'].map((k) => 'outcome_' + k), 'conflictInvolved', 'conflictTeammate', 'outOfScope', 'specLocked', 'specUsed',
     ...['lobbiesOut', 'resultsOut', 'regOpen', 'seasonAnnounced', 'protestAgainst', 'protestNew', 'decision', 'promoted', 'reservePending', 'teamApproved', 'teamDeclined', 'raceToday'].map((k) => 'nt_' + k),
-    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp', 'nt_claimDispute', 'nt_roleGranted', 'impWarnIncomplete', 'impWarnDr', 'impWarnCup', 'impWarnEntry', 'impWarnClash');
+    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp', 'nt_claimDispute', 'nt_roleGranted', 'impWarnIncomplete', 'impWarnDr', 'impWarnCup', 'impWarnEntry', 'impWarnClash', ...['on', 'off', 'blocked', 'unsupported', 'ios-home'].map((k) => 'pushState_' + k));
   const missing = [...new Set([...keys, ...valErrs, ...backendErrs, ...seasonErrs, ...dyn])].filter((k) => !(k in hu));
   eq(missing, [], 'missing keys');
 });
@@ -456,6 +456,32 @@ await test('roles: one level down', async () => {
   let threw = null; try { await b.admin.call('ping', {}); } catch (e) { threw = e.code; } eq(threw, null, 'owner may call the function');
   await b.auth.signOut(); await b.auth.signIn('pilota@mcsm.test', 'demo1234');
   threw = null; try { await b.admin.call('ping', {}); } catch (e) { threw = e.code; } eq(threw, 'fn-forbidden');
+});
+
+
+await test('0.6.1: GridStats miles, GP layouts, location photo fallback', async () => {
+  const { matchTrack } = await import('../js/data/track-match.js');
+  const cat = [
+    { name_short: 'Circuit de Spa-Francorchamps', full_name: 'Circuit de Spa-Francorchamps', trackphoto: 'spa.webp', track_map: 'spa.svg', track_length: 4.35, corner_count: 21 },
+    { name_short: 'Circuit de Barcelona-Catalunya', full_name: 'Circuit de Barcelona-Catalunya - Rallycross Layout', trackphoto: 'bcn.webp', track_map: 'rx.svg', track_length: 0.7 },
+    { name_short: 'Circuit de Barcelona-Catalunya', full_name: 'Circuit de Barcelona-Catalunya - GP Layout', trackphoto: 'bcn.webp', track_map: 'gp.svg', track_length: 2.89 },
+    { name_short: 'Mount Panorama', full_name: 'Mount Panorama Motor Racing Circuit', trackphoto: 'bathurst.webp', track_map: 'b.svg', track_length: 3.86 },
+  ];
+  const spa = matchTrack({ track: 'Circuit de Spa-Francorchamps', layout: '' }, cat);
+  eq([spa.map, spa.lengthKm], ['spa.svg', 7]);
+  eq(matchTrack({ track: 'Circuit de Barcelona-Catalunya', layout: 'Grand Prix Layout' }, cat).map, 'gp.svg');
+  const nordic = matchTrack({ track: 'Circuit de Barcelona-Catalunya', layout: 'National Layout' }, cat);
+  eq([nordic.photo, nordic.map], ['bcn.webp', null], 'photo for the place, no map for an unknown layout');
+  eq(matchTrack({ track: 'Mount Panorama', layout: '' }, cat).map, 'b.svg');
+});
+await test('0.6.1: import skips empty fields and links existing members', () => {
+  const profiles = [{ id: 'old-me', psn_id: 'IGTSH_Reechey-', firstname: 'Richárd', lastname: 'HORVÁTH', email: 'me@x.hu', dr: 'A+', sr: 'S', controlling: null, view: null, number: 21, mcsm_team: '', gt_team: 'IGTSH', role: 'admin', created_at: '2026-01-01T00:00:00Z' },
+    { id: 'old-x', psn_id: 'Ragnar_MEDVE', firstname: null, lastname: null, email: 'r@x.hu', dr: null, sr: null, controlling: null, view: null, number: null, mcsm_team: null, gt_team: null, role: 'user', created_at: '2026-01-01T00:00:00Z' }];
+  const p = IM.transformExport({ profiles, cups: [], races: [], race_results: [], cup_applications: [] }, { existing: { 'igtsh_reechey-': 'new-uid' } });
+  eq(p.linked.map((l) => [l.psn, l.to]), [['IGTSH_Reechey-', 'new-uid']]);
+  eq(p.users.map((u) => u.id), ['old-x'], 'existing member not duplicated');
+  eq(p.authUsers.map((u) => u.uid), ['old-x']);
+  ok(!('input' in p.users[0].data) && !('dr' in p.users[0].data), 'no null fields written');
 });
 
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');

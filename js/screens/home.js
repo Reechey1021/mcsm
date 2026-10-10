@@ -19,6 +19,8 @@ import { seasonPill } from '../ui/season-parts.js';
 import { enterSheet } from './seasons.js';
 import { onLeave } from '../router.js';
 import { loadRace } from '../core/race-data.js';
+import { tracks as loadTracks } from '../core/data.js';
+import { matchTrack } from '../data/track-match.js';
 import { towerEl } from '../ui/tower.js';
 
 export function screenHome() {
@@ -30,8 +32,8 @@ export function screenHome() {
     const live = all.filter((s) => LIVE_STATES.includes(s.state)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.no - a.no);
     const featured = live[0];
     if (!featured) { top.replaceChildren(welcomeHero()); return; }
-    const entries = await backend.entries.list(featured.id);
-    top.replaceChildren(seasonHero({ season: featured, entries, tmap, gts, table: entryTable(featured, entries) }));
+    const [entries, cat] = await Promise.all([backend.entries.list(featured.id), loadTracks()]);
+    top.replaceChildren(seasonHero({ season: featured, entries, tmap, gts, table: entryTable(featured, entries), cat }));
     const others = live.slice(1);
     if (others.length) strip.replaceChildren(h('div', { class: 'strip' }, others.map((s) => { const nr = nextRound(s); return h('a', { class: 'round-item', href: '#/szezonok/' + s.id }, h('span', { class: 'no display', style: 'width:auto;font-size:26px' }, s.no), h('span', { class: 't' }, h('b', null, s.name || 'MCSM' + s.no), h('span', { class: 'sub' }, nr ? t('nextRoundShort', { n: nr.n, date: fmtDate(nr.date) }) : '', seasonPill(s))), icon('chevR', 'chev')); })));
   }).catch(() => top.replaceChildren(welcomeHero()));
@@ -111,8 +113,11 @@ function seasonHero(st) {
   }
   actions.push(h('a', { class: 'btn' + (actions.length ? '' : ' primary'), href: '#/szezonok/' + s.id }, t('seasonPage')));
   const status = info ? h('span', { class: 'state-pill', style: 'background:rgba(182,240,60,.16)' }, icon('check'), info.status === 'in' ? t('heroIn', { n: info.pos, cap: s.cap }) : t('es_' + info.status) + (info.status === 'waitlist' ? ` (${info.pos}.)` : '')) : null;
+  const tm = matchTrack((target && target.round) || nextRound(s) || (s.rounds || [])[0], st.cat);
+  const bg = s.coverUrl || (tm && tm.photo);
   const hero = h('section', { class: 'hero', 'aria-label': `MCSM${s.no}` },
-    s.coverUrl ? h('div', { class: 'cover', vars: { 'background-image': `url("${s.coverUrl.replace(/"/g, '')}")` } }) : null,
+    bg ? h('div', { class: 'cover', vars: { 'background-image': `url("${bg.replace(/"/g, '')}")` } }) : null,
+    tm && tm.map && target && target.kind === 'round' ? h('img', { class: 'hero-map', src: tm.map, alt: '', onerror: (e) => e.target.remove() }) : null,
     h('div', { class: 'hero-top' }, h('span', { class: 'state-pill' }, h('span', { class: 'live' }), r === 'open' ? t('reg_open') : r === 'soon' && s.state === 'announced' ? t('reg_soon') : t('state_' + s.state)), h('span', { style: 'color:var(--chrome-ink-2);font-size:13.5px;font-weight:600' }, `MCSM${s.no}${s.name ? ' – ' + s.name : ''}`), status),
     h('h1', { class: 'display' }, target && target.kind === 'round' ? t('roundN', { n: target.round.n }) : 'MCSM' + s.no),
     target && target.kind === 'round' ? h('div', { class: 'track' }, target.round.cc ? h('span', { class: 'cc' }, target.round.cc) : null, roundTitle(target.round)) : h('div', { class: 'track' }, s.name || ''),

@@ -8,8 +8,16 @@ One small server function for the things a browser can't do safely:
 - **gridstats**: calls GT GridStats from the server with the saved token (only used if GridStats
   ever stops accepting browser requests).
 - **ping**: checks it works.
+- **registerPush / unregisterPush / push**: phone notifications (any signed-in member; `push` only
+  delivers a notification the caller just created, to the recipients stored with it).
 
-Only owners can call it (it checks `roles.owner === true` on the caller's profile).
+Owner-only actions check `roles.owner === true` on the caller's profile.
+
+## Updating it
+
+When `functions/index.js` changes (it did in 0.6.1, for notifications): open the service in the
+Cloud console → **Edit source** (or "Edit & deploy new revision" → inline editor), replace
+`index.js` with the new contents, and **Save and redeploy**. The URL stays the same.
 
 ## Deploy it (browser only, about 10 minutes, once)
 
@@ -31,6 +39,19 @@ Only owners can call it (it checks `roles.owner === true` on the caller's profil
 5. Copy the service **URL** shown at the top (ends in `.run.app`).
 6. In MCSM: Admin → Importálás → paste the URL into "A felhőfüggvény címe" → Mentés →
    Kapcsolat tesztelése. You should see "A felhőfüggvény működik".
+
+## Phone notifications
+
+1. Firebase console → Project settings → **Cloud Messaging** → Web Push certificates →
+   **Generate key pair**. Copy the key (starts with `B…`).
+2. MCSM → Admin → Haladó → Kapcsolatok → paste it under "Web Push kulcs" → Mentés.
+3. Everyone can then switch on "Telefonos értesítések" on their Saját page. On iPhone it works
+   once the site is added to the Home Screen (Share → Add to Home Screen) and opened from there.
+
+If switching it on fails with a permission error, give the function's service account the role
+**Firebase Cloud Messaging Admin** as well.
+
+## Troubleshooting
 
 If the test says the function can't be reached, check the URL. If it reports a permission error
 when creating accounts, open IAM in the Cloud console and give the function's service account

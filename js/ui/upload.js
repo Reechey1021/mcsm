@@ -33,3 +33,19 @@ export async function uploadImage(path, file, opts) {
   const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
   return backend.storage.upload(`${path}-${Date.now().toString(36)}.${ext}`, blob);
 }
+
+// A full-width dashed box: tap to choose a picture, or drag one onto it. Shows the current image.
+import { h } from '../core/dom.js';
+import { icon } from '../core/icons.js';
+export function dropZone({ label, hint, value, onFile }) {
+  const zone = h('button', { class: 'dropzone' + (value ? ' has-img' : ''), type: 'button', vars: value ? { 'background-image': `url("${String(value).replace(/"/g, '')}")` } : {} },
+    icon('plus'), h('b', null, label), hint ? h('small', null, hint) : null);
+  const set = (url) => { zone.classList.toggle('has-img', !!url); zone.style.backgroundImage = url ? `url("${String(url).replace(/"/g, '')}")` : ''; };
+  const take = async (file) => { if (!file || !/^image\//.test(file.type)) return; zone.disabled = true; zone.classList.add('busy'); try { const url = await onFile(file); if (url) set(url); } finally { zone.disabled = false; zone.classList.remove('busy'); } };
+  zone.addEventListener('click', async () => take(await pickFile('image/*')));
+  ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', (e) => take(e.dataTransfer && e.dataTransfer.files[0]));
+  zone.set = set;
+  return zone;
+}

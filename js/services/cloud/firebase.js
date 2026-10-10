@@ -34,6 +34,7 @@ export async function createFirebaseBackend(config) {
 
   return {
     kind: 'firebase',
+    app,
     auth: {
       onChange(cb) { authSubs.add(cb); const un = A.onAuthStateChanged(auth, (u) => cb(toUser(u))); return () => { authSubs.delete(cb); un(); }; },
       async signUp(email, password) {
@@ -221,7 +222,7 @@ export async function createFirebaseBackend(config) {
         const m = new Map(); res.forEach((r) => r.docs.forEach((d) => m.set(d.id, { id: d.id, ...d.data() })));
         return [...m.values()];
       },
-      async add(n) { return wrap(() => F.addDoc(F.collection(db, 'notifications'), { ...n, by: auth.currentUser.uid, at: Date.now() })); },
+      async add(n) { return wrap(async () => (await F.addDoc(F.collection(db, 'notifications'), { ...n, by: auth.currentUser.uid, at: Date.now() })).id); },
     },
     audit: {
       async add(entry) { await F.addDoc(F.collection(db, 'audit'), { ...entry, by: auth.currentUser.uid, at: Date.now() }); },

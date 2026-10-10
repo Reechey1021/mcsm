@@ -6,12 +6,15 @@ import { initPress } from './core/motion.js';
 import { store } from './core/storage.js';
 import { LANG, t } from './i18n/index.js';
 import { createBackend } from './services/backend.js';
-import { initSession, watchVerification } from './services/session.js';
+import { initSession, watchVerification, session } from './services/session.js';
+const session_ready = () => session.ready && !!session.user;
 import { buildShell, initShell, applyTheme, updateNav, setTeamsForShell } from './shell.js';
 import { initRouter, currentRoute, rerender } from './router.js';
 import { teamMap } from './core/data.js';
 import { initNotes } from './services/notify.js';
 import { initKeyboard } from './ui/keyboard.js';
+import { listenForeground } from './services/push.js';
+import { refreshNotes } from './services/notify.js';
 
 // Guard: a conditional child that's empty (null/false) must never render as the word "null".
 const nativeReplace = Element.prototype.replaceChildren;
@@ -43,6 +46,8 @@ async function boot() {
   initPress();
   initNotes();
   initKeyboard();
+  on('pushed', () => refreshNotes().catch(() => {}));
+  on('session', () => { if (session_ready()) listenForeground(); });
   teamMap().then(setTeamsForShell).catch(() => {});
   on('relang', () => { buildShell(); rerender(); updateNav(currentRoute()); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => updateNav(currentRoute()));

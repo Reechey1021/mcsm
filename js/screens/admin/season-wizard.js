@@ -18,7 +18,7 @@ import { TRACKS, trackById, roundTitle } from '../../data/tracks.js';
 import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
 import { carField } from '../../ui/car-picker.js';
-import { pickFile, uploadImage } from '../../ui/upload.js';
+import { uploadImage, dropZone } from '../../ui/upload.js';
 import { notifyAll } from '../../services/notify.js';
 
 const STEP_KEYS = ['swBasics', 'swRounds', 'swCars', 'swEntry', 'swScoring', 'swReview'];
@@ -70,11 +70,12 @@ function build(d, editing, all, us, gts) {
       const refresh = () => preview.replaceChildren(seasonCover(d), h('div', { class: 'body' }, h('h3', { class: 'display' }, 'MCSM' + (d.no || '?')), h('div', { style: 'font-weight:650' }, d.name || t('untitled'))));
       const noF = num(t('seasonNo'), d.no, (v) => { d.no = v; d.id = slugFor(v); refresh(); }, { hint: editing ? t('seasonNoLocked') : t('seasonNoHint') });
       if (editing) noF.input.disabled = true;
-      const upBtn = h('button', { class: 'btn small', type: 'button' }, icon('plus'), t('coverUpload'));
-      upBtn.addEventListener('click', async () => { const f = await pickFile('image/*'); if (!f) return; busy(upBtn, async () => { try { d.coverUrl = await uploadImage(`seasons/${slugFor(d.no || 0)}/cover`, f, { max: 1600 }); refresh(); paint(0); } catch (e) { toast(t(errorKey(e)), 'alert'); } }); });
+      const zone = dropZone({ label: d.coverUrl ? t('coverReplace') : t('coverUpload'), hint: t('coverDropHint'), value: d.coverUrl, onFile: async (f) => {
+        try { d.coverUrl = await uploadImage(`seasons/${slugFor(d.no || 0)}/cover`, f, { max: 1600 }); refresh(); return d.coverUrl; } catch (e) { toast(t(errorKey(e)), 'alert'); return null; }
+      } });
+      const clearCover = d.coverUrl ? h('button', { class: 'btn small', type: 'button', onclick: () => { d.coverUrl = ''; zone.set(''); refresh(); clearCover.remove(); } }, icon('trash'), t('coverRemove')) : null;
       return frag(noF.row, txt(t('seasonName'), d.name, (v) => { d.name = v; refresh(); }, { ph: 'FT-1 Cup [Gr.3]', max: 60 }).row,
-        h('div', null, upBtn),
-        txt(t('coverUrl'), d.coverUrl && d.coverUrl.startsWith('data:') ? '' : d.coverUrl, (v) => { d.coverUrl = v.trim(); refresh(); }, { ph: 'https://…', max: 400, hint: t('coverHint') }).row,
+        h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('coverImage')), zone, clearCover),
         txt(t('description'), d.description, (v) => { d.description = v; }, { area: true, max: 600, hint: t('descriptionHint') }).row,
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('preview')), preview));
     },

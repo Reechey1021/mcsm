@@ -49,7 +49,10 @@ Cloud Storage (team logos, avatars, protest clips) comes later and needs the Bla
     Then Storage → Rules → paste `storage.rules` → Publish. The console asks to let Storage read
     roles from Firestore: allow it.
 
-11. **The admin function** (imports sign-in accounts): see `functions/README.md`.
+11. **The admin function** (imports sign-in accounts, sends phone notifications): see `functions/README.md`.
+
+12. **Phone notifications:** Project settings → Cloud Messaging → Web Push certificates → Generate
+    key pair, then paste the key in MCSM → Admin → Haladó → Kapcsolatok.
 
 **After each update:** if `firestore.rules` changed (it did in 0.2.0, 0.3.0, 0.4.0 and 0.5.0), publish it again as in step 5.
 If the app ever shows an error about a missing index, the browser console has a link that creates it in one click.

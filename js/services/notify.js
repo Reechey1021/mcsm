@@ -9,6 +9,8 @@ import { store } from '../core/storage.js';
 import { seasons as loadSeasons, users as loadUsers } from '../core/data.js';
 import { isJudgeProfile } from '../model/protest.js';
 import { lobbyOf } from '../model/race.js';
+import { hu } from '../i18n/hu.js';
+import { deliver } from './push.js';
 
 export const notes = { items: [], unread: 0, loadedAt: 0 };
 
@@ -49,7 +51,9 @@ export async function markAllRead() {
 }
 
 // Senders. Failures never block the action that caused them.
-const send = (n) => backend.notify.add(n).catch((e) => console.warn('notify failed', e));
+const fill = (s, v) => String(s || '').replace(/\{(\w+)\}/g, (m, k) => (k === 'al' && v.l ? (v.l === 'A' ? 'az ' : 'a ') + v.l : v[k] != null ? v[k] : m));
+export const pushText = (n) => ({ title: 'MCSM', body: fill(hu['nt_' + n.type], n.params || {}) + (n.params && n.params.title ? ` – ${n.params.title}` : '') });
+const send = (n) => backend.notify.add(n).then((id) => { deliver(id, n, pushText(n)); return id; }).catch((e) => console.warn('notify failed', e));
 export const notifySeason = (season, type, params, link) => send({ kind: 'season', sid: season.id, type, params: { s: 'MCSM' + season.no, ...params }, link });
 export const notifyAll = (season, type, params, link) => send({ kind: 'all', sid: season.id, type, params: { s: 'MCSM' + season.no, ...params }, link });
 export function notifyUsers(uids, type, params, link) {

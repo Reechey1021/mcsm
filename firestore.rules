@@ -21,7 +21,7 @@ service cloud.firestore {
     function selfKeys() {
       return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
-              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt'];
+              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn'];
     }
     function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy']); }
 
@@ -31,7 +31,7 @@ service cloud.firestore {
         && okStr(d, 'psnLower', 16) && okStr(d, 'wheelBrand', 20) && okStr(d, 'wheelOther', 40)
         && okStr(d, 'view', 12) && okStr(d, 'dr', 2) && okStr(d, 'sr', 1) && okStr(d, 'streamUrl', 200)
         && okStr(d, 'gtTeamId', 12) && okStr(d, 'teamId', 40) && okStr(d, 'teamRequest', 40) && okStr(d, 'lang', 2)
-        && (!('input' in d) || d.input in ['wheel', 'pad'])
+        && (!('input' in d) || d.input == null || d.input in ['wheel', 'pad'])
         && (!('raceNumber' in d) || d.raceNumber == null || (d.raceNumber is int && d.raceNumber >= 1 && d.raceNumber <= 999))
         && (!('psn' in d) || d.psn == null || d.psnLower == d.psn.lower());
     }
@@ -244,6 +244,11 @@ service cloud.firestore {
                 && request.resource.data.uids.size() <= 60));
       allow update: if false;
       allow delete: if isAdmin();
+    }
+
+    // Push tokens are only ever touched by the admin function.
+    match /pushTokens/{token} {
+      allow read, write: if false;
     }
 
     match /audit/{id} {

@@ -15,6 +15,8 @@ import { fmtInt } from '../core/motion.js';
 import { ratingPanel } from '../ui/rating.js';
 import { pickFile, uploadImage } from '../ui/upload.js';
 import { emit } from '../core/bus.js';
+import { toggle } from '../ui/controls.js';
+import { pushState, enablePush, disablePush } from '../services/push.js';
 import { openSheet as openSheet2 } from '../ui/sheet.js';
 import { go } from '../router.js';
 import { myEntries } from './seasons.js';
@@ -68,6 +70,7 @@ export function screenMe() {
         h('div', { class: 'menu-item', style: 'cursor:default' }, icon('mail'), t('email'), email),
         mi('edit', t('editProfile'), () => go('/profil')),
         profileComplete() ? mi('user', t('publicProfile'), () => go('/pilotak/' + encodeURIComponent(p.psnLower))) : null,
+        pushRow(),
         mi('lock', t('changePassword'), changePassword),
         isAdmin() ? mi('shield', t('admin'), () => go('/admin')) : null,
         h('button', { class: 'menu-item', type: 'button', style: 'color:var(--red)', onclick: async () => { await backend.auth.signOut(); toast(t('signedOut')); go('/'); } }, icon('logout'), t('signOut'))),
@@ -108,4 +111,16 @@ function photoSheet(p) {
   const remove = p.photoUrl ? h('button', { class: 'btn block', type: 'button', style: 'color:var(--red)' }, icon('trash'), t('photoRemove')) : null;
   if (remove) remove.addEventListener('click', () => busy(remove, async () => { try { await backend.users.save(session.user.uid, { photoUrl: null }); sh.close(true); toast(t('photoRemoved')); setTimeout(() => emit('rerender'), 100); } catch (e) { status.replaceChildren(formError(t(errorKey(e)))); } }));
   const sh = openSheet2({ title: t('photoTitle'), body: h('div', { class: 'stack', style: 'gap:10px' }, h('p', { class: 'muted', style: 'margin:0' }, t('photoHelp')), status, choose, remove) });
+}
+
+function pushRow() {
+  const st = pushState();
+  const note = h('small', null, t('pushState_' + st));
+  const sw = toggle(st === 'on', async (v) => {
+    sw.disabled = true;
+    try { const r = v ? await enablePush() : await disablePush(); note.textContent = t('pushState_' + r); toast(v ? t('pushOnToast') : t('pushOffToast')); }
+    catch (e) { sw.setAttribute('aria-checked', 'false'); note.textContent = t({ 'push-denied': 'pushDenied', 'push-nokey': 'pushNoKey', 'push-ios-home': 'pushState_ios-home', 'push-unsupported': 'pushState_unsupported' }[e.code] || errorKey(e)); }
+    finally { sw.disabled = st === 'unsupported' || st === 'ios-home' || st === 'blocked'; }
+  }, { label: t('pushTitle'), disabled: st === 'unsupported' || st === 'ios-home' || st === 'blocked' });
+  return h('div', { class: 'toggle-row', style: 'border-bottom:1px solid var(--line)' }, h('span', { style: 'display:flex;gap:12px;align-items:center' }, icon('bell'), h('span', null, t('pushTitle'), note)), sw);
 }

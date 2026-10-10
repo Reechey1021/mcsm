@@ -15,11 +15,16 @@ export function trackDecor(el, round, catalog) {
   if (m.photo) el.prepend(h('span', { class: 'trk-photo', vars: { 'background-image': `url("${m.photo.replace(/"/g, '')}")` }, 'aria-hidden': 'true' }));
   if (m.map) el.append(h('img', { class: 'trk-map', src: m.map, alt: '', loading: 'lazy', onerror: (e) => e.target.remove() }));
   const sub = el.querySelector('.sub');
-  if (sub && (m.length || m.corners)) sub.append(h('span', { class: 'trk-stats' }, [m.length ? `${String(m.length).replace('.', ',')} km` : null, m.corners ? t('cornersN', { n: m.corners }) : null].filter(Boolean).join(' · ')));
+  if (sub && (m.lengthKm || m.corners)) sub.append(h('span', { class: 'trk-stats' }, [m.lengthKm ? `${m.lengthKm.toFixed(2).replace('.', ',')} km` : null, m.corners ? t('cornersN', { n: m.corners }) : null].filter(Boolean).join(' · ')));
   return el;
 }
 
-export function seasonCover(s, cls = 'img') {
+export function seasonCover(s, cls = 'img', catalog = null) {
+  if (!s.coverUrl && catalog && (s.rounds || []).length) {
+    const r = s.rounds.slice().sort((a, b) => a.date - b.date)[0];
+    const m = matchTrack(r, catalog);
+    if (m && m.photo) return h('div', { class: cls + ' cover-trk', vars: { 'background-image': `url("${m.photo.replace(/"/g, '')}")` }, role: 'img', 'aria-label': 'MCSM' + s.no }, h('span', { class: 'display cover-no' }, 'MCSM', h('b', null, s.no)), m.map ? h('img', { class: 'trk-map', src: m.map, alt: '', onerror: (e) => e.target.remove() }) : null);
+  }
   if (s.coverUrl) return h('div', { class: cls, vars: { 'background-image': `url("${s.coverUrl.replace(/"/g, '')}")` }, role: 'img', 'aria-label': 'MCSM' + s.no });
   return h('div', { class: cls + ' cover-ph', 'aria-hidden': 'true' }, h('span', { class: 'display' }, 'MCSM', h('b', null, s.no)));
 }
@@ -34,9 +39,9 @@ export function carLine(s) {
   if (s.format === 'spec') return t('carPackN', { n: (s.cars || []).filter(Boolean).length });
   return t('carPerRound');
 }
-export function seasonCard(s, extra) {
+export function seasonCard(s, extra, catalog) {
   const first = (s.rounds || [])[0];
-  return h('a', { class: 'season-card', href: '#/szezonok/' + s.id }, seasonCover(s),
+  return h('a', { class: 'season-card', href: '#/szezonok/' + s.id }, seasonCover(s, 'img', catalog),
     h('div', { class: 'body' }, h('div', { class: 'row-between' }, h('h3', { class: 'display' }, 'MCSM' + s.no), seasonPill(s)),
       h('div', { style: 'font-weight:650;margin-top:4px' }, s.name || t('untitled')),
       h('div', { class: 'meta' }, first ? h('span', null, icon('cal'), fmtDate(first.date)) : null, h('span', null, icon('flag'), t('nRounds', { n: (s.rounds || []).length })), extra || null)));

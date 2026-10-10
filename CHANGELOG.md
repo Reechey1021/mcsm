@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.1 – Import fix, track photos, push notifications
+- Fixed: importing failed with "no permission". One old profile had an empty controller field,
+  the rules rejected it, and with it the whole batch. The rules now accept empty fields, and the
+  importer no longer writes them at all.
+- Import: people who already signed up on the new site (same PSN ID) keep their account; their
+  old entries and results are attached to it instead of creating a second profile or account.
+- GridStats token saves itself as soon as you type it (and after a successful test); if it
+  can't be read or saved, the page says why instead of showing an empty box.
+- Tracks: GridStats lengths are miles, now shown in km (Spa 4.35 mi = 7.00 km). Better layout
+  matching ("GP" = "Grand Prix"); the location's photo is used even when the exact layout isn't
+  in their list. Other field names and relative links are accepted, and the GT7 page shows how
+  many tracks have photos and maps, with a sample, right after the import.
+- Track photos now also appear on season cards, the season page header and the home page hero
+  when a season has no cover, with the next round's map in white on the home hero.
+- Season wizard: the cover is a full-width drop zone (tap or drag a picture); the link field
+  is gone.
+- iPhone: date and time fields no longer spill out of their box.
+- Admin: Roles, Import, GT7 data and the new Connections page sit under a folded "Haladó" section.
+- Removed the note under the SR scale.
+- Phone notifications (Firebase Cloud Messaging): a switch on My page; every in-app notification
+  is also sent to devices (personal ones to the people named, league-wide ones to everyone).
+  Needs the Web Push key (Admin → Haladó → Kapcsolatok) and the updated admin function.
+- Tests: 44 unit tests, 258 browser checks across six walk-throughs.
+
 ## 0.6.0 – Import, account activation, roles, uploads, track photos
 - Admin → Importálás (owners): pick the old site's JSON files, check the preview, save the data,
   then create sign-in accounts through the admin function. Old IDs are kept, so every profile,

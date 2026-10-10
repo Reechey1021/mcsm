@@ -191,7 +191,7 @@ export const en = {
   carSearchPh: 'Start typing the car name…', carPickerHint: 'Suggests from the car list (Admin → GT7 data), but you can type anything.', ratingsSynced: 'DR/SR updated', notSyncedYet: 'Entered by hand',
   'audit_content.rules': 'edited the rules:', 'audit_gt7.cars': 'imported the car list:', 'audit_gt7.ratings': 'refreshed DR/SR:',
   carsImported: '{n} cars saved, {c} of them with a race class (Gr.1–Gr.4, Gr.B).', carsFetchFailed: "Couldn't download the car list from GT7 Info. Try again later.",
-  drGaugeLabel: 'Driver Rating: {dr}, {pts} points', drNoPoints: 'Exact DR points after the GridStats sync.', drNext: 'Next: {cls}, {n} points to go', drTop: 'Top class: A+', syncedAt: 'Updated {date}', srNote: "The game doesn't show exact SR either, only the letter.", gt7Career: 'GT7 career', statRaces: 'races', wins: 'wins', statClean: 'clean races', rulesReadFailed: "The saved rules couldn't be loaded, so the default text is showing. The Firestore rules (firestore.rules) probably need publishing again.", permRulesHint: 'No permission: publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).',
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} points', drNoPoints: 'Exact DR points after the GridStats sync.', drNext: 'Next: {cls}, {n} points to go', drTop: 'Top class: A+', syncedAt: 'Updated {date}', gt7Career: 'GT7 career', statRaces: 'races', wins: 'wins', statClean: 'clean races', rulesReadFailed: "The saved rules couldn't be loaded, so the default text is showing. The Firestore rules (firestore.rules) probably need publishing again.", permRulesHint: 'No permission: publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).',
   drPointsCap: 'DR POINTS',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
@@ -222,4 +222,14 @@ export const en = {
   nt_claimDispute: 'Profile dispute: {psn} says the imported profile is not theirs', nt_roleGranted: 'Your new role: {role}',
   photoTitle: 'Profile photo', photoHelp: "We crop it square and shrink it; it's public.", photoChange: 'Change profile photo', photoChoose: 'Choose a picture', photoSaved: 'Photo saved', photoRemove: 'Remove photo', photoRemoved: 'Photo removed',
   coverUpload: 'Upload cover', logoUpload: 'Upload logo', teamLogo: 'Logo',
+
+  // ----- 0.6.1 -----
+  gsTokenSaved: 'Token saved', tracksDiag: "{p} tracks have a photo, {m} have a map. A sample is below: if the photo doesn't show here, GridStats doesn't allow showing it on other sites.",
+  impLinked: 'Already registered on the new site (their old results go to their existing account)', advanced: 'Advanced', settingsTitle: 'Connections', settingsSub: 'Cloud function and phone notifications.',
+  coverImage: 'Cover image', coverUpload: 'Upload a cover', coverReplace: 'Replace the cover', coverDropHint: "Tap, or drag a picture here. Without a cover, the first round's track photo shows.", coverRemove: 'Remove cover',
+  fnTitle: 'Cloud function', fnHelp: 'Needed for importing accounts and for phone notifications (functions/README.md).',
+  pushTitle: 'Phone notifications', pushAdminHelp: "In the Firebase console: Project settings → Cloud Messaging → Web Push certificates → Generate key pair. Paste the key here (it isn't secret).",
+  vapidKey: 'Web Push key (VAPID)', vapidHint: 'A long text starting with BL…', pushOnToast: 'Notifications on', pushOffToast: 'Notifications off',
+  pushState_on: 'On for this device', pushState_off: 'Off', pushState_blocked: "Blocked by the browser: allow it in the site's settings", pushState_unsupported: "This browser doesn't support it", 'pushState_ios-home': 'On iPhone: Share → Add to Home Screen, then open it from there',
+  pushDenied: "We didn't get permission for notifications.", pushNoKey: "The admins haven't set it up yet (Admin → Advanced → Connections).",
 };

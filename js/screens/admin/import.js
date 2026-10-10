@@ -17,7 +17,8 @@ const kindOf = (name) => { const n = name.toLowerCase(); if (n.includes('profile
 
 export function screenImport() {
   const files = {};
-  let plan = null;
+  let plan = null, allUsers = null;
+  backend.users.list().then((us) => { allUsers = us; if (files.profiles) build(); }).catch(() => {});
   const list = h('div', { class: 'stack', style: 'gap:6px' });
   const preview = h('div');
   const err = h('div');
@@ -37,13 +38,15 @@ export function screenImport() {
   const stat = (n, k) => h('div', null, h('div', { class: 'v display num' }, n), h('div', { class: 'k' }, k));
   function build() {
     if (!files.profiles) { preview.replaceChildren(); return; }
-    plan = transformExport(files);
+    const existing = Object.fromEntries((allUsers || []).filter((u) => !u.imported && u.psnLower).map((u) => [u.psnLower, u.uid]));
+    plan = transformExport(files, { existing });
     const warn = plan.warnings.reduce((a, w) => { a[w.key] = (a[w.key] || 0) + 1; return a; }, {});
     preview.replaceChildren(
       h('div', { class: 'stat-row panel', style: 'margin-top:14px;overflow:hidden' }, stat(plan.users.length, t('impDrivers')), stat(plan.seasons.length, t('seasons').toLowerCase()), stat(plan.entries.length, t('entries').toLowerCase())),
       h('div', { class: 'panel pad summary', style: 'margin-top:12px' }, h('dl', null,
         h('dt', null, t('impAccounts')), h('dd', null, t('impAccountsVal', { n: plan.authUsers.length, m: plan.noEmail.length }) + (plan.noEmail.length ? '\n' + plan.noEmail.join(', ') : '')),
         h('dt', null, t('impMerged')), h('dd', null, plan.merged.length ? plan.merged.map((m) => `${m.dropped} → ${m.kept}`).join('\n') : '–'),
+        h('dt', null, t('impLinked')), h('dd', null, plan.linked.length ? plan.linked.map((l) => l.psn).join(', ') : '–'),
         h('dt', null, t('teams')), h('dd', null, `${plan.teams.length} MCSM, ${plan.gtTeams.length} GT`),
         h('dt', null, t('seasons')), h('dd', null, plan.seasons.map((s) => `MCSM${s.data.no} – ${s.data.name}: ${s.data.rounds.map((r) => [r.track, r.layout].filter(Boolean).join(' ')).join(', ')}`).join('\n')),
         h('dt', null, t('impToFix')), h('dd', null, Object.keys(warn).length ? Object.entries(warn).map(([k, n]) => t(k, { n })).join('\n') : '–'))),

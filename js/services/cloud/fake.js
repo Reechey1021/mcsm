@@ -449,7 +449,7 @@ export function createFakeBackend() {
         if (!(isAdminUid(a.uid) || isJudgeUid(a.uid) || (n.kind === 'users' && driverTypes.includes(n.type) && (n.uids || []).length <= 60))) fail('permission-denied');
         db.notifications = db.notifications || {};
         const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        db.notifications[id] = { ...clone(n), id, by: a.uid, at: Date.now() }; persist();
+        db.notifications[id] = { ...clone(n), id, by: a.uid, at: Date.now() }; persist(); return id;
       },
     },
     audit: {

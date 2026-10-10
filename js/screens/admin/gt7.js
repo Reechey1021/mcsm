@@ -21,21 +21,27 @@ export function screenGt7() {
   const root = h('div', null, skelRows(3, 120));
   let stop = false;
   onLeave(() => { stop = true; });
-  Promise.all([backend.config.get('gridstats').catch(() => null), backend.content.get('cars').catch(() => null)]).then(([cfg, carsDoc]) => {
+  Promise.all([backend.config.get('gridstats').catch((e) => ({ __error: e })), backend.content.get('cars').catch(() => null)]).then(([cfg0, carsDoc]) => {
+    const loadErr = cfg0 && cfg0.__error ? cfg0.__error : null;
+    const cfg = loadErr ? null : cfg0;
     const fake = backend.kind === 'fake';
     const client = () => (fake ? fakeGridstats() : gridstatsClient({ token: tokenIn.input.value.trim(), base: baseIn.value.trim() }));
     const tokenIn = passwordInput({ autocomplete: 'off', value: (cfg && cfg.token) || '' });
     const tokenF = field(t('gsToken'), tokenIn, { hint: t('gsTokenHint') });
     const baseIn = h('input', { class: 'input', value: (cfg && cfg.base) || 'https://gt-gridstats.com/api' });
     const status = h('div');
+    if (loadErr) status.replaceChildren(formError(gsError(loadErr)));
+    const saveCfg = async (quiet) => { try { await backend.config.save('gridstats', { token: tokenIn.input.value.trim(), base: baseIn.value.trim() }); if (!quiet) toast(t('gsTokenSaved')); return true; } catch (e) { status.replaceChildren(formError(gsError(e))); return false; } };
+    tokenIn.input.addEventListener('change', () => saveCfg(false));
+    baseIn.addEventListener('change', () => saveCfg(true));
     const save = h('button', { class: 'btn', type: 'button' }, icon('check'), t('save'));
     save.addEventListener('click', () => busy(save, async () => {
-      try { await backend.config.save('gridstats', { token: tokenIn.input.value.trim(), base: baseIn.value.trim() }); toast(t('saved')); } catch (e) { status.replaceChildren(formError(t(errorKey(e)))); }
+      await saveCfg(false);
     }));
     const test = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('bolt'), t('gsTest'));
     test.addEventListener('click', () => busy(test, async () => {
       if (!fake && !tokenIn.input.value.trim()) { tokenF.setError(t('errRequired')); return; }
-      try { await client().ping(); status.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('gsOk')))); }
+      try { await client().ping(); if (!fake) await saveCfg(true); status.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('gsOk')))); }
       catch (e) { status.replaceChildren(formError(gsError(e))); }
     }));
     // progress helper
@@ -75,14 +81,18 @@ export function screenGt7() {
         for (let page = 1; page < 40; page++) {
           const res = await api.tracksPage(page);
           const rows = Array.isArray(res) ? res : res.data || [];
-          rows.forEach((x) => all.push({ id: x.id, name_short: x.name_short || '', full_name: x.full_name || x.name_short || '', trackphoto: x.trackphoto || null, track_map: x.track_map || null, corner_count: x.corner_count ?? null, track_length: x.track_length ?? null, elevation: x.elevation ?? null, longest_straight: x.longest_straight ?? null }));
+          const abs = (u) => (!u ? null : /^https?:|^data:/.test(u) ? u : 'https://gt-gridstats.com' + (u.startsWith('/') ? '' : '/') + u);
+          rows.forEach((x) => all.push({ id: x.id, name_short: x.name_short || x.name || '', full_name: x.full_name || x.name_short || x.name || '', trackphoto: abs(x.trackphoto || x.track_photo || x.trackPhoto || x.photo || x.image), track_map: abs(x.track_map || x.trackmap || x.trackMap || x.map), corner_count: x.corner_count ?? x.corners ?? null, track_length: x.track_length ?? x.length ?? null, elevation: x.elevation ?? null, longest_straight: x.longest_straight ?? null }));
           if (Array.isArray(res) || !res.next_page_url || !rows.length) break;
           if (!fake) await sleep(PACE_MS);
         }
         if (!all.length) throw Object.assign(new Error('empty'), { code: 'gs-notfound' });
         await backend.content.save('tracks', { tracks: all, count: all.length, source: 'GT GridStats' });
         invalidate('tracks'); trackInfo.textContent = t('tracksHave', { n: all.length, date: fmtDate(Date.now()) });
-        trackProg.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('tracksDone', { n: all.length }))));
+        const withPhoto = all.filter((x) => x.trackphoto), withMap = all.filter((x) => x.track_map);
+        const sample = withPhoto[0];
+        trackProg.replaceChildren(h('div', { class: 'callout', style: 'display:block' }, h('b', { style: 'display:block' }, t('tracksDone', { n: all.length })), t('tracksDiag', { p: withPhoto.length, m: withMap.length })),
+          sample ? h('div', { class: 'track-sample', vars: { 'background-image': `url("${sample.trackphoto.replace(/"/g, '')}")` } }, sample.track_map ? h('img', { class: 'trk-map', src: sample.track_map, alt: '' }) : null, h('span', null, sample.full_name)) : null);
       } catch (e) { trackProg.replaceChildren(formError(gsError(e))); }
     }));
     // ratings

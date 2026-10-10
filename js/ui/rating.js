@@ -80,8 +80,7 @@ export function ratingPanel(p) {
     h('div', { class: 'stack', style: 'gap:12px' },
       h('div', { class: 'panel sr-card' }, h('span', { class: 'label' }, 'Sportsmanship Rating'),
         h('div', { class: 'sr-row' }, h('span', { class: 'sr-big display' }, p.sr || '–'),
-          h('div', { class: 'sr-scale', role: 'img', 'aria-label': 'SR ' + (p.sr || '–') }, SR_SCALE.map((l) => h('span', { class: l === p.sr ? 'on' : SR_SCALE.indexOf(l) < SR_SCALE.indexOf(p.sr) ? 'past' : '' }, l)))),
-        h('p', { class: 'note', style: 'margin:8px 0 0' }, t('srNote'))),
+          h('div', { class: 'sr-scale', role: 'img', 'aria-label': 'SR ' + (p.sr || '–') }, SR_SCALE.map((l) => h('span', { class: l === p.sr ? 'on' : SR_SCALE.indexOf(l) < SR_SCALE.indexOf(p.sr) ? 'past' : '' }, l))))),
       gs ? h('div', { class: 'panel', style: 'overflow:hidden' }, h('div', { class: 'label', style: 'padding:14px 16px 0' }, t('gt7Career') + (gs.country ? '  ' + gs.country : '')),
         h('div', { class: 'stat-row', style: 'border-top:0' }, stat(gs.races, t('statRaces')), stat(gs.wins, t('wins')), stat(gs.clean, t('statClean')))) : null));
 }

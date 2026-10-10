@@ -6,14 +6,11 @@
 // These values aren't secrets. They identify your project; the security rules in
 // firestore.rules are what protect the data.
 
-export const firebaseConfig = null;
-
-// Example of what it looks like once filled in:
-// export const firebaseConfig = {
-//   apiKey: "AIza...",
-//   authDomain: "mcsm-hu.firebaseapp.com",
-//   projectId: "mcsm-hu",
-//   storageBucket: "mcsm-hu.firebasestorage.app",
-//   messagingSenderId: "1234567890",
-//   appId: "1:1234567890:web:abc123",
-// };
+export const firebaseConfig = {
+  apiKey: "AIzaSyCmGpIy85Uwo6CdFWuTWS_c2F6qCBKYxE0",
+  authDomain: "mcsm-a0a92.firebaseapp.com",
+  projectId: "mcsm-a0a92",
+  storageBucket: "mcsm-a0a92.firebasestorage.app",
+  messagingSenderId: "245368827114",
+  appId: "1:245368827114:web:ea82711cb535ea1c51bb93"
+};

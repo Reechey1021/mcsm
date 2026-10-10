@@ -78,6 +78,8 @@ export async function createFirebaseBackend(config) {
       async get(uid) { const s = await F.getDoc(userRef(uid)); return s.exists() ? s.data() : null; },
       async list() { const qs = await F.getDocs(F.collection(db, 'users')); return qs.docs.map((d) => ({ uid: d.id, ...d.data() })); },
       async getPrivate(uid) { return wrap(async () => { const s = await F.getDoc(F.doc(db, 'users', uid, 'private', 'account')); return s.exists() ? s.data() : {}; }); },
+      async lockOwner(psnLower) { const s = await F.getDoc(F.doc(db, 'psnIds', psnLower)); return s.exists() ? s.data().uid : null; },
+      async remove(uid) { return wrap(() => F.deleteDoc(F.doc(db, 'users', uid))); },
       async psnFree(psn, uid) { const s = await F.getDoc(F.doc(db, 'psnIds', String(psn).trim().toLowerCase())); return !s.exists() || s.data().uid === uid; },
       async teammates(teamId, uid) {
         if (!teamId) return [];

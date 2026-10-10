@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.5 – Merge accounts
+- Admin → Haladó → Fiókok összevonása (owners): type a PSN ID, see every account and all race
+  history tied to it, pick the account to keep, and everything moves onto it: profile details
+  (gaps filled), roles, the PSN lock, entries, PQ times, lobbies, results, penalties and
+  protests. The emptied duplicate profile is removed. Uses the admin function, no redeploy needed.
+- "PSN ID taken" now tells drivers to activate their old account, or ask an owner to merge.
+
 ## 0.6.4 – GT7 profile pictures
 - The DR/SR refresh now also saves each driver's GT7 ID (GridStats' "GUID") and nickname.
 - Admin → Haladó → GT7 adatok → GT7 profilképek: copies a console script with everyone's GT7 ID.

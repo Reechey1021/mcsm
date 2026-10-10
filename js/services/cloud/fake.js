@@ -269,6 +269,8 @@ export function createFakeBackend() {
       async get(uid) { await lag(); return clone(db.users[uid]) || null; },
       async list() { await lag(); return Object.entries(db.users).map(([uid, p]) => ({ uid, ...clone(p) })); },
       async getPrivate(uid) { await lag(); const a = me(); if (a.uid !== uid && !isAdminUid(a.uid)) fail('permission-denied'); return clone(db.priv[uid]) || {}; },
+      async lockOwner(psnLower) { await lag(); return db.psnIds[psnLower] || null; },
+      async remove(uid) { await lag(); const a = me(); if (!roleOf(a.uid).owner) fail('permission-denied'); delete db.users[uid]; persist(); },
       async psnFree(psn, uid) { await sleep(150); const k = String(psn || '').trim().toLowerCase(); return !db.psnIds[k] || db.psnIds[k] === uid; },
       async teammates(teamId, uid) { await lag(); if (!teamId) return []; return Object.entries(db.users).filter(([id, p]) => p.teamId === teamId && id !== uid).map(([id, p]) => ({ uid: id, ...clone(p) })); },
       async save(uid, patch) {
@@ -471,6 +473,9 @@ export function createFakeBackend() {
           else if (c1 === 'seasons' && c2 === 'entries') { db.entries[id1] = db.entries[id1] || {}; put(db.entries[id1], id2); }
           else if (c1 === 'seasons' && c2 === 'rounds') put(bucket(id1).rounds, id2);
           else if (c1 === 'seasons' && c2 === 'pq') put(bucket(id1).pq, id2);
+          else if (c1 === 'seasons' && c2 === 'sheets') put(bucket(id1).sheets, id2);
+          else if (c1 === 'seasons' && c2 === 'penalties') put(bucket(id1).penalties, id2);
+          else if (c1 === 'seasons' && c2 === 'protests') put(bucket(id1).protests, id2);
           if (onProgress && (i % 50 === 0 || i === ops.length - 1)) onProgress(i + 1, ops.length);
         });
         persist();

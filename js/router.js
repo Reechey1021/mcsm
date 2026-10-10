@@ -15,6 +15,7 @@ import { screenWelcome } from './screens/welcome.js';
 import { screenImport } from './screens/admin/import.js';
 import { screenRoles } from './screens/admin/roles.js';
 import { screenSettings } from './screens/admin/settings.js';
+import { screenMerge } from './screens/admin/merge.js';
 import { screenWizard } from './screens/wizard.js';
 import { screenMe } from './screens/me.js';
 import { screenDrivers, screenDriver } from './screens/drivers.js';
@@ -60,6 +61,7 @@ const ROUTES = [
   ['/admin/import', screenImport, { tab: 4, auth: true, owner: true }],
   ['/admin/szerepkorok', screenRoles, { tab: 4, auth: true, roleAdmin: true }],
   ['/admin/beallitasok', screenSettings, { tab: 4, auth: true, admin: true }],
+  ['/admin/osszevonas', screenMerge, { tab: 4, auth: true, owner: true }],
   ['/muvelet', screenAction, { noBanner: true, keep: true }],
   ['/admin', screenAdmin, { tab: 4, auth: true, admin: true }],
   ['/admin/felhasznalok', screenAdminPeople, { tab: 4, auth: true, admin: true }],

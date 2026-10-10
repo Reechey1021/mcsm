@@ -11,6 +11,7 @@ import { backend, errorKey } from '../../services/backend.js';
 import { users as loadUsers, invalidate } from '../../core/data.js';
 import { isComplete, fullName } from '../../model/profile.js';
 import { gridstatsClient, fakeGridstats, PACE_MS } from '../../services/gridstats.js';
+import { fetchCatalog, fakeCatalog } from '../../services/gt7info.js';
 import { onLeave } from '../../router.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,26 +50,17 @@ export function screenGt7() {
     const carsProg = h('div');
     const carsBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('car'), t('gsCarsImport'));
     carsBtn.addEventListener('click', () => busy(carsBtn, async () => {
-      stop = false;
-      const pr = progress(); carsProg.replaceChildren(pr.el);
-      const api = client(); const all = [];
+      carsProg.replaceChildren();
       try {
-        let page = 1, total = null;
-        for (;;) {
-          if (stop) { pr.line(t('gsStopped')); return; }
-          const res = await api.carsPage(page);
-          (res.data || []).forEach((c) => all.push({ id: c.id, code: c.car_code ?? null, name: c.name, cls: c.class || '', maker: (c.manufacturer && c.manufacturer.name) || '' }));
-          total = res.total || total;
-          pr.set(total ? all.length / total : 0); pr.line(t('gsPage', { p: page, n: all.length, total: total || '?' }));
-          if (!res.next_page_url || !(res.data || []).length) break;
-          page++; if (!fake) await sleep(PACE_MS);
-        }
-        all.sort((a, b) => a.name.localeCompare(b.name));
-        await backend.content.save('cars', { cars: all, count: all.length, source: 'GT GridStats' });
+        const all = fake ? await fakeCatalog() : await fetchCatalog();
+        const classed = all.filter((c) => c.cls).length;
+        await backend.content.save('cars', { cars: all, count: all.length, source: 'GT7 Info' });
         await backend.audit.add({ action: 'gt7.cars', target: 'cars', targetName: t('gsCarsTitle'), before: null, after: { count: all.length }, reason: null });
-        invalidate('cars'); pr.set(1);
-        carsInfo.textContent = t('gsCarsHave', { n: all.length, date: fmtDate(Date.now()) }); toast(t('gsCarsDone', { n: all.length }));
-      } catch (e) { pr.line(gsError(e)); toast(gsError(e), 'alert'); }
+        invalidate('cars');
+        carsInfo.textContent = t('gsCarsHave', { n: all.length, date: fmtDate(Date.now()) });
+        carsProg.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('carsImported', { n: all.length, c: classed }))));
+        toast(t('gsCarsDone', { n: all.length }));
+      } catch (e) { carsProg.replaceChildren(formError(t('carsFetchFailed'))); toast(t('carsFetchFailed'), 'alert'); }
     }));
     // ratings
     const rateProg = h('div');
@@ -103,10 +95,10 @@ export function screenGt7() {
     const stopBtn = h('button', { class: 'btn small', type: 'button', onclick: () => { stop = true; } }, t('stop'));
     root.replaceChildren(
       fake ? h('div', { class: 'callout', style: 'margin-bottom:14px' }, icon('info'), h('span', null, t('gsFakeNote'))) : null,
-      h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
+      h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsCarsTitle')), carsInfo, h('p', { class: 'note', style: 'margin:0' }, t('gsCarsHelp'), ' ', h('a', { href: 'https://ddm999.github.io/gt7info/', target: '_blank', rel: 'noopener', style: 'color:var(--accent-text);font-weight:650' }, 'GT7 Info')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, carsBtn), carsProg),
+      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
         h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsCarsTitle')), carsInfo, h('p', { class: 'note', style: 'margin:0' }, t('gsCarsHelp')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, carsBtn), carsProg),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));
   return frag(backLink(t('admin'), '#/admin'), pageTitle(t('gsTitle'), t('gsSub')), root);

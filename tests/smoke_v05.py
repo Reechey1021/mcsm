@@ -42,7 +42,7 @@ with sync_playwright() as p:
         go(pg, '/admin/gt7', 'owner')
         pg.click('button:has-text("Kapcsolat tesztelése")'); pg.wait_for_timeout(800)
         check('A kapcsolat működik' in text(pg), f'{size}: connection test')
-        pg.click('button:has-text("Autólista letöltése")'); pg.wait_for_timeout(2500)
+        pg.click('button:has-text("Autólista frissítése")'); pg.wait_for_timeout(2500)
         check('20 autó' in text(pg), f'{size}: car list imported ({text(pg)[-200:]!r})')
         pg.click('button:has-text("Frissítés mindenkinek")'); pg.wait_for_timeout(4500)
         check('frissítve' in text(pg, 'body'), f'{size}: ratings synced')

@@ -17,7 +17,7 @@ export function carField(value, onChange, opts = {}) {
     const q = input.value.trim().toLowerCase();
     if (!catalog || !catalog.length || q.length < 2) { close(); return; }
     const words = q.split(/\s+/);
-    const found = catalog.filter((c) => (!opts.cls || c.cls === opts.cls) && words.every((w) => (c.name + ' ' + (c.maker || '') + ' ' + (c.cls || '')).toLowerCase().includes(w))).slice(0, 8);
+    const found = catalog.filter((c) => (!opts.cls || c.cls === opts.cls) && words.every((w) => (c.name + ' ' + (c.cls || '')).toLowerCase().includes(w))).slice(0, 8);
     if (!found.length) { close(); return; }
     list.replaceChildren(...found.map((c) => h('button', { type: 'button', role: 'option', onmousedown: (e) => e.preventDefault(), onclick: () => pick(c.name) }, h('span', null, c.name), c.cls ? h('span', { class: 'cls' }, c.cls) : null)));
     list.style.display = '';

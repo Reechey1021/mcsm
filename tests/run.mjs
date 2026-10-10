@@ -386,6 +386,17 @@ await test('fake backend: notifications and admin-only settings', async () => {
   await b.config.save('gridstats', { token: 'x' }); eq((await b.config.get('gridstats')).token, 'x');
 });
 
+
+await test('GT7 Info car list: CSV, makers, classes', async () => {
+  const G = await import('../js/services/gt7info.js');
+  eq(G.parseCsv('a,b\n1,"x, y"\n'), [['a', 'b'], ['1', 'x, y']]);
+  eq(G.classFromName('FT-1 VGT (Gr.3)'), 'Gr.3'); eq(G.classFromName('WRX Gr.B Rally Car'), 'Gr.B'); eq(G.classFromName('Corvette C7 Gr.3 Road Car'), '');
+  eq(G.classFromName("458 Italia GT3 '13"), 'Gr.3'); eq(G.classFromName("911 GT3 R (992) '22"), 'Gr.3'); eq(G.classFromName("911 GT3 RS (992) '22"), ''); eq(G.classFromName("911 GT3 (996) '01"), '');
+  const cat = G.buildCatalog('ID,ShortName,Maker\n2187,FT-1 VGT (Gr.3),43\n3311,911 RSR (991) \'17,136\n', 'ID,Name\n43,Toyota\n136,Porsche', 'ID,Group\n3311,3');
+  eq(cat.map((c) => [c.name, c.cls]), [["Porsche 911 RSR (991) '17", 'Gr.3'], ['Toyota FT-1 VGT (Gr.3)', 'Gr.3']]);
+  const fake = await G.fakeCatalog(); eq(fake.length, 20); ok(fake.some((c) => /Supra/.test(c.name)));
+});
+
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

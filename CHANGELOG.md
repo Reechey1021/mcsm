@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 – Car list from GT7 Info
+- The car list now comes from GT7 Info (github.com/ddm999/gt7info): open community data from the
+  game's own database, updated after GT7 updates, with no token and no daily limit. One button in
+  Admin → GT7 adatok, a few seconds. Names include the manufacturer; race classes come from the
+  name (Gr.1–Gr.4, Gr.B, GT3 cars) and, where available, GT7 Info's car group file.
+- GT GridStats is now only used for DR/SR, so its token is only needed for that.
+
 ## 0.5.0 – Notifications, GT7 data, editable rules
 - Fixed: signed-out (and non-admin) visitors got "Nem sikerült betölteni" on season pages. The app
   asked for every season including drafts, which the rules rightly refuse; now only admins ask

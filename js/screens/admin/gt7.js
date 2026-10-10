@@ -12,6 +12,7 @@ import { users as loadUsers, invalidate } from '../../core/data.js';
 import { isComplete, fullName } from '../../model/profile.js';
 import { gridstatsClient, fakeGridstats, PACE_MS } from '../../services/gridstats.js';
 import { fetchCatalog, fakeCatalog } from '../../services/gt7info.js';
+import { profileScript, GT7_DEFAULT_AVATAR } from '../../data/gt7-images.js';
 import { onLeave } from '../../router.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -70,6 +71,32 @@ export function screenGt7() {
         toast(t('gsCarsDone', { n: all.length }));
       } catch (e) { carsProg.replaceChildren(formError(gsError(e))); toast(gsError(e), 'alert'); }
     }));
+    // Bulk profile writes go through the admin function (admin rights), else directly.
+    const writeUsers = async (ops) => { if (!ops.length) return; try { await backend.admin.call('importData', { ops }); } catch (e) { if (e.code === 'fn-missing') { for (const o of ops) await backend.users.save(o.path[1], o.data); } else throw e; } };
+    // GT7 profile pictures: a console script on gran-turismo.com reads them, we store the links
+    const picInfo = h('p', { class: 'muted', style: 'margin:0' });
+    const picOut = h('div');
+    const paste = h('textarea', { class: 'input script-box', placeholder: '[{"guid":"…","avatar":"https://…","cover":"https://…"}]' });
+    const copyBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('list'), t('picsCopyScript'));
+    const saveBtn = h('button', { class: 'btn primary', type: 'button' }, icon('check'), t('picsSave'));
+    let withGuid = [];
+    const refreshPics = async () => { invalidate('users'); const us = await loadUsers(); withGuid = us.filter((u) => u.gt7Guid); picInfo.textContent = t('picsInfo', { n: withGuid.length, a: us.filter((u) => u.gt7Avatar).length, all: us.filter(isComplete).length }); };
+    refreshPics().catch(() => {});
+    copyBtn.addEventListener('click', () => busy(copyBtn, async () => {
+      await refreshPics();
+      if (!withGuid.length) { toast(t('picsNoGuid'), 'alert'); return; }
+      const script = profileScript(withGuid.map((u) => ({ guid: u.gt7Guid, psn: u.psn })));
+      try { await navigator.clipboard.writeText(script); toast(t('picsCopied', { n: withGuid.length })); }
+      catch { picOut.replaceChildren(h('textarea', { class: 'input script-box', readonly: true }, script)); toast(t('picsCopyManual'), 'info'); }
+    }));
+    saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
+      let rows; try { rows = JSON.parse(paste.value.trim()); if (!Array.isArray(rows)) throw 0; } catch { picOut.replaceChildren(formError(t('picsBadJson'))); return; }
+      const us = await loadUsers(); const byGuid = Object.fromEntries(us.filter((u) => u.gt7Guid).map((u) => [u.gt7Guid, u]));
+      const ops = []; let missing = 0;
+      rows.forEach((r) => { const u = byGuid[r.guid]; if (!u) { missing++; return; } ops.push({ path: ['users', u.uid], data: { gt7Avatar: r.avatar || GT7_DEFAULT_AVATAR, gt7Cover: r.cover || null }, merge: true }); });
+      try { await writeUsers(ops); invalidate('users'); await refreshPics(); picOut.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('picsSaved', { n: ops.length, m: missing })))); paste.value = ''; }
+      catch (e) { picOut.replaceChildren(formError(gsError(e) + (e.message ? ` (${e.message})` : ''))); }
+    }));
     // tracks (GridStats): photo, map, length, corners
     const trackInfo = h('p', { class: 'muted', style: 'margin:0' }, t('tracksNone'));
     backend.content.get('tracks').then((d) => { if (d && d.tracks) trackInfo.textContent = t('tracksHave', { n: d.tracks.length, date: fmtDate(d.updatedAt) }); }).catch(() => {});
@@ -106,7 +133,7 @@ export function screenGt7() {
       const drivers = (await loadUsers()).filter((u) => isComplete(u) && u.psn);
       const byPsn = Object.fromEntries(drivers.map((u) => [u.psn.toLowerCase(), u]));
       const batches = []; for (let i = 0; i < drivers.length; i += 16) batches.push(drivers.slice(i, i + 16));
-      let updated = 0; const missing = [];
+      let updated = 0; const missing = []; const pending = [];
       try {
         for (let b = 0; b < batches.length; b++) {
           if (stop) { pr.line(t('gsStopped')); break; }
@@ -114,10 +141,11 @@ export function screenGt7() {
           for (const d of res.drivers || []) {
             const u = byPsn[String(d.PSN_ID || '').toLowerCase()]; if (!u) continue;
             const st = d.stats || {};
-            const patch = { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now() };
-            await backend.users.save(u.uid, patch); updated++;
+            const patch = { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now(), ...(d.GUID ? { gt7Guid: String(d.GUID) } : {}), ...(d.Nickname ? { gt7Nick: String(d.Nickname) } : {}) };
+            pending.push({ path: ['users', u.uid], data: patch, merge: true }); updated++;
           }
           (res.not_found || []).forEach((p) => missing.push(p));
+          await writeUsers(pending.splice(0));
           pr.set((b + 1) / batches.length); pr.line(t('gsBatch', { b: b + 1, total: batches.length, n: updated }));
           if (b < batches.length - 1 && !fake) await sleep(PACE_MS);
         }
@@ -133,6 +161,9 @@ export function screenGt7() {
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
         h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
+      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
+        h('ol', { class: 'note', style: 'margin:0;padding-left:20px;line-height:1.6' }, h('li', null, t('picsStep1')), h('li', null, t('picsStep2')), h('li', null, t('picsStep3')), h('li', null, t('picsStep4'))),
+        h('div', null, copyBtn), paste, h('div', null, saveBtn), picOut),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));

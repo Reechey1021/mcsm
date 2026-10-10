@@ -664,3 +664,10 @@ details.adv > summary svg{ width:20px; height:20px; color:var(--ink-3); }
 @media (max-width:520px){ .hero-map{ height:84px; top:62px; } }
 .track-sample{ position:relative; margin-top:10px; height:150px; border-radius:var(--r-md); background:var(--bg-3) center/cover no-repeat; overflow:hidden; display:flex; align-items:flex-end; padding:10px 12px; color:#fff; font-weight:700; text-shadow:0 1px 6px rgba(0,0,0,.6); }
 .track-sample .trk-map{ height:70%; }
+
+/* ===== 0.6.4: GT7 profile pictures ===== */
+.avatar.has-photo img.gt7{ object-fit:cover; object-position:50% 0; transform:scale(1.9); transform-origin:50% 4%; }
+.profile-head{ position:relative; overflow:hidden; isolation:isolate; }
+.profile-head .head-cover{ position:absolute; inset:0; z-index:-1; background-size:cover; background-position:center; opacity:.42;
+  -webkit-mask-image:linear-gradient(90deg, rgba(0,0,0,.2), #000 70%); mask-image:linear-gradient(90deg, rgba(0,0,0,.2), #000 70%); }
+.script-box{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; min-height:110px; }

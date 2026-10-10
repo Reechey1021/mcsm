@@ -30,7 +30,7 @@ export function profileHead(p, team, opts = {}) {
     av.append(edit); av.style.overflow = 'visible';
   }
   if (opts.vt) av.style.viewTransitionName = 'drv-hero';
-  return h('section', { class: 'profile-head' }, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
+  return h('section', { class: 'profile-head' + (p.gt7Cover ? ' has-cover' : '') }, p.gt7Cover ? h('span', { class: 'head-cover', vars: { 'background-image': `url("${String(p.gt7Cover).replace(/"/g, '')}")` }, 'aria-hidden': 'true' }) : null, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
     h('div', { style: 'min-width:0' }, h('h1', { class: 'display' }, (p.lastName || '').toLocaleUpperCase('hu'), h('br'), p.firstName || ''),
       h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p)),
       h('div', { class: 'head-chips' }, team ? h('span', { class: 'head-chip' }, h('span', { class: 'team-dot', style: `background:${team.c1}` }), team.name) : null, p.gtTeamId ? h('span', { class: 'head-chip' }, p.gtTeamId) : null)));

@@ -4,12 +4,14 @@ import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { initials } from '../model/profile.js';
 import { t } from '../i18n/index.js';
+import { avatarUrl } from '../data/gt7-images.js';
 
 export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); return m ? +m[1] : null; }
 export function avatar(p, team, cls = '') {
   const hue = teamHue(team);
   const bg = hue == null ? (team && team.c1 ? team.c1 : '#36405F') : `hsl(${hue} 42% 30%)`;
-  const photo = p && p.photoUrl ? h('img', { src: p.photoUrl, alt: '', loading: 'lazy', decoding: 'async', onerror: (e) => e.target.remove() }) : null;
+  const url = avatarUrl(p);
+  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: p.photoUrl ? '' : 'gt7', onerror: (e) => e.target.remove() }) : null;
   return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
 export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class: 'dr' }, p.dr || '–'), h('span', { class: 'srb' }, p.sr || '–'));

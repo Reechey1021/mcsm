@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.4 – GT7 profile pictures
+- The DR/SR refresh now also saves each driver's GT7 ID (GridStats' "GUID") and nickname.
+- Admin → Haladó → GT7 adatok → GT7 profilképek: copies a console script with everyone's GT7 ID.
+  Run it on gran-turismo.com while signed in; it reads each profile's driver picture and cover
+  and copies the result, which you paste back. Only the links are stored.
+- Avatars use the GT7 driver picture (cropped to the upper body) unless someone uploaded their own
+  photo; drivers without a suit get GT7's default picture. Profiles show the GT7 cover faded
+  behind the header.
+- Firestore rules: the new GT7 fields (publish again).
+
 ## 0.6.3 – Import through the admin function
 - "Adatok mentése" now sends the prepared data to the admin function, which writes it directly
   with admin rights, so the security rules can't block the one-off migration.

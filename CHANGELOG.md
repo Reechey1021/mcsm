@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.3 – Import through the admin function
+- "Adatok mentése" now sends the prepared data to the admin function, which writes it directly
+  with admin rights, so the security rules can't block the one-off migration.
+- If anything fails, the exact reason from the server is shown under the button.
+
 ## 0.6.2 – Import fix
 - Fixed: saving imported data failed ("Something didn't work"). Entry snapshots copied empty
   profile fields as "undefined", which the database refuses. Snapshots now use empty values, and

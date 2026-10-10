@@ -204,7 +204,7 @@ export const en = {
   impDrivers: 'drivers', impAccounts: 'Sign-in accounts', impAccountsVal: '{n} accounts with email, {m} without:', impMerged: 'Duplicates merged', impToFix: 'To check',
   impResultsNote: 'The old site only stored round totals, so old rounds show as totals. Anyone with missing profile details fills them in on first sign-in.',
   impWarnIncomplete: '{n} profiles incomplete (filled in on first sign-in)', impWarnDr: '{n} invalid DR (e.g. S)', impWarnCup: '{n} seasons without a number (skipped)', impWarnEntry: '{n} entries with an unknown driver (skipped)', impWarnClash: '{n} clashing results (the better position kept)',
-  impStep2: '2. Save the data', impStep2Help: "Safe to repeat: it reuses the same IDs and leaves profiles that were already activated alone.", impWrite: 'Save data',
+  impStep2: '2. Save the data', impStep2Help: "The cloud function writes it directly with admin rights (it uses the address from step 3). Safe to repeat: it reuses the same IDs and leaves profiles that were already activated alone.", impWrite: 'Save data',
   impProgress: 'Saving: {n}/{total}', impWritten: 'Done: {n} documents saved, {s} activated profiles skipped.', impWrittenShort: 'Data saved',
   impStep3: '3. Sign-in accounts', impStep3Help: 'The cloud function creates an account for every imported driver with their old email and old ID, without a password. The function has to be deployed once (functions/README.md).',
   fnUrl: 'Cloud function address', fnUrlHint: 'The URL the Google Cloud console shows after deploying.', fnOk: 'The cloud function works', impAccountsBtn: 'Create accounts',

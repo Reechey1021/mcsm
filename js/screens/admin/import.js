@@ -57,6 +57,7 @@ export function screenImport() {
   // step 3: data
   const prog = h('div', { class: 'note' });
   const write = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('check'), t('impWrite'));
+  const errText = (e) => t(errorKey(e)) + (e && (e.message || e.code) ? ` (${e.message || e.code})` : '');
   write.addEventListener('click', () => busy(write, async () => {
     if (!plan) { toast(t('impPickFirst'), 'alert'); return; }
     err.replaceChildren();
@@ -64,10 +65,15 @@ export function screenImport() {
       const all = await backend.users.list();
       const claimed = new Set(all.filter((u) => u.claimedAt).map((u) => u.uid));
       const ops = planOps(plan, { claimed });
-      await backend.admin.writeMany(ops, (n, total) => { prog.textContent = t('impProgress', { n, total }); });
+      // The one-off migration goes through the admin function: it writes with admin rights,
+      // so the security rules can't block a batch. Sent in chunks so progress is visible.
+      for (let i = 0; i < ops.length; i += 150) {
+        await backend.admin.call('importData', { ops: ops.slice(i, i + 150) });
+        prog.textContent = t('impProgress', { n: Math.min(ops.length, i + 150), total: ops.length });
+      }
       await backend.audit.add({ action: 'import.data', target: 'import', targetName: t('impTitle'), before: null, after: { docs: ops.length, skipped: claimed.size }, reason: null });
       invalidate(); prog.textContent = t('impWritten', { n: ops.length, s: claimed.size }); toast(t('impWrittenShort'));
-    } catch (e) { console.error(e); err.replaceChildren(formError(t(errorKey(e)) + (e && (e.code || e.message) ? ` (${e.code || e.message})` : ''))); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    } catch (e) { console.error(e); prog.replaceChildren(formError(errText(e))); }
   }));
   // step 4: accounts
   const accRes = h('div');

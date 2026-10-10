@@ -254,7 +254,7 @@ export async function createFirebaseBackend(config) {
         try { res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ action, ...payload }) }); }
         catch { fail('fn-network'); }
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) { const e = new Error(body.error || 'fn-error'); e.code = body.code || 'fn-error'; e.status = res.status; throw e; }
+        if (!res.ok) { const e = new Error(body.error || ('HTTP ' + res.status)); e.code = body.code || 'fn-error'; e.status = res.status; throw e; }
         return body;
       },
       async functionsConfig() { try { const d = await F.getDoc(F.doc(db, 'config', 'functions')); return d.exists() ? d.data() : null; } catch { return null; } },

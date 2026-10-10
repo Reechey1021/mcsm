@@ -9,6 +9,8 @@
 //   gridstats    { path }  GT GridStats request made from the server with the saved token
 //                (fallback if GridStats ever refuses browser requests).
 //   ping         {}       check the function works and you're an owner.
+//   importData   { ops: [{ path: ['users', id], data, merge }] }  the one-off migration: writes
+//                the prepared documents directly with admin rights (security rules don't apply).
 // Any signed-in member:
 //   registerPush   { token }  remember this device and subscribe it to league-wide news.
 //   unregisterPush { token }  forget it.
@@ -84,8 +86,27 @@ functions.http('mcsmAdmin', async (req, res) => {
     const me = await db.doc(`users/${decoded.uid}`).get();
     const roles = (me.exists && me.data().roles) || {};
     if (roles.owner !== true) return res.status(403).json({ code: 'fn-forbidden', error: 'Owners only' });
+    // Large imports arrive as JSON; Cloud Run accepts up to 32 MB per request.
 
     if (body.action === 'ping') return res.json({ ok: true, project: process.env.GCLOUD_PROJECT || null });
+
+    if (body.action === 'importData') {
+      const ALLOWED = ['users', 'psnIds', 'teams', 'gtTeams', 'seasons'];
+      const ops = Array.isArray(body.ops) ? body.ops : [];
+      for (const o of ops) {
+        if (!Array.isArray(o.path) || o.path.length % 2 !== 0 || !ALLOWED.includes(o.path[0]) || o.path.some((x) => typeof x !== 'string' || !x || x.includes('/'))) {
+          return res.status(400).json({ code: 'fn-error', error: 'Bad path: ' + JSON.stringify(o.path) });
+        }
+      }
+      let written = 0;
+      for (let i = 0; i < ops.length; i += 400) {
+        const batch = db.batch();
+        ops.slice(i, i + 400).forEach((o) => batch.set(db.doc(o.path.join('/')), JSON.parse(JSON.stringify(o.data || {})), o.merge ? { merge: true } : {}));
+        await batch.commit();
+        written += Math.min(400, ops.length - i);
+      }
+      return res.json({ ok: true, written });
+    }
 
     if (body.action === 'importUsers') {
       const users = (body.users || []).filter((u) => u && u.uid && u.email).map((u) => ({

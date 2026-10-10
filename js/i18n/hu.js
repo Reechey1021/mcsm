@@ -220,7 +220,7 @@ export const hu = {
   impDrivers: 'pilóta', impAccounts: 'Bejelentkezési fiókok', impAccountsVal: '{n} fiók e-mail-címmel, {m} e-mail nélkül:', impMerged: 'Összevont duplikátumok', impToFix: 'Átnézendő',
   impResultsNote: 'A régi oldal fordulónként csak az összpontszámot tárolta, így a régi fordulók összesítve jelennek meg. Akinek hiányos a profilja, az első belépéskor kitölti.',
   impWarnIncomplete: '{n} profil hiányos (első belépéskor kitöltik)', impWarnDr: '{n} érvénytelen DR (pl. S)', impWarnCup: '{n} szezon sorszám nélkül (kimaradt)', impWarnEntry: '{n} nevezés ismeretlen pilótával (kimaradt)', impWarnClash: '{n} ütköző eredmény (a jobb helyezés maradt)',
-  impStep2: '2. Adatok mentése', impStep2Help: 'Bármikor megismételhető: ugyanazokat az azonosítókat használja, és aki már aktiválta a fiókját, annak a profilját nem írja felül.', impWrite: 'Adatok mentése',
+  impStep2: '2. Adatok mentése', impStep2Help: 'A felhőfüggvény írja be közvetlenül, admin jogokkal (ehhez is a 3. pontban megadott cím kell). Bármikor megismételhető: ugyanazokat az azonosítókat használja, és aki már aktiválta a fiókját, annak a profilját nem írja felül.', impWrite: 'Adatok mentése',
   impProgress: 'Mentés: {n}/{total}', impWritten: 'Kész: {n} dokumentum mentve, {s} aktivált profil kihagyva.', impWrittenShort: 'Adatok mentve',
   impStep3: '3. Bejelentkezési fiókok', impStep3Help: 'A felhőfüggvény minden importált pilótának létrehoz egy fiókot a régi e-mail-címével és a régi azonosítójával, jelszó nélkül. Ehhez a függvényt egyszer telepíteni kell (functions/README.md).',
   fnUrl: 'A felhőfüggvény címe', fnUrlHint: 'A Google Cloud konzolban telepítés után megjelenő URL.', fnOk: 'A felhőfüggvény működik', impAccountsBtn: 'Fiókok létrehozása',

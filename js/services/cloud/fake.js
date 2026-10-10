@@ -488,6 +488,7 @@ export function createFakeBackend() {
           persist(); return { successCount: created, failureCount: errors.length, errors };
         }
         if (action === 'ping') return { ok: true, project: 'fake' };
+        if (action === 'importData') { await this.writeMany(payload.ops || []); return { ok: true, written: (payload.ops || []).length }; }
         fail('fn-unknown');
       },
       async functionsConfig() { return { url: 'fake://functions' }; },

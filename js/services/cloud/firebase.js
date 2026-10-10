@@ -239,7 +239,7 @@ export async function createFirebaseBackend(config) {
         return wrap(async () => {
           for (let i = 0; i < ops.length; i += 400) {
             const b = F.writeBatch(db);
-            ops.slice(i, i + 400).forEach((o) => b.set(F.doc(db, ...o.path), o.data, o.merge ? { merge: true } : {}));
+            ops.slice(i, i + 400).forEach((o) => b.set(F.doc(db, ...o.path), JSON.parse(JSON.stringify(o.data)), o.merge ? { merge: true } : {}));
             await b.commit();
             if (onProgress) onProgress(Math.min(ops.length, i + 400), ops.length);
           }

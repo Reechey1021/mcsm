@@ -61,7 +61,8 @@ export function matchTrack(...names) {
 
 // existing: { psnLower: uid } of people who already have a profile on the new site. Their old
 // history is attached to that profile instead of creating a second one.
-export function transformExport(files, { existing = {} } = {}) {
+// existingProfiles: { uid: profile } for those members, used for their entry snapshots.
+export function transformExport(files, { existing = {}, existingProfiles = {} } = {}) {
   const warnings = [];
   const profiles = files.profiles || [], cups = files.cups || [], races = files.races || [], results = files.race_results || [], apps = files.cup_applications || [];
 
@@ -112,6 +113,7 @@ export function transformExport(files, { existing = {} } = {}) {
     else noEmail.push(psn || p.id);
   });
   const userById = Object.fromEntries(users.map((u) => [u.id, u]));
+  Object.entries(existingProfiles).forEach(([uid, prof]) => { if (!userById[uid]) userById[uid] = { id: uid, data: prof, existing: true }; });
 
   // --- seasons
   const seasons = [], entries = [], rounds = [], pq = [];
@@ -149,7 +151,8 @@ export function transformExport(files, { existing = {} } = {}) {
       const uid = pid(a.profile_id); if (seen.has(uid)) return; seen.add(uid);
       const u = userById[uid]; if (!u) { warnings.push({ key: 'impWarnEntry', id: a.profile_id }); return; }
       const reserve = fold(String(a.mcsm_team || '').toUpperCase()) === 'TARTALEKPILOTA';
-      const snap = { firstName: u.data.firstName, lastName: u.data.lastName, psn: u.data.psn, psnLower: u.data.psnLower, raceNumber: u.data.raceNumber, dr: u.data.dr, sr: u.data.sr, teamId: teamIdOf(a.mcsm_team), gtTeamId: gtIdOf(a.gt_team) ?? u.data.gtTeamId, input: u.data.input };
+      const d = u.data;
+      const snap = { firstName: d.firstName ?? null, lastName: d.lastName ?? null, psn: d.psn ?? null, psnLower: d.psnLower ?? null, raceNumber: d.raceNumber ?? null, dr: d.dr ?? null, sr: d.sr ?? null, teamId: teamIdOf(a.mcsm_team) ?? d.teamId ?? null, gtTeamId: gtIdOf(a.gt_team) ?? d.gtTeamId ?? null, input: d.input ?? null };
       const at = Date.parse(a.created_at) || i;
       entries.push({ sid, uid, data: { uid, type: reserve ? 'reserve' : 'driver', status: 'entered', order: at, approved: true, seeded: seeded.has(uid), snapshot: snap, availability: [], absences: [], note: '', createdAt: at } });
     });

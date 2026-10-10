@@ -484,6 +484,22 @@ await test('0.6.1: import skips empty fields and links existing members', () => 
   ok(!('input' in p.users[0].data) && !('dr' in p.users[0].data), 'no null fields written');
 });
 
+
+await test('0.6.2: linked members keep their entries; no undefined anywhere in the writes', () => {
+  const profiles = [
+    { id: 'old-me', psn_id: 'IGTSH_Reechey-', firstname: 'Richárd', lastname: 'HORVÁTH', email: 'me@x.hu', dr: 'A+', sr: 'S', controlling: 'steering_wheel', view: 'tv', number: 21, mcsm_team: '', gt_team: 'IGTSH', role: 'admin', created_at: '2026-01-01T00:00:00Z' },
+    { id: 'old-x', psn_id: 'Ragnar_MEDVE', firstname: null, lastname: null, email: 'r@x.hu', dr: null, sr: null, controlling: null, view: null, number: null, mcsm_team: null, gt_team: null, role: 'user', created_at: '2026-01-01T00:00:00Z' }];
+  const cups = [{ id: 'c', name: 'MCSM31 : TEST', is_active: true, lobby_size: 16, created_at: '2026-01-01T00:00:00Z' }];
+  const races = [{ id: 'r', cup_id: 'c', type: 'NAGYFUTAM', title: 'SUZUKA', location: 'SUZUKA', start: '2026-10-11', start_time: '19:00:00' }];
+  const cup_applications = [{ cup_id: 'c', profile_id: 'old-me', created_at: '2026-01-02T00:00:00Z', mcsm_team: '', gt_team: 'IGTSH' }, { cup_id: 'c', profile_id: 'old-x', created_at: '2026-01-03T00:00:00Z', mcsm_team: null, gt_team: null }];
+  const p = IM.transformExport({ profiles, cups, races, race_results: [], cup_applications }, { existing: { 'igtsh_reechey-': 'new-uid' }, existingProfiles: { 'new-uid': { uid: 'new-uid', firstName: 'Richárd', lastName: 'Horváth', psn: 'IGTSH_Reechey-', psnLower: 'igtsh_reechey-', raceNumber: 21, dr: 'A+', sr: 'S' } } });
+  eq(p.entries.map((e) => e.uid).sort(), ['new-uid', 'old-x'], 'linked member keeps the entry');
+  eq(p.warnings.filter((w) => w.key === 'impWarnEntry').length, 0);
+  const undef = []; const walk = (v, path) => { if (v === undefined) undef.push(path); else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => walk(x, path + '.' + k)); };
+  IM.planOps(p).forEach((o) => walk(o.data, o.path.join('/')));
+  eq(undef, [], 'nothing undefined');
+});
+
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

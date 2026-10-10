@@ -38,8 +38,10 @@ export function screenImport() {
   const stat = (n, k) => h('div', null, h('div', { class: 'v display num' }, n), h('div', { class: 'k' }, k));
   function build() {
     if (!files.profiles) { preview.replaceChildren(); return; }
-    const existing = Object.fromEntries((allUsers || []).filter((u) => !u.imported && u.psnLower).map((u) => [u.psnLower, u.uid]));
-    plan = transformExport(files, { existing });
+    const mine = (allUsers || []).filter((u) => !u.imported && u.psnLower);
+    const existing = Object.fromEntries(mine.map((u) => [u.psnLower, u.uid]));
+    const existingProfiles = Object.fromEntries(mine.map((u) => [u.uid, u]));
+    plan = transformExport(files, { existing, existingProfiles });
     const warn = plan.warnings.reduce((a, w) => { a[w.key] = (a[w.key] || 0) + 1; return a; }, {});
     preview.replaceChildren(
       h('div', { class: 'stat-row panel', style: 'margin-top:14px;overflow:hidden' }, stat(plan.users.length, t('impDrivers')), stat(plan.seasons.length, t('seasons').toLowerCase()), stat(plan.entries.length, t('entries').toLowerCase())),
@@ -65,7 +67,7 @@ export function screenImport() {
       await backend.admin.writeMany(ops, (n, total) => { prog.textContent = t('impProgress', { n, total }); });
       await backend.audit.add({ action: 'import.data', target: 'import', targetName: t('impTitle'), before: null, after: { docs: ops.length, skipped: claimed.size }, reason: null });
       invalidate(); prog.textContent = t('impWritten', { n: ops.length, s: claimed.size }); toast(t('impWrittenShort'));
-    } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
+    } catch (e) { console.error(e); err.replaceChildren(formError(t(errorKey(e)) + (e && (e.code || e.message) ? ` (${e.code || e.message})` : ''))); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }));
   // step 4: accounts
   const accRes = h('div');

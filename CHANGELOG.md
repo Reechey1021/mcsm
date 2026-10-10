@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2 – Import fix
+- Fixed: saving imported data failed ("Something didn't work"). Entry snapshots copied empty
+  profile fields as "undefined", which the database refuses. Snapshots now use empty values, and
+  every batch write strips undefined as a safety net.
+- Fixed: members already on the new site lost their imported entries ("unknown driver"); their
+  existing profile is now used for the entry.
+- Import errors show the technical reason next to the message.
+
 ## 0.6.1 – Import fix, track photos, push notifications
 - Fixed: importing failed with "no permission". One old profile had an empty controller field,
   the rules rejected it, and with it the whole batch. The rules now accept empty fields, and the

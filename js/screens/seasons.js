@@ -18,7 +18,8 @@ import { regStatus, reserveMode, entryTable, entryBlocker, snapshotOf, nextRound
 import { roundTitle } from '../data/tracks.js';
 import { adminSeasonCard, adminEntrySheet, addDriverSheet, exportCsv } from './season-admin.js';
 import { go } from '../router.js';
-import { pqTab, roundLink } from './race.js';
+import { pqTab, roundLink, roundLinkDecorated } from './race.js';
+import { tracks as loadTracks } from '../core/data.js';
 import { protestsTab } from './protests.js';
 import { specSection } from './spec.js';
 import { standingsBlock } from '../ui/tower.js';
@@ -148,8 +149,8 @@ const tabUi = { kind: 'drivers', upTo: null };
 function roundsBox(st) {
   const s = st.season, nr = nextRound(s);
   if (!(s.rounds || []).length) return empty(t('noRounds'));
-  const box = h('div', { class: 'stack', style: 'gap:8px' }, s.rounds.map((r) => roundRow(r, { next: nr && nr.n === r.n })));
-  backend.race.roundsList(s.id, { staff: isAdmin() }).then((docs) => box.replaceChildren(...s.rounds.map((r) => roundLink(s, r, docs, nr && nr.n === r.n)))).catch(() => {});
+  const box = h('div', { class: 'stack', style: 'gap:10px' }, s.rounds.map((r) => roundRow(r, { next: nr && nr.n === r.n })));
+  Promise.all([backend.race.roundsList(s.id, { staff: isAdmin() }), loadTracks()]).then(([docs, cat]) => box.replaceChildren(...s.rounds.map((r) => roundLinkDecorated(s, r, docs, nr && nr.n === r.n, cat)))).catch(() => {});
   return box;
 }
 

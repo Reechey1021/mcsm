@@ -32,7 +32,7 @@ export function errorKey(e) {
     'auth/email-already-in-use': 'errEmailUsed', 'auth/invalid-email': 'errEmail', 'auth/weak-password': 'errWeakPassword',
     'auth/invalid-credential': 'errCredentials', 'auth/wrong-password': 'errCredentials', 'auth/user-not-found': 'errCredentials',
     'auth/too-many-requests': 'errTooMany', 'auth/invalid-action-code': 'errActionCode', 'auth/expired-action-code': 'errActionCode', 'auth/network-request-failed': 'errNetwork', 'auth/requires-recent-login': 'errRecentLogin',
-    'psn-taken': 'errPsnTaken', 'permission-denied': 'errPermission', 'unavailable': 'errNetwork',
+    'psn-taken': 'errPsnTaken', 'fn-missing': 'errFnMissing', 'fn-network': 'errFnNetwork', 'fn-forbidden': 'errFnForbidden', 'fn-error': 'errFnError', 'storage/unauthorized': 'errPermission', 'storage/quota-exceeded': 'errStorageQuota', 'storage/unknown': 'errStorageSetup', 'storage/bucket-not-found': 'errStorageSetup', 'storage/project-not-found': 'errStorageSetup', 'storage/no-default-bucket': 'errStorageSetup', 'permission-denied': 'errPermission', 'unavailable': 'errNetwork',
   };
   return map[code] || 'errGeneric';
 }

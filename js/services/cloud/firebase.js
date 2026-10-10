@@ -12,14 +12,17 @@
 const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
 export async function createFirebaseBackend(config) {
-  const [{ initializeApp }, A, F] = await Promise.all([
+  const [{ initializeApp }, A, F, S] = await Promise.all([
     import(`${SDK}firebase-app.js`),
     import(`${SDK}firebase-auth.js`),
     import(`${SDK}firebase-firestore.js`),
+    import(`${SDK}firebase-storage.js`),
   ]);
   const app = initializeApp(config);
   const auth = A.getAuth(app);
   const db = F.getFirestore(app);
+  let storage = null;
+  const bucket = () => { if (!storage) storage = S.getStorage(app); return storage; };
   const lang = () => document.documentElement.lang || 'hu';
   const toUser = (u) => (u ? { uid: u.uid, email: u.email, emailVerified: u.emailVerified } : null);
   const fail = (code) => { const e = new Error(code); e.code = code; throw e; };
@@ -62,6 +65,7 @@ export async function createFirebaseBackend(config) {
       async applyCode(code) { await A.applyActionCode(auth, code); if (auth.currentUser) await this.reload(); },
       async checkResetCode(code) { return A.verifyPasswordResetCode(auth, code); },
       async confirmReset(code, password) { await A.confirmPasswordReset(auth, code, password); },
+      async idToken() { return auth.currentUser ? auth.currentUser.getIdToken() : null; },
       async changePassword(current, next) {
         const u = auth.currentUser; if (!u) fail('permission-denied');
         await A.reauthenticateWithCredential(u, A.EmailAuthProvider.credential(u.email, current));
@@ -227,6 +231,36 @@ export async function createFirebaseBackend(config) {
           return qs.docs.map((d) => ({ id: d.id, ...d.data() }));
         });
       },
+    },
+    admin: {
+      // ops: [{ path: ['users', id], data, merge }], written in batches of 400.
+      async writeMany(ops, onProgress) {
+        return wrap(async () => {
+          for (let i = 0; i < ops.length; i += 400) {
+            const b = F.writeBatch(db);
+            ops.slice(i, i + 400).forEach((o) => b.set(F.doc(db, ...o.path), o.data, o.merge ? { merge: true } : {}));
+            await b.commit();
+            if (onProgress) onProgress(Math.min(ops.length, i + 400), ops.length);
+          }
+        });
+      },
+      // The MCSM admin Cloud Function (functions/README.md). Its address lives in config/functions.
+      async call(action, payload) {
+        const cfg = await this.functionsConfig();
+        if (!cfg || !cfg.url) fail('fn-missing');
+        const token = await auth.currentUser.getIdToken();
+        let res;
+        try { res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ action, ...payload }) }); }
+        catch { fail('fn-network'); }
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) { const e = new Error(body.error || 'fn-error'); e.code = body.code || 'fn-error'; e.status = res.status; throw e; }
+        return body;
+      },
+      async functionsConfig() { try { const d = await F.getDoc(F.doc(db, 'config', 'functions')); return d.exists() ? d.data() : null; } catch { return null; } },
+    },
+    storage: {
+      async upload(path, blob) { const r = S.ref(bucket(), path); await S.uploadBytes(r, blob, { contentType: blob.type, cacheControl: 'public,max-age=31536000' }); return S.getDownloadURL(r); },
+      async remove(path) { try { await S.deleteObject(S.ref(bucket(), path)); } catch { /* already gone */ } },
     },
     dev: null,
   };

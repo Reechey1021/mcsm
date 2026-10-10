@@ -237,12 +237,12 @@ export function createFakeBackend() {
         await lag(); email = (email || '').trim().toLowerCase();
         if (!emailOk(email)) fail('auth/invalid-email');
         const a = db.accounts[email];
-        if (!a || a.password !== password) fail('auth/invalid-credential');
+        if (!a || !a.password || a.password !== password) fail('auth/invalid-credential');
         sset('mcsm:fakeuid', a.uid); fireAuth();
         return toUser(a);
       },
       async signOut() { sset('mcsm:fakeuid', null); fireAuth(); },
-      async sendReset(email) { await lag(); if (!emailOk((email || '').trim())) fail('auth/invalid-email'); /* a real reset email goes out in Firebase */ },
+      async sendReset(email) { await lag(); if (!emailOk((email || '').trim())) fail('auth/invalid-email'); /* a real reset email goes out in Firebase; in test mode the activation screen offers the link */ },
       async sendVerification() { await lag(); me(); },
       async reload() { await lag(); const u = toUser(currentAcct()); fireAuth(); return u; },
       async changePassword(current, next) {
@@ -251,9 +251,11 @@ export function createFakeBackend() {
         if (!next || next.length < 8) fail('auth/weak-password');
         a.password = next; persist();
       },
+      async idToken() { return 'fake-token'; },
       async applyCode(code) { await lag(); if (code === 'expired') fail('auth/invalid-action-code'); const a = currentAcct(); if (a) { a.emailVerified = true; persist(); fireAuth(); } },
-      async checkResetCode(code) { await lag(); if (code === 'expired') fail('auth/invalid-action-code'); return 'pilota@mcsm.test'; },
-      async confirmReset(code, password) { await lag(); if (!password || password.length < 8) fail('auth/weak-password'); const a = db.accounts['pilota@mcsm.test']; if (a) { a.password = password; persist(); } },
+      // Test codes look like "fake:<email>" (the activation screen shows a test link).
+      async checkResetCode(code) { await lag(); if (code === 'expired') fail('auth/invalid-action-code'); const email = String(code).startsWith('fake:') ? code.slice(5) : 'pilota@mcsm.test'; if (!db.accounts[email]) fail('auth/invalid-action-code'); return email; },
+      async confirmReset(code, password) { await lag(); if (!password || password.length < 8) fail('auth/weak-password'); const email = String(code).startsWith('fake:') ? code.slice(5) : 'pilota@mcsm.test'; const a = db.accounts[email]; if (a) { a.password = password; persist(); } },
       // Test backend only: pretend the user clicked the link in the verification email.
       async devVerify() { const a = me(); a.emailVerified = true; persist(); fireAuth(); },
     },
@@ -443,7 +445,7 @@ export function createFakeBackend() {
       },
       async add(n) {
         await lag(); const a = me();
-        const driverTypes = ['protestAgainst', 'protestNew', 'promoted', 'reservePending'];
+        const driverTypes = ['protestAgainst', 'protestNew', 'promoted', 'reservePending', 'claimDispute', 'roleGranted'];
         if (!(isAdminUid(a.uid) || isJudgeUid(a.uid) || (n.kind === 'users' && driverTypes.includes(n.type) && (n.uids || []).length <= 60))) fail('permission-denied');
         db.notifications = db.notifications || {};
         const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -453,6 +455,47 @@ export function createFakeBackend() {
     audit: {
       async add(entry) { const a = me(); db.audit.unshift({ id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), by: a.uid, ...clone(entry) }); db.audit = db.audit.slice(0, 500); persist(); },
       async list(n = 100) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); return clone(db.audit.slice(0, n)); },
+    },
+    admin: {
+      async writeMany(ops, onProgress) {
+        await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied');
+        ops.forEach((o, i) => {
+          const [c1, id1, c2, id2] = o.path;
+          const put = (obj, key) => { obj[key] = o.merge ? { ...(obj[key] || {}), ...clone(o.data) } : clone(o.data); };
+          if (c1 === 'users' && !c2) put(db.users, id1);
+          else if (c1 === 'users' && c2 === 'private') put(db.priv, id1);
+          else if (c1 === 'psnIds') db.psnIds[id1] = o.data.uid;
+          else if (c1 === 'teams') put(db.teams, id1);
+          else if (c1 === 'gtTeams') put(db.gtTeams, id1);
+          else if (c1 === 'seasons' && !c2) { put(db.seasons, id1); db.entries[id1] = db.entries[id1] || {}; }
+          else if (c1 === 'seasons' && c2 === 'entries') { db.entries[id1] = db.entries[id1] || {}; put(db.entries[id1], id2); }
+          else if (c1 === 'seasons' && c2 === 'rounds') put(bucket(id1).rounds, id2);
+          else if (c1 === 'seasons' && c2 === 'pq') put(bucket(id1).pq, id2);
+          if (onProgress && (i % 50 === 0 || i === ops.length - 1)) onProgress(i + 1, ops.length);
+        });
+        persist();
+      },
+      // Simulates functions/index.js
+      async call(action, payload) {
+        await lag(); const a = me(); if (!roleOf(a.uid).owner) fail('fn-forbidden');
+        if (action === 'importUsers') {
+          let created = 0; const errors = [];
+          (payload.users || []).forEach((u, i) => {
+            const clash = db.accounts[u.email] && db.accounts[u.email].uid !== u.uid;
+            if (clash) { errors.push({ index: i, message: 'email already used by another account' }); return; }
+            db.accounts[u.email] = { uid: u.uid, email: u.email, password: (db.accounts[u.email] || {}).password || null, emailVerified: true }; created++;
+          });
+          persist(); return { successCount: created, failureCount: errors.length, errors };
+        }
+        if (action === 'ping') return { ok: true, project: 'fake' };
+        fail('fn-unknown');
+      },
+      async functionsConfig() { return { url: 'fake://functions' }; },
+    },
+    storage: {
+      // Test mode keeps images as data URLs in this browser.
+      async upload(path, blob) { await lag(); return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); },
+      async remove() { await lag(); },
     },
     dev: {
       accounts: () => Object.values(db.accounts).map((a) => ({ email: a.email, uid: a.uid })),

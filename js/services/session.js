@@ -27,9 +27,19 @@ export function watchVerification(backend) {
 
 export const roles = () => (session.profile && session.profile.roles) || {};
 export const signedIn = () => !!session.user;
-export const isOwner = () => !!roles().owner;
-export const isAdmin = () => !!(roles().admin || roles().owner);
+// Strict: a role counts only if it's the boolean true, exactly like the security rules.
+const on = (k) => roles()[k] === true;
+export const isOwner = () => on('owner');
+export const isAdmin = () => on('admin') || on('owner');
 export const profileComplete = () => isComplete(session.profile);
 export const suspended = () => !!(session.profile && session.profile.suspendedUntil && session.profile.suspendedUntil > Date.now());
-export const isStaff = () => !!(roles().admin || roles().owner || roles().resultsEditor);
-export const isJudgeRole = () => !!(roles().judge || roles().judgeChair || roles().admin || roles().owner);
+export const isStaff = () => isAdmin() || on('resultsEditor');
+export const isJudgeRole = () => isAdmin() || on('judge') || on('judgeChair');
+// Who may hand out which roles: always one level below your own.
+export function grantableRoles() {
+  if (on('owner')) return ['admin', 'judgeChair', 'judge', 'resultsEditor'];
+  if (on('admin')) return ['judgeChair', 'judge', 'resultsEditor'];
+  if (on('judgeChair')) return ['judge'];
+  return [];
+}
+export const canGrantRoles = () => grantableRoles().length > 0;

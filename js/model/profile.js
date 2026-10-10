@@ -8,7 +8,8 @@ export const DR_RANK = { 'A+': 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
 export const INPUTS = ['wheel', 'pad'];
 export const WHEEL_BRANDS = ['Fanatec', 'Logitech', 'Thrustmaster', 'Moza', 'Simagic', 'other'];
 // Open question: camera view vs display (TV/monitor/PSVR2). Easy to change here.
-export const VIEWS = ['cockpit', 'bonnet', 'bumper', 'chase', 'tv'];
+export const VIEWS = ['tv', 'monitor', 'vr'];
+const LEGACY_VIEWS = ['cockpit', 'bonnet', 'bumper', 'chase'];
 export const ROLE_KEYS = ['owner', 'admin', 'judgeChair', 'judge', 'resultsEditor'];
 
 const NAME_RE = /^[\p{L}][\p{L}' .-]{0,39}$/u;
@@ -22,8 +23,9 @@ export const validate = {
   name: (v) => (!v || !v.trim() ? 'errRequired' : NAME_RE.test(v.trim()) ? '' : 'errName'),
   psn: (v) => (!v || !v.trim() ? 'errRequired' : PSN_RE.test(v.trim()) ? '' : 'errPsn'),
   input: (v) => (INPUTS.includes(v) ? '' : 'errChoose'),
-  wheelBrand: (v, p) => (p.input !== 'wheel' ? '' : !v ? 'errChoose' : v === 'other' && !(p.wheelOther || '').trim() ? 'errWheelOther' : ''),
-  view: (v) => (VIEWS.includes(v) ? '' : 'errChoose'),
+  // Optional: imported drivers don't have it, and it never affects racing.
+  wheelBrand: (v, p) => (p.input === 'wheel' && v === 'other' && !(p.wheelOther || '').trim() ? 'errWheelOther' : ''),
+  view: (v) => (VIEWS.includes(v) || LEGACY_VIEWS.includes(v) ? '' : 'errChoose'),
   raceNumber: (v, p, ctx = {}) => {
     const n = Number(v);
     if (v === '' || v == null || !Number.isInteger(n) || n < 1 || n > 999) return 'errNumber';
@@ -69,7 +71,7 @@ export const fullName = (p) => (p && p.lastName ? `${p.lastName.toLocaleUpperCas
 export const initials = (p) => ((p && p.firstName ? p.firstName[0] : '') + (p && p.lastName ? p.lastName[0] : '')).toUpperCase() || '?';
 
 // Only these keys may be written by a driver to their own profile (mirrors firestore.rules).
-export const SELF_KEYS = ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view', 'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang', 'complete', 'updatedAt', 'createdAt', 'notifReadAt'];
+export const SELF_KEYS = ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view', 'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang', 'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt'];
 
 export function clean(p) {
   const out = {};

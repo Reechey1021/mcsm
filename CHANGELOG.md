@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 – Import, account activation, roles, uploads, track photos
+- Admin → Importálás (owners): pick the old site's JSON files, check the preview, save the data,
+  then create sign-in accounts through the admin function. Old IDs are kept, so every profile,
+  entry and result lines up. Safe to repeat; activated profiles are never overwritten.
+  Duplicates are merged (MGTK_Hoppá → MGTK_HOPPÁ), teams and GT teams are created, MCSM29–31
+  come across with their rounds (tracks matched to GT7 layouts), entries, PQ times, round-1
+  lobbies and round totals.
+- Returning drivers: "Régi MCSM-tag vagy?" on the sign-in page sends a link, they choose a new
+  password, are signed in straight away and asked "is this you?" with their imported profile.
+  "Not me" alerts the admins.
+- Imported rounds show as a totals table and count in all standings.
+- Roles page: hand out roles one level down (owner → admin and below, admin → judge chair, judges,
+  results editors, judge chair → judges). Owners are only made in the Firebase console. Role
+  checks are now strict booleans everywhere, exactly like the security rules.
+- Uploads (Blaze + Storage): profile photos (cropped square, ~400 px), team logos, season covers;
+  shrunk in the browser before upload. Avatars show photos everywhere.
+- GT GridStats track list (photo, white layout map, length, corners): shown behind each round box
+  on the season page and as a banner on the round page.
+- "View" now means how you see the game, as on the old site: TV, Monitor or VR (PSVR2).
+  Wheel brand is optional.
+- functions/: the admin Cloud Function (import accounts, GridStats proxy) with browser-only
+  deployment steps. storage.rules for uploads.
+- Firestore rules: judge chair may add/remove judges, owner flag frozen in the app, admins may
+  write imported emails and update PSN locks, photo and activation fields.
+- Tests: 42 unit tests, 248 browser checks across six walk-throughs.
+
 ## 0.5.2 – Profile, phone fixes, clearer errors
 - New profile (My page and public driver pages): a rev-counter DR gauge with the class bands
   (D 0–4K, C 4–10K, B 10–30K, A 30–50K, A+ 50K+), a needle that sweeps up on load, exact DR points

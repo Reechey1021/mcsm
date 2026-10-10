@@ -120,7 +120,7 @@ export function validateSeason(s, existingIds = []) {
   if (!Number.isInteger(Number(s.no)) || Number(s.no) < 1 || Number(s.no) > 999) e.no = 'errSeasonNo';
   else if (existingIds.includes(slugFor(s.no))) e.no = 'errSeasonNoTaken';
   if (!s.name || !s.name.trim()) e.name = 'errRequired';
-  if (s.coverUrl && !/^https:\/\/\S+$/.test(s.coverUrl)) e.coverUrl = 'errUrl';
+  if (s.coverUrl && !/^(https:\/\/\S+|data:image\/)/.test(s.coverUrl)) e.coverUrl = 'errUrl';
   if (!s.rounds.length) e.rounds = 'errNoRounds';
   if (s.rounds.some((r) => !r.date || !r.track)) e.rounds = 'errRoundIncomplete';
   if (s.format === 'oneMake' && !(s.car || '').trim()) e.car = 'errRequired';

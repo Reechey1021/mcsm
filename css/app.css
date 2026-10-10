@@ -613,3 +613,24 @@ textarea.input{ min-height:90px; padding:12px 14px; resize:vertical; line-height
 .info-row > svg{ width:20px; height:20px; color:var(--ink-3); flex:0 0 auto; }
 .info-row .k{ color:var(--ink-2); font-size:14px; }
 .info-row .v{ margin-left:auto; font-weight:700; display:flex; align-items:center; gap:8px; text-align:right; }
+
+/* ===== 0.6: track photos and maps, photos ===== */
+.round-item.trk{ position:relative; overflow:hidden; min-height:92px; isolation:isolate; padding-right:min(36%, 160px); }
+.round-item.trk > *:not(.trk-photo):not(.trk-map){ position:relative; z-index:1; }
+.trk-photo{ position:absolute; inset:0; z-index:0; background-size:cover; background-position:center; opacity:.72;
+  -webkit-mask-image:linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 35%, #000 75%); mask-image:linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 35%, #000 75%); }
+:root[data-theme="light"] .trk-photo{ opacity:.55; }
+.trk::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(90deg, transparent 50%, rgba(8,12,24,.35) 100%); }
+.trk-map{ position:absolute; z-index:1; right:14px; top:50%; transform:translateY(-50%); height:70%; max-width:32%; object-fit:contain;
+  filter:brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,.55)); opacity:.95; pointer-events:none; }
+.round-item.trk .chev{ display:none; }
+.trk-stats{ font-weight:650; }
+.round-banner{ position:relative; overflow:hidden; border-radius:var(--r-lg); padding:18px 16px 14px; margin-bottom:12px; background:var(--bg-2); border:1px solid var(--line); isolation:isolate; }
+.round-banner .rb-body{ position:relative; z-index:1; max-width:68%; }
+.round-banner.trk .trk-map{ height:78%; max-width:30%; }
+.round-banner .page-title{ margin-bottom:4px; }
+.avatar{ position:relative; overflow:hidden; }
+.avatar.has-photo img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.avatar-edit{ position:absolute; right:-4px; bottom:-4px; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:var(--accent-ink); border:3px solid var(--chrome); }
+.avatar-edit svg{ width:16px; height:16px; }
+.logo-prev{ width:64px; height:64px; border-radius:14px; background:var(--bg-3) center/contain no-repeat; border:1px solid var(--line); }

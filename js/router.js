@@ -5,12 +5,15 @@ import { $, h } from './core/dom.js';
 import { on, emit } from './core/bus.js';
 import { reduced } from './core/motion.js';
 import { closeAllSheets } from './ui/sheet.js';
-import { session, signedIn, isAdmin, isStaff, isJudgeRole, profileComplete } from './services/session.js';
+import { session, signedIn, isAdmin, isOwner, isStaff, isJudgeRole, canGrantRoles, profileComplete } from './services/session.js';
 import { t } from './i18n/index.js';
 import { loading } from './ui/parts.js';
 import { profileBanner } from './screens/banners.js';
 import { screenHome } from './screens/home.js';
-import { screenSignIn, screenSignUp, screenReset } from './screens/auth.js';
+import { screenSignIn, screenSignUp, screenReset, screenActivate } from './screens/auth.js';
+import { screenWelcome } from './screens/welcome.js';
+import { screenImport } from './screens/admin/import.js';
+import { screenRoles } from './screens/admin/roles.js';
 import { screenWizard } from './screens/wizard.js';
 import { screenMe } from './screens/me.js';
 import { screenDrivers, screenDriver } from './screens/drivers.js';
@@ -51,6 +54,10 @@ const ROUTES = [
   ['/belepes', screenSignIn, { guest: true }],
   ['/regisztracio', screenSignUp, { guest: true }],
   ['/jelszo', screenReset, {}],
+  ['/aktivalas', screenActivate, { guest: true }],
+  ['/udv', screenWelcome, { auth: true, noBanner: true, keep: true }],
+  ['/admin/import', screenImport, { tab: 4, auth: true, owner: true }],
+  ['/admin/szerepkorok', screenRoles, { tab: 4, auth: true, roleAdmin: true }],
   ['/muvelet', screenAction, { noBanner: true, keep: true }],
   ['/admin', screenAdmin, { tab: 4, auth: true, admin: true }],
   ['/admin/felhasznalok', screenAdminPeople, { tab: 4, auth: true, admin: true }],
@@ -93,6 +100,8 @@ function guard(r) {
   if (route.admin && !isAdmin()) return 'forbidden';
   if (route.staff && !isStaff()) return 'forbidden';
   if (route.judge && !isJudgeRole()) return 'forbidden';
+  if (route.owner && !isOwner()) return 'forbidden';
+  if (route.roleAdmin && !canGrantRoles()) return 'forbidden';
   return 'ok';
 }
 

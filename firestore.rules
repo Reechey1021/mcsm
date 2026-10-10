@@ -21,7 +21,7 @@ service cloud.firestore {
     function selfKeys() {
       return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
-              'complete', 'updatedAt', 'createdAt', 'notifReadAt'];
+              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt'];
     }
     function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy']); }
 
@@ -50,12 +50,19 @@ service cloud.firestore {
     function rolesUnchanged() {
       return request.resource.data.get('roles', {}) == (resource == null ? {} : resource.data.get('roles', {}));
     }
-    // Only owners may grant or remove the owner and admin roles.
+    // Roles go one level down: the owner flag is only ever set in the Firebase console,
+    // only owners change the admin flag, admins change the rest.
     function ownerGrantOk() {
       let before = resource == null ? {} : resource.data.get('roles', {});
       let after = request.resource.data.get('roles', {});
-      return isOwner() || (before.get('owner', false) == after.get('owner', false)
-                          && before.get('admin', false) == after.get('admin', false));
+      return before.get('owner', false) == after.get('owner', false)
+        && (isOwner() || before.get('admin', false) == after.get('admin', false));
+    }
+    // The judge chair (without being an admin) may only add or remove judges.
+    function chairJudgeOnly() {
+      return myRoles().get('judgeChair', false) == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roles', 'updatedAt'])
+        && request.resource.data.get('roles', {}).diff(resource.data.get('roles', {})).affectedKeys().hasOnly(['judge']);
     }
 
     match /users/{uid} {
@@ -71,12 +78,13 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(selfKeys())
             && validProfile(request.resource.data) && psnLockOk(uid) && teamOk())
           || (isAdmin() && request.resource.data.keys().hasOnly(adminKeys())
-            && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk()));
+            && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk())
+          || chairJudgeOnly());
       allow delete: if isOwner();
 
       match /private/{doc} {
         allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email']);
+        allow create, update: if signedIn() && (request.auth.uid == uid || isAdmin()) && request.resource.data.keys().hasOnly(['email']);
         allow delete: if isOwner();
       }
     }
@@ -86,7 +94,7 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid'])
         && (request.resource.data.uid == request.auth.uid || isAdmin());
       allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
-      allow update: if false;
+      allow update: if isAdmin();
     }
 
     match /teams/{id} {
@@ -232,7 +240,7 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.by == request.auth.uid
         && (isAdmin() || isJudgeTop()
             || (request.resource.data.kind == 'users'
-                && request.resource.data.type in ['protestAgainst', 'protestNew', 'promoted', 'reservePending']
+                && request.resource.data.type in ['protestAgainst', 'protestNew', 'promoted', 'reservePending', 'claimDispute', 'roleGranted']
                 && request.resource.data.uids.size() <= 60));
       allow update: if false;
       allow delete: if isAdmin();

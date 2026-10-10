@@ -19,3 +19,5 @@ export const entries = (sid) => cached('entries:' + sid, () => backend.entries.l
 export const invalidateSeason = (sid) => { invalidate('seasons:all'); invalidate('seasons:public'); if (sid) invalidate('entries:' + sid); };
 // GT7 car list imported from GT GridStats (content/cars). Empty until an admin imports it.
 export const cars = () => cached('cars', () => backend.content.get('cars').then((d) => (d && d.cars) || []));
+// GT7 track list from GT GridStats (content/tracks): photos, maps, lengths.
+export const tracks = () => cached('tracks', () => backend.content.get('tracks').then((d) => (d && d.tracks) || []).catch(() => []));

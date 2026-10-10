@@ -89,11 +89,11 @@ async function driverResults(uid) {
   const out = [];
   for (const s of all) {
     const ctx = await loadRace(s.id);
-    if (!ctx || !ctx.built.some((r) => Object.values(r.lobbies).some((l) => l.includes(uid)))) continue;
+    if (!ctx || !ctx.built.some((r) => (r.legacy && r.legacy.some((x) => x.id === uid)) || Object.values(r.lobbies).some((l) => l.includes(uid)))) continue;
     const rows = ctx.built.map((rd) => {
       const tot = roundTotals(rd, ctx.points)[uid]; if (!tot) return null;
-      const st = (S) => { const r = (rd.results[tot.lobby][S] || []).find((x) => x.id === uid); return !r ? '–' : r.status === 'OK' ? 'P' + r.pos : r.status; };
-      return h('tr', null, h('td', null, h('a', { href: `#/szezonok/${s.id}/fordulo/${rd.n}`, style: 'font-weight:700' }, t('roundN', { n: rd.n }))), h('td', null, h('span', { class: 'lobby ' + tot.lobby }, tot.lobby)),
+      const st = (S) => { if (rd.legacy) return S === 'GP' ? 'P' + tot.gpPos : '–'; const r = (rd.results[tot.lobby][S] || []).find((x) => x.id === uid); return !r ? '–' : r.status === 'OK' ? 'P' + r.pos : r.status; };
+      return h('tr', null, h('td', null, h('a', { href: `#/szezonok/${s.id}/fordulo/${rd.n}`, style: 'font-weight:700' }, t('roundN', { n: rd.n }))), h('td', null, tot.lobby ? h('span', { class: 'lobby ' + tot.lobby }, tot.lobby) : '–'),
         h('td', { class: 'r' }, st('Q')), h('td', { class: 'r' }, st('S')), h('td', { class: 'r' }, st('GP')), h('td', { class: 'r', style: 'font-weight:800' }, tot.total));
     }).filter(Boolean);
     out.push(secHead(`MCSM${s.no}`, t('standings'), '#/eredmenyek/' + s.id), h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' },

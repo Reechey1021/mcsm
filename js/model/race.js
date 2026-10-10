@@ -110,6 +110,7 @@ export function buildRounds(season, roundDocs, sheets, { drafts = false, penalti
   const byN = Object.fromEntries(roundDocs.map((r) => [r.n, r]));
   return (season.rounds || []).map((r) => {
     const doc = byN[r.n] || {};
+    if (doc.legacy && doc.legacy.rows && doc.legacy.rows.length) return { n: r.n, info: r, lobbies: doc.lobbies || {}, results: {}, legacy: doc.legacy.rows, state: doc.resultsState || 'final' };
     const mine = sheets.filter((s) => s.n === r.n && (drafts || s.state === 'published'));
     if (!mine.length || !doc.lobbies) return null;
     const results = {};

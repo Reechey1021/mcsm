@@ -38,6 +38,11 @@ export function flHolder(rows) {
 
 export function roundTotals(round, table = DEFAULT_TABLE) {
   const out = {};
+  // Imported rounds from the old site only know each driver's round total.
+  if (round && round.legacy) {
+    round.legacy.forEach((r) => { out[r.id] = { id: r.id, lobby: null, q: 0, s: 0, gp: 0, fl: 0, total: r.points || 0, qPos: r.pos, sPos: r.pos, gpPos: r.pos, legacy: true }; });
+    return out;
+  }
   if (!round || !round.results) return out;
   for (const L of LOBBIES) {
     const res = round.results[L]; if (!res || !round.lobbies[L]) continue;
@@ -85,6 +90,12 @@ export function driverStandings(rounds, ids, { table = DEFAULT_TABLE, filter = n
   ids.forEach((id) => { if (!filter || filter(id)) acc[id] = { id, total: 0, wins: 0, p2: 0, p3: 0, last: 0, per: [] }; });
   rounds.forEach((rd, ri) => {
     const tot = roundTotals(rd, table);
+    if (rd.legacy) {
+      const order = rd.legacy.filter((r) => r.status !== 'DNS' && acc[r.id]).sort((a, b) => a.pos - b.pos).map((r) => r.id);
+      if (order[0]) acc[order[0]].wins++;
+      if (order[1]) acc[order[1]].p2++;
+      if (order[2]) acc[order[2]].p3++;
+    }
     for (const L of LOBBIES) {
       const res = rd.results && rd.results[L]; if (!res) continue;
       for (const key of ['S', 'GP']) {

@@ -39,8 +39,17 @@ Cloud Storage (team logos, avatars, protest clips) comes later and needs the Bla
 8. **First data.** In the app: Admin → GT csapatok and Admin → MCSM csapatok to add the team lists
    (the real list arrives with the old site's export later).
 
-9. **When we add Storage (later phase):** Usage and billing → Modify plan → Blaze, then Budgets &
-   alerts → set a small monthly budget (e.g. 5 EUR) so you're emailed long before any real cost.
+9. **Blaze plan (for uploads and the admin function).** Usage and billing → Modify plan → Blaze.
+   Then Budgets & alerts → a small monthly budget (e.g. 5 EUR) so you're emailed long before any
+   real cost. The free allowances still apply on Blaze; MCSM's usage stays well inside them.
+
+10. **File storage.** Build → Storage → Get started → production mode. Pick a **US** location
+    (us-central1, us-east1 or us-west1): only those keep Storage's free allowance (5 GB stored,
+    1 GB downloaded a day). Firestore staying in Warsaw is fine; they don't have to match.
+    Then Storage → Rules → paste `storage.rules` → Publish. The console asks to let Storage read
+    roles from Firestore: allow it.
+
+11. **The admin function** (imports sign-in accounts): see `functions/README.md`.
 
 **After each update:** if `firestore.rules` changed (it did in 0.2.0, 0.3.0, 0.4.0 and 0.5.0), publish it again as in step 5.
 If the app ever shows an error about a missing index, the browser console has a link that creates it in one click.

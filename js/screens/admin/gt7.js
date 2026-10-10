@@ -64,6 +64,27 @@ export function screenGt7() {
         toast(t('gsCarsDone', { n: all.length }));
       } catch (e) { carsProg.replaceChildren(formError(gsError(e))); toast(gsError(e), 'alert'); }
     }));
+    // tracks (GridStats): photo, map, length, corners
+    const trackInfo = h('p', { class: 'muted', style: 'margin:0' }, t('tracksNone'));
+    backend.content.get('tracks').then((d) => { if (d && d.tracks) trackInfo.textContent = t('tracksHave', { n: d.tracks.length, date: fmtDate(d.updatedAt) }); }).catch(() => {});
+    const trackProg = h('div');
+    const trackBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('flag'), t('tracksImport'));
+    trackBtn.addEventListener('click', () => busy(trackBtn, async () => {
+      const api = client(); const all = [];
+      try {
+        for (let page = 1; page < 40; page++) {
+          const res = await api.tracksPage(page);
+          const rows = Array.isArray(res) ? res : res.data || [];
+          rows.forEach((x) => all.push({ id: x.id, name_short: x.name_short || '', full_name: x.full_name || x.name_short || '', trackphoto: x.trackphoto || null, track_map: x.track_map || null, corner_count: x.corner_count ?? null, track_length: x.track_length ?? null, elevation: x.elevation ?? null, longest_straight: x.longest_straight ?? null }));
+          if (Array.isArray(res) || !res.next_page_url || !rows.length) break;
+          if (!fake) await sleep(PACE_MS);
+        }
+        if (!all.length) throw Object.assign(new Error('empty'), { code: 'gs-notfound' });
+        await backend.content.save('tracks', { tracks: all, count: all.length, source: 'GT GridStats' });
+        invalidate('tracks'); trackInfo.textContent = t('tracksHave', { n: all.length, date: fmtDate(Date.now()) });
+        trackProg.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('tracksDone', { n: all.length }))));
+      } catch (e) { trackProg.replaceChildren(formError(gsError(e))); }
+    }));
     // ratings
     const rateProg = h('div');
     const rateBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('refresh'), t('gsRatingsSync'));
@@ -102,6 +123,7 @@ export function screenGt7() {
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
         h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
+      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));
   return frag(backLink(t('admin'), '#/admin'), pageTitle(t('gsTitle'), t('gsSub')), root);

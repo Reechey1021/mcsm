@@ -47,6 +47,7 @@ export function screenAction() {
         busy(save, async () => {
           try {
             await backend.auth.confirmReset(code, pw.input.value); cleanUrl(); haptic(15);
+            try { await backend.auth.signIn(email, pw.input.value); location.hash = '#/udv'; return; } catch { /* fall back to the message */ }
             root.replaceChildren(card(bigIcon('check', true), h('h1', { class: 'display', style: 'font-size:34px' }, t('passwordSetTitle')), h('p', { class: 'muted', style: 'margin:0' }, t('passwordSetText')), h('a', { class: 'btn primary', href: '#/belepes' }, t('signIn'))));
           } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
         });

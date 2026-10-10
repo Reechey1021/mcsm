@@ -41,7 +41,7 @@ with sync_playwright() as p:
         check('2/3' in pg.inner_text('.page-sub'), f'{size}: on step 2')
         # step 2
         pg.click('.wizard-body .chip:text-is("Fanatec")')
-        pg.click('.wizard-body .chip:text-is("Pilótafülke")')
+        pg.click('.wizard-body .chip:text-is("Monitor")')
         pg.fill('.wizard-body input.big', '1'); pg.click('.wizard-body .chip:text-is("A+")'); pg.click('.wizard-body .chip:text-is("S")')
         pg.click('.wizard-foot .btn.primary'); pg.wait_for_timeout(900)
         check('regnáló' in pg.inner_text('.wizard-body'), f'{size}: #1 reserved')

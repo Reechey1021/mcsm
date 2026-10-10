@@ -18,6 +18,9 @@ import { SESSIONS, sheetId, lobbyOf, pqProposal, pqConflicts, noShows, fmtLap, f
 import { roundTitle } from '../data/tracks.js';
 import { roundProtests } from './protests.js';
 import { notifySeason } from '../services/notify.js';
+import { trackDecor } from '../ui/season-parts.js';
+import { matchTrack } from '../data/track-match.js';
+import { tracks as loadTracks } from '../core/data.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 const lobbyBadge = (L) => h('span', { class: 'lobby ' + L }, L);
@@ -58,13 +61,21 @@ export function pqTab(st) {
 }
 
 /* ---------- round list items (season page) ---------- */
-export function roundLink(s, r, docs, next) {
+export function roundLink(s, r, docs, next, catalog) {
   const doc = docs.find((d) => d.n === r.n) || {};
   const state = doc.resultsState && doc.resultsState !== 'none' ? doc.resultsState : null;
   return h('a', { class: 'round-item' + (next ? ' next' : ''), href: `#/szezonok/${s.id}/fordulo/${r.n}` }, h('span', { class: 'no display' }, r.n),
     h('span', { class: 't' }, h('b', null, roundTitle(r)), h('span', { class: 'sub' }, fmtDate(r.date, true), r.cc ? h('span', { class: 'cc' }, r.cc) : null,
       state ? h('span', { class: 'status' + (state === 'final' ? '' : ' live') }, t(state === 'final' ? 'stFinal' : 'stProvisional')) : doc.lobbiesPublished ? h('span', { class: 'status' }, t('lobbiesOut')) : null)),
     icon('chevR', 'chev'));
+}
+export function roundLinkDecorated(s, r, docs, next, catalog) { return trackDecor(roundLink(s, r, docs, next), r, catalog); }
+
+// Round page banner: the track photo behind the title, the layout map beside it.
+function roundBanner(info, kids) {
+  const el = h('section', { class: 'round-banner' }, h('div', { class: 'rb-body' }, ...kids));
+  loadTracks().then((cat) => { const m = matchTrack(info, cat); if (!m) return; if (m.photo) el.prepend(h('span', { class: 'trk-photo', vars: { 'background-image': `url("${m.photo.replace(/"/g, '')}")` } })); if (m.map) el.append(h('img', { class: 'trk-map', src: m.map, alt: '', onerror: (e) => e.target.remove() })); el.classList.add('trk'); }).catch(() => {});
+  return el;
 }
 
 /* ---------- round page ---------- */
@@ -87,12 +98,24 @@ function roundView(ctx, n, reload) {
   const showResults = built && (published || isStaff());
   const myL = session.user ? lobbyOf(doc.lobbies, session.user.uid) : null;
   if (!rui.L || !(doc.lobbies || {})[rui.L]) rui.L = myL || 'A';
+  if (built && built.legacy) {
+    const me = session.user && session.user.uid;
+    const fl = built.legacy.find((r) => r.fl);
+    return frag(h('div', null, h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('h1', { class: 'display page-title' }, t('roundN', { n })), h('span', { class: 'status' }, t(built.state === 'final' ? 'stFinal' : 'stProvisional'))),
+      h('div', { style: 'display:flex;gap:8px;align-items:center;font-weight:650;font-size:16px' }, info.cc ? h('span', { class: 'cc' }, info.cc) : null, roundTitle(info)),
+      h('p', { class: 'page-sub', style: 'margin-top:4px' }, fmtDate(info.date, true))),
+      h('div', { class: 'callout', style: 'margin-bottom:12px' }, icon('info'), h('span', null, t('legacyRoundNote'))),
+      h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' }, h('thead', null, h('tr', null, h('th', { class: 'r' }, ''), h('th', null, t('driver')), h('th', { class: 'r' }, t('pointsShort')))),
+        h('tbody', null, built.legacy.map((r) => h('tr', { style: r.id === me ? 'background:var(--accent-soft)' : '' }, h('td', { class: 'p' }, r.status === 'DNS' ? '–' : r.pos),
+          h('td', { class: 'nm' }, nameCell(ctx, r.id), fl && fl.id === r.id ? h('span', { class: 'fl', title: t('fastestLap') }, 'FL') : null, r.status === 'DNS' ? h('span', { class: 'st dns', style: 'margin-left:6px' }, 'DNS') : null),
+          h('td', { class: 'r', style: 'font-weight:800' }, r.points)))))));
+  }
   const lobbies = LOBBIES.filter((L) => ((doc.lobbies || {})[L] || []).length);
   const statusTxt = doc.resultsState === 'final' ? t('stFinal') : doc.resultsState === 'provisional' ? t('stProvisional') : doc.lobbiesPublished ? t('lobbiesOut') : t('stNext');
-  const head = h('div', null,
+  const head = roundBanner(info, [
     h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('h1', { class: 'display page-title' }, t('roundN', { n })), h('span', { class: 'status' + (doc.resultsState === 'provisional' ? ' live' : '') }, statusTxt)),
     h('div', { style: 'display:flex;gap:8px;align-items:center;font-weight:650;font-size:16px' }, info.cc ? h('span', { class: 'cc' }, info.cc) : null, roundTitle(info)),
-    h('p', { class: 'page-sub', style: 'margin-top:4px' }, fmtDate(info.date, true), info.car ? ' · ' + info.car : ''));
+    h('p', { class: 'page-sub', style: 'margin-top:4px' }, fmtDate(info.date, true), info.car ? ' · ' + info.car : '')]);
   const body = h('div');
   const sessions = showResults ? [['Q', t('quali')], ['S', 'Sprint'], ['GP', "Gran'Prix"], ['GRID', t('gpGrid')], ['ROSTER', t('roster')]] : [['ROSTER', t('roster')]];
   if (!sessions.some(([k]) => k === rui.S)) rui.S = sessions[0][0];

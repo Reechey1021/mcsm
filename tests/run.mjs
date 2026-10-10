@@ -90,7 +90,7 @@ await test('validators', () => {
   eq(P.validate.psn('IGTSH_Reechey-'), ''); eq(P.validate.psn('ab'), 'errPsn'); eq(P.validate.psn('1abc'), 'errPsn'); eq(P.validate.psn('a'.repeat(17)), 'errPsn');
   eq(P.validate.raceNumber(1, {}, {}), 'errNumberOne'); eq(P.validate.raceNumber(1, {}, { isAdmin: true }), ''); eq(P.validate.raceNumber(0, {}, {}), 'errNumber');
   eq(P.validate.raceNumber(1000, {}, {}), 'errNumber'); eq(P.validate.raceNumber(21, {}, { teammateNumbers: [21] }), 'errNumberTeam');
-  eq(P.validate.wheelBrand(null, { input: 'pad' }), ''); eq(P.validate.wheelBrand(null, { input: 'wheel' }), 'errChoose'); eq(P.validate.wheelBrand('other', { input: 'wheel', wheelOther: '' }), 'errWheelOther');
+  eq(P.validate.wheelBrand(null, { input: 'pad' }), ''); eq(P.validate.wheelBrand(null, { input: 'wheel' }), '', 'brand is optional'); eq(P.validate.wheelBrand('other', { input: 'wheel', wheelOther: '' }), 'errWheelOther');
   eq(P.validate.stream('https://twitch.tv/x'), ''); eq(P.validate.stream('http://twitch.tv/x'), 'errStream'); eq(P.validate.stream(''), '');
 });
 await test('completeness and steps', () => {
@@ -125,7 +125,7 @@ await test('every t() key exists', () => {
   dyn.push(...raceErrs, ...['filed', 'review', 'decided', 'published', 'notInvestigated', 'withdrawn'].map((k) => 'pst_' + k),
     ...['none', 'warning', 'time', 'dsq', 'other'].map((k) => 'outcome_' + k), 'conflictInvolved', 'conflictTeammate', 'outOfScope', 'specLocked', 'specUsed',
     ...['lobbiesOut', 'resultsOut', 'regOpen', 'seasonAnnounced', 'protestAgainst', 'protestNew', 'decision', 'promoted', 'reservePending', 'teamApproved', 'teamDeclined', 'raceToday'].map((k) => 'nt_' + k),
-    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp');
+    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp', 'nt_claimDispute', 'nt_roleGranted', 'impWarnIncomplete', 'impWarnDr', 'impWarnCup', 'impWarnEntry', 'impWarnClash');
   const missing = [...new Set([...keys, ...valErrs, ...backendErrs, ...seasonErrs, ...dyn])].filter((k) => !(k in hu));
   eq(missing, [], 'missing keys');
 });
@@ -404,6 +404,58 @@ await test('DR gauge position and next class', async () => {
   eq(R.drPosition(0), 0); eq(R.drPosition(4000), 0.2); eq(R.drPosition(7000), 0.3); eq(R.drPosition(50000), 0.8); eq(R.drPosition(250000), 1);
   eq(R.drPosition(null, 'B'), 0.5); eq(R.drPosition(null, 'E'), 0.02);
   eq(R.nextClass(9000), { cls: 'B', need: 1000 }); eq(R.nextClass(61000), null);
+});
+
+
+// ---------- 0.6 ----------
+const IM = await import('../js/model/import.js');
+await test('import: merge duplicates, teams, seasons, entries, PQ, totals', () => {
+  const profiles = [
+    { id: 'p1', psn_id: 'MGTK_HOPPÁ', firstname: 'Attila', lastname: 'PÁL', email: 'a@x.hu', dr: 'A', sr: 'S', controlling: 'steering_wheel', view: 'tv', number: 82, mcsm_team: 'SUFNI TUNING', gt_team: 'MGTK ', role: 'user', created_at: '2026-03-01T00:00:00Z' },
+    { id: 'p2', psn_id: 'MGTK_Hoppá', firstname: 'Attila ', lastname: 'PÁL', email: 'b@x.hu', dr: 'A', sr: 'S', controlling: 'steering_wheel', view: 'tv', number: 82, mcsm_team: 'SUFNI TUNING', gt_team: 'MGTK', role: 'user', created_at: '2026-08-01T00:00:00Z' },
+    { id: 'p3', psn_id: 'IGTSH_Saby', firstname: 'Saby', lastname: 'KOVÁCS', email: null, dr: 'S', sr: 'S', controlling: 'controller', view: 'vr', number: 7, mcsm_team: 'TARTALÉKPILÓTA', gt_team: null, role: 'admin', created_at: '2026-01-01T00:00:00Z' },
+  ];
+  const cups = [{ id: 'c1', name: '🏆MCSM30 • ELANTRA TCR [GR.4]', is_active: false, lobby_size: 16, image_url: '', created_at: '2026-08-01T00:00:00Z', description: '' }];
+  const races = [{ id: 'q', cup_id: 'c1', type: 'PREQUALIFICATION', title: 'PREQUALI', location: 'MOUNT PANORAMA', start: '2026-09-11', start_time: '20:00:00' },
+    { id: 'r1', cup_id: 'c1', type: 'NAGYFUTAM', title: 'SAINT CROIX B2', location: 'SAINT CTROIX B REVERSE', start: '2026-09-13', start_time: '19:00:00' }];
+  const race_results = [{ race_id: 'q', profile_id: 'p2', position: 1, points: 0, time_result: '2:12.484', status: 'A lobby' }, { race_id: 'q', profile_id: 'p3', position: 2, points: 0, time_result: 'KIEMELT', status: 'KIEMELT' },
+    { race_id: 'r1', profile_id: 'p2', position: 2, points: 600, fastest_lap: false }, { race_id: 'r1', profile_id: 'p3', position: 1, points: 676, fastest_lap: true }];
+  const cup_applications = [{ cup_id: 'c1', profile_id: 'p2', created_at: '2026-08-02T00:00:00Z', mcsm_team: 'SUFNI TUNING', gt_team: 'MGTK' }, { cup_id: 'c1', profile_id: 'p3', created_at: '2026-08-03T00:00:00Z', mcsm_team: 'TARTALÉKPILÓTA', gt_team: '' }];
+  const p = IM.transformExport({ profiles, cups, races, race_results, cup_applications });
+  eq(p.users.map((u) => u.id), ['p1', 'p3'], 'duplicate folded into the capitalised one');
+  eq(p.merged[0].kept, 'MGTK_HOPPÁ');
+  eq(p.authUsers.map((a) => a.uid), ['p1']); eq(p.noEmail, ['IGTSH_Saby']);
+  const u1 = p.users[0].data; eq([u1.lastName, u1.input, u1.view, u1.gtTeamId, u1.teamId], ['Pál', 'wheel', 'tv', 'MGTK', 'sufni-tuning']);
+  const u3 = p.users[1].data; eq([u3.dr, u3.input, u3.view, u3.teamId, u3.roles], [null, 'pad', 'vr', null, { admin: true }]);
+  eq(p.seasons[0].id, 'mcsm30'); eq(p.seasons[0].data.name, 'ELANTRA TCR [GR.4]');
+  eq([p.seasons[0].data.rounds[0].trackId, p.seasons[0].data.rounds[0].layout], ['stcroix', 'B Reverse']);
+  eq(p.pq[0].data.times, { p1: 132.484 }, 'PQ time re-keyed to the kept profile');
+  eq(p.entries.map((e) => [e.uid, e.data.type, e.data.seeded]), [['p1', 'driver', false], ['p3', 'reserve', true]]);
+  eq(p.rounds[0].data.legacy.rows.map((r) => [r.id, r.pos, r.points, r.fl]), [['p3', 1, 676, true], ['p1', 2, 600, false]]);
+  eq(p.rounds[0].data.lobbies.A, ['p1', 'p3']);
+  const ops = IM.planOps(p);
+  const iLock = ops.findIndex((o) => o.path[0] === 'psnIds'), iUser = ops.findIndex((o) => o.path[0] === 'users');
+  ok(iLock < iUser, 'PSN lock written before the profile');
+  ok(IM.planOps(p, { claimed: new Set(['p1']) }).every((o) => !(o.path[0] === 'users' && o.path[1] === 'p1')), 'claimed profiles untouched');
+});
+await test('legacy rounds feed the standings', () => {
+  const rd = { legacy: [{ id: 'x', pos: 1, points: 676 }, { id: 'y', pos: 2, points: 600 }] };
+  const st = S.driverStandings([rd, rd], ['x', 'y']);
+  eq(st.map((r) => [r.id, r.total, r.wins]), [['x', 1352, 2], ['y', 1200, 0]]);
+});
+await test('track matching against the GridStats list', async () => {
+  const { matchTrack } = await import('../js/data/track-match.js');
+  const cat = [{ name_short: 'Autodrome Lago Maggiore', full_name: 'Autodrome Lago Maggiore - East', trackphoto: 'p1', track_map: 'm1' }, { name_short: 'Autodrome Lago Maggiore', full_name: 'Autodrome Lago Maggiore - Full Course', trackphoto: 'p2', track_map: 'm2' }, { name_short: 'Dragon Trail', full_name: 'Dragon Trail - Gardens', trackphoto: 'p3', track_map: 'm3' }];
+  eq(matchTrack({ track: 'Autodrome Lago Maggiore', layout: 'East' }, cat).map, 'm1');
+  eq(matchTrack({ track: 'Dragon Trail', layout: 'Gardens' }, cat).photo, 'p3');
+  eq(matchTrack({ track: 'Suzuka Circuit', layout: '' }, cat), null);
+});
+await test('roles: one level down', async () => {
+  const b = createFakeBackend();
+  await b.auth.signOut(); await b.auth.signIn('owner@mcsm.test', 'demo1234');
+  let threw = null; try { await b.admin.call('ping', {}); } catch (e) { threw = e.code; } eq(threw, null, 'owner may call the function');
+  await b.auth.signOut(); await b.auth.signIn('pilota@mcsm.test', 'demo1234');
+  threw = null; try { await b.admin.call('ping', {}); } catch (e) { threw = e.code; } eq(threw, 'fn-forbidden');
 });
 
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');

@@ -9,7 +9,8 @@ export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); re
 export function avatar(p, team, cls = '') {
   const hue = teamHue(team);
   const bg = hue == null ? (team && team.c1 ? team.c1 : '#36405F') : `hsl(${hue} 42% 30%)`;
-  return h('span', { class: 'avatar ' + cls, vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p));
+  const photo = p && p.photoUrl ? h('img', { src: p.photoUrl, alt: '', loading: 'lazy', decoding: 'async', onerror: (e) => e.target.remove() }) : null;
+  return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
 export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class: 'dr' }, p.dr || '–'), h('span', { class: 'srb' }, p.sr || '–'));
 export const pageTitle = (title, sub) => [h('h1', { class: 'display page-title' }, title), sub ? h('p', { class: 'page-sub' }, sub) : null];

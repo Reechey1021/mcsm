@@ -10,7 +10,7 @@ import { seg } from './ui/controls.js';
 import { avatar } from './ui/parts.js';
 import { t, LANG, setLang } from './i18n/index.js';
 import { backend } from './services/backend.js';
-import { session, signedIn, isAdmin, isJudgeRole } from './services/session.js';
+import { session, signedIn, isAdmin, isJudgeRole, canGrantRoles } from './services/session.js';
 import { fullName } from './model/profile.js';
 import { go, currentRoute } from './router.js';
 import { notes, refreshNotes, markAllRead } from './services/notify.js';
@@ -56,7 +56,7 @@ function refreshBell() {
   els.badge.textContent = n > 9 ? '9+' : String(n);
   els.badge.style.display = n ? '' : 'none';
 }
-const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock' };
+const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock', claimDispute: 'alert', roleGranted: 'shield' };
 function openNotes() {
   const list = h('div');
   const draw = () => list.replaceChildren(...(notes.items.length ? notes.items.map((n) => h('a', { class: 'notif' + ((n.synthetic || (n.at || 0) > ((session.profile || {}).notifReadAt || 0)) && n.by !== (session.user || {}).uid ? ' unread' : ''), href: n.link || '#/', onclick: () => sh.close(true) },
@@ -94,7 +94,7 @@ export function openMenu() {
   const langSeg = seg([{ value: 'hu', label: 'Magyar' }, { value: 'en', label: 'English' }], LANG, (v) => { setLang(v); sh.close(true); emit('relang'); });
   const themeSeg = seg([{ value: 'system', label: t('themeSystem') }, { value: 'dark', label: t('themeDark') }, { value: 'light', label: t('themeLight') }], store.get('theme', 'system'), (v) => { store.set('theme', v); applyTheme(v); });
   const items = signedIn()
-    ? [mi('user', t('myPage'), '/sajat'), isAdmin() ? mi('shield', t('admin'), '/admin') : null, isJudgeRole() ? mi('flag', t('judgesArea'), '/birosag') : null, mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')]
+    ? [mi('user', t('myPage'), '/sajat'), isAdmin() ? mi('shield', t('admin'), '/admin') : null, isJudgeRole() ? mi('flag', t('judgesArea'), '/birosag') : null, !isAdmin() && canGrantRoles() ? mi('users', t('rolesTitle'), '/admin/szerepkorok') : null, mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')]
     : [mi('user', t('signIn'), '/belepes'), mi('plus', t('signUp'), '/regisztracio'), mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')];
   let dev = null;
   if (backend.kind === 'fake') {

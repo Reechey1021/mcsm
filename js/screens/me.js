@@ -13,11 +13,20 @@ import { teamMap, gtTeams } from '../core/data.js';
 import { verifyBanner } from './banners.js';
 import { fmtInt } from '../core/motion.js';
 import { ratingPanel } from '../ui/rating.js';
+import { pickFile, uploadImage } from '../ui/upload.js';
+import { emit } from '../core/bus.js';
+import { openSheet as openSheet2 } from '../ui/sheet.js';
 import { go } from '../router.js';
 import { myEntries } from './seasons.js';
 
 export function profileHead(p, team, opts = {}) {
   const av = avatar(p, team, 'lg');
+  if (opts.editable) {
+    av.removeAttribute('aria-hidden');
+    const edit = h('button', { class: 'avatar-edit', type: 'button', 'aria-label': t('photoChange') }, icon('edit'));
+    edit.addEventListener('click', () => photoSheet(p));
+    av.append(edit); av.style.overflow = 'visible';
+  }
   if (opts.vt) av.style.viewTransitionName = 'drv-hero';
   return h('section', { class: 'profile-head' }, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
     h('div', { style: 'min-width:0' }, h('h1', { class: 'display' }, (p.lastName || '').toLocaleUpperCase('hu'), h('br'), p.firstName || ''),
@@ -49,7 +58,7 @@ export function screenMe() {
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const myRoles = ROLE_KEYS.filter((k) => roles()[k]);
     box.replaceChildren(...[
-      profileComplete() ? frag(profileHead(p, team), profileKv(p, team, gt && gt.tag)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
+      profileComplete() ? frag(profileHead(p, team, { editable: true }), profileKv(p, team, gt && gt.tag)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
       p.teamRequest ? h('div', { class: 'callout', style: 'margin-top:12px' }, icon('clock'), h('span', null, t('teamRequestPending', { team: (tm[p.teamRequest] || {}).name || '' }))) : null,
       myRoles.length ? h('div', { class: 'roles', style: 'margin-top:12px' }, myRoles.map((k) => h('span', { class: 'role-tag ' + k }, t('role_' + k)))) : null,
       myEntriesBox,
@@ -84,4 +93,19 @@ function changePassword() {
       catch (e2) { err.replaceChildren(formError(t(errorKey(e2)))); }
     });
   });
+}
+
+function photoSheet(p) {
+  const status = h('div');
+  const choose = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('plus'), t('photoChoose'));
+  choose.addEventListener('click', async () => {
+    const file = await pickFile('image/*'); if (!file) return;
+    busy(choose, async () => {
+      try { const url = await uploadImage(`avatars/${session.user.uid}/photo`, file, { max: 400, square: true }); await backend.users.save(session.user.uid, { photoUrl: url }); sh.close(true); toast(t('photoSaved')); setTimeout(() => emit('rerender'), 100); }
+      catch (e) { status.replaceChildren(formError(t(errorKey(e)))); }
+    });
+  });
+  const remove = p.photoUrl ? h('button', { class: 'btn block', type: 'button', style: 'color:var(--red)' }, icon('trash'), t('photoRemove')) : null;
+  if (remove) remove.addEventListener('click', () => busy(remove, async () => { try { await backend.users.save(session.user.uid, { photoUrl: null }); sh.close(true); toast(t('photoRemoved')); setTimeout(() => emit('rerender'), 100); } catch (e) { status.replaceChildren(formError(t(errorKey(e)))); } }));
+  const sh = openSheet2({ title: t('photoTitle'), body: h('div', { class: 'stack', style: 'gap:10px' }, h('p', { class: 'muted', style: 'margin:0' }, t('photoHelp')), status, choose, remove) });
 }

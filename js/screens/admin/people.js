@@ -9,7 +9,7 @@ import { avatar, pageTitle, skelRows, empty, backLink, formError } from '../../u
 import { openSheet, toast } from '../../ui/sheet.js';
 import { t, fmtDate } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
-import { session, isOwner } from '../../services/session.js';
+import { session, isOwner, grantableRoles } from '../../services/session.js';
 import { users, teams, invalidate } from '../../core/data.js';
 import { fullName, isComplete, ROLE_KEYS, DR_OPTS, SR_OPTS, validate, psnKey } from '../../model/profile.js';
 import { emit } from '../../core/bus.js';
@@ -74,10 +74,9 @@ function editPerson(u, tms, reload) {
     h('button', { class: 'btn small', type: 'button', onclick: () => { draft.teamId = req.id; draft.teamRequest = null; teamSel.value = req.id; reqBox.remove(); toast(t('requestApprovedDraft')); } }, t('approve')),
     h('button', { class: 'btn small', type: 'button', onclick: () => { draft.teamRequest = null; reqBox.remove(); } }, t('decline'))) : null;
   const roleRows = ROLE_KEYS.map((k) => {
-    const ownerOnly = k === 'owner' || k === 'admin';
-    const self = u.uid === session.user.uid && k === 'owner';
+    const self = u.uid === session.user.uid;
     return h('div', { class: 'toggle-row' }, h('span', null, t('role_' + k), h('small', null, t('roleHint_' + k))),
-      toggle(!!draft.roles[k], (v) => { draft.roles[k] = v; }, { label: t('role_' + k), disabled: (ownerOnly && !isOwner()) || self }));
+      toggle(draft.roles[k] === true, (v) => { if (v) draft.roles[k] = true; else delete draft.roles[k]; }, { label: t('role_' + k), disabled: !grantableRoles().includes(k) || self }));
   });
   const scope = new Set(Array.isArray(u.judgeScope) && u.judgeScope.length ? u.judgeScope : ['A', 'B', 'C']);
   draft.judgeScope = [...scope];

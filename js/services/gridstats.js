@@ -33,6 +33,7 @@ export function gridstatsClient({ token, base }) {
     quota,
     ping: () => call('/assets/regions'),
     carsPage: (page) => call('/assets/cars?page=' + page),
+    tracksPage: (page) => call('/assets/tracks?page=' + page),
     racers: (ids) => call('/racers/' + ids.map((x) => encodeURIComponent(x)).join(',')),
   };
 }
@@ -47,12 +48,22 @@ const SAMPLE = [
   ['Honda Civic Type R (FK8) Touring Car', 'Gr.4', 'Honda'], ['Audi TT Cup \'16', 'Gr.4', 'Audi'], ['Porsche 919 Hybrid \'16', 'Gr.1', 'Porsche'],
   ['Toyota TS050 - Hybrid (Toyota Gazoo Racing) \'16', 'Gr.1', 'Toyota'], ['Subaru WRX Gr.B Rally Car', 'Gr.B', 'Subaru'],
 ];
+const svgUrl = (s) => 'data:image/svg+xml;utf8,' + encodeURIComponent(s);
+const FAKE_PHOTO = (a, b) => svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="800" height="400" fill="url(#g)"/><path d="M0 300 Q200 220 400 280 T800 240 V400 H0Z" fill="#0b1a10" opacity=".55"/></svg>`);
+const FAKE_MAP = (d) => svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="${d}" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/></svg>`);
+const FAKE_TRACKS = [
+  { id: 1, name_short: 'Grand Valley', full_name: 'Grand Valley - Highway 1', trackphoto: FAKE_PHOTO('#3c6e91', '#c9a26b'), track_map: FAKE_MAP('M10 70 L30 20 L60 25 L90 15 L85 60 L55 85 L20 88 Z'), corner_count: 13, track_length: 5.1 },
+  { id: 2, name_short: 'Kyoto Driving Park', full_name: 'Kyoto Driving Park - Yamagiwa', trackphoto: FAKE_PHOTO('#4a7a4f', '#d8c7a0'), track_map: FAKE_MAP('M15 50 C15 10 85 10 85 45 C85 70 60 60 55 85 C40 95 15 85 15 50 Z'), corner_count: 15, track_length: 4.3 },
+  { id: 3, name_short: 'Dragon Trail', full_name: 'Dragon Trail - Gardens', trackphoto: FAKE_PHOTO('#7a5c3c', '#5ab0c9'), track_map: FAKE_MAP('M10 20 L80 15 L90 40 L50 50 L85 80 L20 88 Z'), corner_count: 17, track_length: 4.4 },
+  { id: 4, name_short: 'Suzuka Circuit', full_name: 'Suzuka Circuit', trackphoto: FAKE_PHOTO('#5d6d8a', '#a3c27a'), track_map: FAKE_MAP('M10 60 C30 20 50 80 70 30 S95 50 80 80 L20 85 Z'), corner_count: 18, track_length: 5.81 },
+];
 export function fakeGridstats() {
   const quota = { limit: 1000, remaining: 1000 };
   const pause = () => new Promise((r) => setTimeout(r, 120));
   return {
     quota,
     async ping() { await pause(); return [{ code: 'hu', name: 'Hungary' }]; },
+    async tracksPage(page) { await pause(); quota.remaining--; return page === 1 ? { current_page: 1, data: FAKE_TRACKS, next_page_url: null, total: FAKE_TRACKS.length } : { data: [] }; },
     async carsPage(page) {
       await pause(); quota.remaining--;
       const per = 8, data = SAMPLE.slice((page - 1) * per, page * per).map(([name, cls, maker], i) => ({ id: page * 100 + i, car_code: 1000 + page * 100 + i, name, class: cls, manufacturer: { name: maker } }));

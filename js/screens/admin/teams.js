@@ -10,6 +10,7 @@ import { t } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
 import { users, teams, gtTeams, invalidate } from '../../core/data.js';
 import { fullName } from '../../model/profile.js';
+import { pickFile, uploadImage } from '../../ui/upload.js';
 
 export function hslToHex(c) {
   if (!c) return '#888888';
@@ -48,9 +49,13 @@ function editTeam(tm, reload) {
   const col = (k) => { const i = h('input', { class: 'color-in', type: 'color', value: hslToHex(draft[k]), 'aria-label': t(k === 'c1' ? 'color1' : 'color2') }); i.addEventListener('input', () => { draft[k] = i.value; }); return i; };
   const save = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('check'), t('save'));
   const del = tm ? h('button', { class: 'btn danger block', type: 'button' }, icon('trash'), t('deleteTeam')) : null;
+  const logoPrev = h('span', { class: 'logo-prev', style: draft.logoUrl ? `background-image:url("${draft.logoUrl}")` : '' });
+  const logoBtn = h('button', { class: 'btn small', type: 'button' }, icon('plus'), t('logoUpload'));
+  logoBtn.addEventListener('click', async () => { const f = await pickFile('image/*'); if (!f) return; busy(logoBtn, async () => { try { draft.logoUrl = await uploadImage(`teams/${draft.id || 'new'}/logo`, f, { max: 512 }); logoPrev.style.backgroundImage = `url("${draft.logoUrl}")`; } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); } }); });
   const sh = openSheet({ title: tm ? tm.name : t('newTeam'), body: h('div', { class: 'form' }, err, nf.row,
     h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('teamStatus')), status, h('span', { class: 'hint' }, t('teamStatusHint'))),
     h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('colors')), h('div', { style: 'display:flex;gap:10px' }, col('c1'), col('c2'))),
+    h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('teamLogo')), h('div', { style: 'display:flex;gap:12px;align-items:center' }, logoPrev, logoBtn)),
     save, del) });
   save.addEventListener('click', () => busy(save, async () => {
     if (!draft.name.trim()) { nf.setError(t('errRequired')); return; }

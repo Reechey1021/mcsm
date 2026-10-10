@@ -1,9 +1,32 @@
 rules_version = '2';
-// Phase 1 stores nothing in Cloud Storage yet (team logos and avatars come later).
+// MCSM file uploads. Everything uploaded is a picture the site shows publicly.
+// The app shrinks images before uploading (avatars ~400 px, logos ~512 px, covers ~1600 px).
+// Reading roles from Firestore needs a one-time permission; the console asks when you publish.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if false;
+    function signedIn() { return request.auth != null; }
+    function role(r) {
+      return signedIn() && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('roles', {}).get(r, false) == true;
+    }
+    function isAdmin() { return role('owner') || role('admin'); }
+    function image(maxMb) { return request.resource.size < maxMb * 1024 * 1024 && request.resource.contentType.matches('image/.*'); }
+
+    // Profile photos: your own only.
+    match /avatars/{uid}/{file} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid && image(2);
+      allow delete: if signedIn() && (request.auth.uid == uid || isAdmin());
+    }
+    // Team logos and season covers: admins.
+    match /teams/{teamId}/{file} {
+      allow read: if true;
+      allow create, update: if isAdmin() && image(2);
+      allow delete: if isAdmin();
+    }
+    match /seasons/{sid}/{file} {
+      allow read: if true;
+      allow create, update: if isAdmin() && image(5);
+      allow delete: if isAdmin();
     }
   }
 }

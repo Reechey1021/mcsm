@@ -26,5 +26,7 @@ export function screenAdmin() {
       tile('clock', 'adminRequests', '#/admin/csapatok', cells.requests)),
     h('div', { class: 'stack', style: 'gap:8px;margin-top:16px' },
       h('a', { class: 'round-item', href: '#/admin/gt' }, icon('grid', 'chev'), h('span', { class: 't' }, h('b', null, t('adminGt')), h('span', { class: 'sub' }, t('adminGtSub'))), icon('chevR', 'chev')),
+      h('a', { class: 'round-item', href: '#/admin/gt7' }, icon('car', 'chev'), h('span', { class: 't' }, h('b', null, t('gsTitle')), h('span', { class: 'sub' }, t('gsAdminSub'))), icon('chevR', 'chev')),
+      h('a', { class: 'round-item', href: '#/szabalyzat/szerkesztes' }, icon('book', 'chev'), h('span', { class: 't' }, h('b', null, t('editRules')), h('span', { class: 'sub' }, t('rulesAdminSub'))), icon('chevR', 'chev')),
       h('a', { class: 'round-item', href: '#/admin/naplo' }, icon('history', 'chev'), h('span', { class: 't' }, h('b', null, t('adminAudit')), h('span', { class: 'sub' }, t('adminAuditSub'))), icon('chevR', 'chev'))));
 }

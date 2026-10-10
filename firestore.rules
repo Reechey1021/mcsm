@@ -21,9 +21,9 @@ service cloud.firestore {
     function selfKeys() {
       return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
-              'complete', 'updatedAt', 'createdAt'];
+              'complete', 'updatedAt', 'createdAt', 'notifReadAt'];
     }
-    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote']); }
+    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt']); }
 
     function okStr(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
     function validProfile(d) {
@@ -211,6 +211,29 @@ service cloud.firestore {
         allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && selfEntryUpdate(sid));
         allow delete: if isAdmin();
       }
+    }
+
+    // ----- 0.5: editable pages, private settings, notifications -----
+    match /content/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /config/{id} {
+      allow read, write: if isAdmin();
+    }
+    function isJudgeTop() { return isAdmin() || myRoles().get('judge', false) == true || myRoles().get('judgeChair', false) == true; }
+    match /notifications/{id} {
+      allow read: if resource.data.kind in ['all', 'season']
+        || (signedIn() && request.auth.uid in resource.data.get('uids', []));
+      // Staff send league-wide news; drivers may only send the few person-to-person notices
+      // their own actions cause (a protest naming someone, a waitlist place opening up).
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid
+        && (isAdmin() || isJudgeTop()
+            || (request.resource.data.kind == 'users'
+                && request.resource.data.type in ['protestAgainst', 'protestNew', 'promoted', 'reservePending']
+                && request.resource.data.uids.size() <= 60));
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /audit/{id} {

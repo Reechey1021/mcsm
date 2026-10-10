@@ -13,6 +13,7 @@ import { session, isOwner } from '../../services/session.js';
 import { users, teams, invalidate } from '../../core/data.js';
 import { fullName, isComplete, ROLE_KEYS, DR_OPTS, SR_OPTS, validate, psnKey } from '../../model/profile.js';
 import { emit } from '../../core/bus.js';
+import { notifyUsers } from '../../services/notify.js';
 
 const ui = { q: '', filter: 'all' };
 
@@ -112,6 +113,10 @@ function editPerson(u, tms, reload) {
     try {
       await backend.users.save(u.uid, patch);
       await backend.audit.add({ action: 'user.update', target: u.uid, targetName: fullName({ ...u, ...patch }), before, after, reason: reason.value.trim() || null });
+      if (u.teamRequest && 'teamRequest' in patch) {
+        const reqTeam = tms.find((x) => x.id === u.teamRequest);
+        notifyUsers([u.uid], patch.teamId === u.teamRequest ? 'teamApproved' : 'teamDeclined', { team: reqTeam ? reqTeam.name : '' }, '#/sajat');
+      }
       sh.close(true); toast(t('saved')); reload(); emit('rerender');
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   }));

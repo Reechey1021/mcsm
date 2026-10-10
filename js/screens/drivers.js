@@ -33,7 +33,7 @@ export function screenDrivers() {
       const tm = tmap[d.teamId];
       return [fullName(d), d.psn, tm ? tm.name : '', d.raceNumber, d.gtTeamId || ''].join(' ').toLowerCase().includes(q);
     }).sort({
-      dr: (a, b) => (DR_RANK[b.dr] || 0) - (DR_RANK[a.dr] || 0) || fullName(a).localeCompare(fullName(b), 'hu'),
+      dr: (a, b) => (DR_RANK[b.dr] || 0) - (DR_RANK[a.dr] || 0) || (b.drPoints || 0) - (a.drPoints || 0) || fullName(a).localeCompare(fullName(b), 'hu'),
       name: (a, b) => fullName(a).localeCompare(fullName(b), 'hu'),
       no: (a, b) => (a.raceNumber || 0) - (b.raceNumber || 0),
       new: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),

@@ -19,6 +19,7 @@ import { lobbyOf, SESSIONS } from '../model/race.js';
 import { protestWindow, windowState, eligibility, defaultPanel, tally, dsqFlags, OUTCOMES, TIME_STEPS, MIN_VOTES, isJudgeProfile } from '../model/protest.js';
 import { roundTitle } from '../data/tracks.js';
 import { go } from '../router.js';
+import { notifyUsers, judgeUids } from '../services/notify.js';
 
 export const isJudge = () => { const r = roles(); return !!(r.judge || r.judgeChair || r.admin || r.owner); };
 export const isChair = () => { const r = roles(); return !!(r.judgeChair || r.admin || r.owner); };
@@ -135,6 +136,9 @@ export function screenProtestForm({ id, n }, query) {
       if (probs.length) { haptic(25); return; }
       try {
         const pid = await backend.protests.save(id, null, { n, L: d.L, S: d.S, lap: d.lap ? Number(d.lap) : null, corner: d.corner.trim(), involved: d.involved, title: d.title.trim(), description: d.description.trim(), video: d.video.trim(), by: session.user.uid, type: judgeMode ? 'judge' : 'driver', status: judgeMode ? 'review' : 'filed', panel: [] });
+        const params = { s: 'MCSM' + ctx.season.no, n, title: d.title.trim() };
+        notifyUsers(d.involved, 'protestAgainst', params, `#/szezonok/${id}/fordulo/${n}`);
+        if (!judgeMode) judgeUids().then((js) => notifyUsers(js, 'protestNew', params, `#/birosag/${id}/${pid}`)).catch(() => {});
         toast(judgeMode ? t('judgeCaseOpened') : t('protestFiled')); haptic(15);
         go(judgeMode ? `/birosag/${id}/${pid}` : `/szezonok/${id}/fordulo/${n}`);
       } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
@@ -295,6 +299,7 @@ function chairTools(ctx, p, tl, judges, teamOf, reload) {
         }
         await backend.protests.save(s.id, p.id, { status: 'published', decision, decidedAt: Date.now(), publishedAt: Date.now() });
         await audit('protest.publish', { after: decision });
+        notifyUsers([p.type === 'judge' ? null : p.by, ...(p.involved || [])], 'decision', { s: 'MCSM' + s.no, n: p.n, title: p.title }, `#/szezonok/${s.id}/fordulo/${p.n}`);
         invalidate('race:' + s.id); toast(t('decisionPublished')); haptic(15); reload();
       } catch (e) { toast(t(errorKey(e)), 'alert'); }
     }));

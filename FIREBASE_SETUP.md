@@ -11,6 +11,11 @@ Cloud Storage (team logos, avatars, protest clips) comes later and needs the Bla
    Then Authentication → Templates → the language selector (top right of the templates) → Hungarian,
    so verification and password-reset emails go out in Hungarian.
 
+   **Send email links back to the site:** in Authentication → Templates, open any template (the pencil icon),
+   click **Customize action URL**, enter your site's address (for example
+   `https://reechey1021.github.io/mcsm/`, later `https://mcsm.hu/`) and save. It applies to all templates:
+   verification and password-reset links then open on MCSM itself instead of a Google page.
+
 3. **Create Firestore.** Build → Firestore Database → Create database → Production mode →
    pick a European location (e.g. `eur3` or `europe-central2`). The location can't be changed later.
 
@@ -37,7 +42,7 @@ Cloud Storage (team logos, avatars, protest clips) comes later and needs the Bla
 9. **When we add Storage (later phase):** Usage and billing → Modify plan → Blaze, then Budgets &
    alerts → set a small monthly budget (e.g. 5 EUR) so you're emailed long before any real cost.
 
-**After each update:** if `firestore.rules` changed (it did in 0.2.0, 0.3.0 and 0.4.0), publish it again as in step 5.
+**After each update:** if `firestore.rules` changed (it did in 0.2.0, 0.3.0, 0.4.0 and 0.5.0), publish it again as in step 5.
 If the app ever shows an error about a missing index, the browser console has a link that creates it in one click.
 
 **Results editors:** give lobby hosts the "Eredményrögzítő" role in Admin → Felhasználók. They can enter PQ times and result sheets as drafts; only admins publish.

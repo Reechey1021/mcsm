@@ -13,6 +13,9 @@ import { users as loadUsers, seasons as loadSeasons, invalidateSeason } from '..
 import { fullName, isComplete } from '../model/profile.js';
 import { STATES, regStatus, snapshotOf } from '../model/season.js';
 import { DAY } from '../model/time.js';
+import { entryTable } from '../model/season.js';
+import { notifyAll } from '../services/notify.js';
+import { notifyPromoted } from './seasons.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 
@@ -41,7 +44,7 @@ export function adminSeasonCard(st, reload) {
     try { await backend.seasons.patch(s.id, patch); await audit(action, s, { before: { regOpensAt: s.regOpensAt, regClosesAt: s.regClosesAt }, after: patch }); toast(t('saved')); reload(); }
     catch (e) { toast(t(errorKey(e)), 'alert'); }
   });
-  if (openNow) openNow.addEventListener('click', () => win(openNow, { state: 'announced', regOpensAt: Date.now(), regClosesAt: Math.max(s.regClosesAt || 0, Date.now() + 7 * DAY) }, 'season.regOpen'));
+  if (openNow) openNow.addEventListener('click', () => { win(openNow, { state: 'announced', regOpensAt: Date.now(), regClosesAt: Math.max(s.regClosesAt || 0, Date.now() + 7 * DAY) }, 'season.regOpen'); notifyAll(s, 'regOpen', {}, '#/szezonok/' + s.id); });
   if (closeNow) closeNow.addEventListener('click', () => win(closeNow, { regClosesAt: Date.now() }, 'season.regClose'));
   if (extend) extend.addEventListener('click', () => win(extend, { regClosesAt: Math.max(s.regClosesAt || 0, Date.now()) + 3 * DAY }, 'season.regExtend'));
   const del = s.state === 'draft' ? h('button', { class: 'btn small danger', type: 'button' }, icon('trash'), t('delete')) : null;
@@ -88,7 +91,7 @@ export function adminEntrySheet(e, st, reload) {
     h('div', { class: 'stack', style: 'gap:8px' },
       e.status === 'withdrawn'
         ? h('button', { class: 'btn block', type: 'button', onclick: () => save({ status: 'entered', withdrawnAt: null }, 'entry.restore').then(() => { sh.close(); }).catch(() => {}) }, icon('undo'), t('restoreEntry'))
-        : h('button', { class: 'btn danger block', type: 'button', onclick: () => save({ status: 'withdrawn', withdrawnAt: Date.now() }, 'entry.withdraw', t('withdrawn')).then(() => { sh.close(); }).catch(() => {}) }, t('withdrawFor')),
+        : h('button', { class: 'btn danger block', type: 'button', onclick: () => { const before = entryTable(s, st.entries); save({ status: 'withdrawn', withdrawnAt: Date.now() }, 'entry.withdraw', t('withdrawn')).then(() => { notifyPromoted(s, before, st.entries.map((x) => (x.uid === e.uid ? { ...x, status: 'withdrawn' } : x))); sh.close(); }).catch(() => {}); } }, t('withdrawFor')),
       h('button', { class: 'btn block', type: 'button', style: 'color:var(--red)', onclick: async () => { try { await backend.entries.remove(s.id, e.uid); await audit('entry.delete', s, { targetName: `MCSM${s.no}: ${fullName(p)}` }); sh.close(); toast(t('deleted')); } catch (x) { err.replaceChildren(formError(t(errorKey(x)))); } } }, icon('trash'), t('deleteEntry')))) });
 }
 

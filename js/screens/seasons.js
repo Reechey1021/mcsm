@@ -22,6 +22,7 @@ import { pqTab, roundLink } from './race.js';
 import { protestsTab } from './protests.js';
 import { specSection } from './spec.js';
 import { standingsBlock } from '../ui/tower.js';
+import { notifyUsers, adminUids } from '../services/notify.js';
 import { loadRace } from '../core/race-data.js';
 
 /* ---------- list ---------- */
@@ -222,7 +223,12 @@ function confirmWithdraw(st, e, reload) {
   const yes = h('button', { class: 'btn danger block', type: 'button' }, t('withdrawConfirm'));
   const sh = openSheet({ title: t('withdrawTitle'), body: frag(h('p', { class: 'muted', style: 'margin:0 0 16px' }, closed ? t('withdrawClosedText') : t('withdrawText')), yes) });
   yes.addEventListener('click', () => busy(yes, async () => {
-    try { await backend.entries.save(s.id, e.uid, { status: 'withdrawn', withdrawnAt: Date.now() }); sh.close(true); toast(t('withdrawn')); haptic(15); reload(); }
+    try {
+      const before = entryTable(s, st.entries);
+      await backend.entries.save(s.id, e.uid, { status: 'withdrawn', withdrawnAt: Date.now() });
+      notifyPromoted(s, before, st.entries.map((x) => (x.uid === e.uid ? { ...x, status: 'withdrawn' } : x)));
+      sh.close(true); toast(t('withdrawn')); haptic(15); reload();
+    }
     catch (err) { toast(t(errorKey(err)), 'alert'); }
   }));
 }
@@ -269,10 +275,18 @@ function enterSheet(st, reload, previous) {
       const merged = { ...(previous || {}), ...data, uid: session.user.uid, type };
       const after = entryTable(s, [...fresh.filter((x) => x.uid !== session.user.uid), merged]).byUid[session.user.uid];
       sh.close(true); haptic(12);
+      if (after.status === 'pending') adminUids().then((as) => notifyUsers(as, 'reservePending', { s: 'MCSM' + s.no, name: fullName(session.profile) }, `#/szezonok/${s.id}/nevezesek`)).catch(() => {});
       toast(after.status === 'in' ? t('enteredOk', { n: after.pos }) : after.status === 'waitlist' ? t('waitlistOk', { n: after.pos }) : t('reserveOk'));
       reload();
     } catch (e2) { err.replaceChildren(formError(t(errorKey(e2)))); }
   }));
+}
+
+// Whoever moved from the waitlist into the field because of a withdrawal hears about it.
+export function notifyPromoted(s, before, entriesAfter) {
+  const after = entryTable(s, entriesAfter);
+  const up = Object.keys(after.byUid).filter((uid) => after.byUid[uid].status === 'in' && before.byUid[uid] && before.byUid[uid].status === 'waitlist');
+  if (up.length) notifyUsers(up, 'promoted', { s: 'MCSM' + s.no }, '#/szezonok/' + s.id);
 }
 
 /* ---------- used by home & me ---------- */

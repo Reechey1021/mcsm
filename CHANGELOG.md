@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.5.0 – Notifications, GT7 data, editable rules
+- Fixed: signed-out (and non-admin) visitors got "Nem sikerült betölteni" on season pages. The app
+  asked for every season including drafts, which the rules rightly refuse; now only admins ask
+  for drafts. Spec pick queries also leave a margin for phones whose clock runs fast.
+- Your Firebase config is now part of the build (js/config/firebase-config.js).
+- Notifications: a bell with an unread count and an inbox. League-wide notices when lobbies or
+  results are published and when entries open or a season is announced; personal notices when a
+  protest names you, a decision is published on your case, you move off the waitlist, or your team
+  request is answered; stewards hear about new protests and admins about reserves waiting for
+  approval. On race day you get a reminder with your lobby and start time. "Mark all read" is
+  stored on your profile, so it follows you across devices.
+- GT7 data (Admin → GT7 adatok): save the GT GridStats token (admin-only), test the connection,
+  import the car list (paced to the API's 10 requests a minute), and refresh every driver's DR/SR
+  in batches of 16. In test mode the answers are simulated.
+- Car picker: the season wizard suggests cars from the imported list as you type (filterable by
+  any word, e.g. "supra gr.3"); free text still works.
+- Driver profiles show DR/SR with DR points and when they were last synced; "By DR" sorting uses
+  DR points as the tie-breaker.
+- Rules page is now editable by admins (simple formatting, Hungarian with optional English,
+  preview), starting from a summary of the Biblia.
+- No-shows (my default rule): a driver who didn't race (DNS everywhere, or said "can't make it")
+  ranks last in their lobby for promotion/relegation, so they drop first, and is never promoted;
+  the next driver who raced takes the place. The lobby proposal still flags them for review.
+- Tie-break "wins" stay as built: Sprint and Gran'Prix wins in any lobby count.
+- Firestore rules: content, config (admin-only), notifications, and the new profile fields.
+- Tests: 36 unit tests, 220 browser checks across five walk-throughs.
+
+## 0.4.1 – Email confirmation fixes
+- Fixed: after confirming your email, the banner stayed until you refreshed, and the security rules
+  kept treating you as unconfirmed (so entering a season failed) until you signed in again. The app
+  now refreshes your sign-in token and updates straight away.
+- The site notices when you come back to the tab after confirming on your phone or in another tab.
+- Email links (confirm email, reset password) can now open on MCSM itself, with a clear result and a
+  "Continue to the site" button, instead of a Google page. Needs one Firebase setting:
+  Authentication → Templates → Customize action URL (see FIREBASE_SETUP.md, step 2).
+- Expired or used links explain what happened and offer the next step.
+- Spam-folder hints in the sign-up message, the confirm-your-email banner and the resend message.
+
 ## 0.4.0 – Phase 4: protests, stewards and penalties; Spec car picks
 - Filing: a Protest button on the round page while the window is open (race night 21:30 until
   Monday 20:00, Budapest time; admins can extend it per round). The form asks for what the Biblia

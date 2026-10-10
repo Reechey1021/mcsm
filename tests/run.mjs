@@ -122,7 +122,9 @@ await test('every t() key exists', () => {
     ...['none', 'draft', 'published'].flatMap((k) => ['sheet_' + k, 'sheetShort_' + k])];
   const raceErrs = [...readFileSync(join(root, 'js/model/race.js'), 'utf8').matchAll(/'(sheetErr[A-Za-z]+)'/g)].map((m) => m[1]);
   dyn.push(...raceErrs, ...['filed', 'review', 'decided', 'published', 'notInvestigated', 'withdrawn'].map((k) => 'pst_' + k),
-    ...['none', 'warning', 'time', 'dsq', 'other'].map((k) => 'outcome_' + k), 'conflictInvolved', 'conflictTeammate', 'outOfScope', 'specLocked', 'specUsed');
+    ...['none', 'warning', 'time', 'dsq', 'other'].map((k) => 'outcome_' + k), 'conflictInvolved', 'conflictTeammate', 'outOfScope', 'specLocked', 'specUsed',
+    ...['lobbiesOut', 'resultsOut', 'regOpen', 'seasonAnnounced', 'protestAgainst', 'protestNew', 'decision', 'promoted', 'reservePending', 'teamApproved', 'teamDeclined', 'raceToday'].map((k) => 'nt_' + k),
+    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp');
   const missing = [...new Set([...keys, ...valErrs, ...backendErrs, ...seasonErrs, ...dyn])].filter((k) => !(k in hu));
   eq(missing, [], 'missing keys');
 });
@@ -350,6 +352,38 @@ await test('fake backend: protest permissions', async () => {
   eq(threw, 'permission-denied');
   await b.auth.signOut(); await b.auth.signIn('owner@mcsm.test', 'demo1234');
   eq((await b.votes.list('mcsm31', 'p2')).length, 2);
+});
+
+
+// ---------- 0.5 ----------
+await test('promotion with no-shows: they drop first and are never promoted', () => {
+  const ids = (p, n) => Array.from({ length: n }, (_, i) => p + i);
+  const lobbies = { A: ids('a', 4), B: ids('b', 4), C: ids('c', 4) };
+  const rows = (a) => a.map((id, i) => ({ id, pos: i + 1, status: 'OK' }));
+  const results = {}; for (const L of ['A', 'B', 'C']) results[L] = { Q: rows(lobbies[L]), S: rows(lobbies[L]), GP: rows(lobbies[L]) };
+  const rd = { lobbies, results };
+  eq(S.promoteRelegate(rd, 1), { A: ['a0', 'a1', 'a2', 'b0'], B: ['a3', 'b1', 'b2', 'c0'], C: ['b3', 'c1', 'c2', 'c3'] });
+  const r = S.promoteRelegate(rd, 1, S.DEFAULT_TABLE, new Set(['a0', 'b0']));
+  ok(!r.A.includes('a0') && r.B.includes('a0'), 'absent A winner drops'); ok(!r.A.includes('b0') && r.A.includes('b1'), 'absent B winner not promoted');
+  eq([r.A.length, r.B.length, r.C.length], [4, 4, 4]);
+});
+await test('fake GridStats client answers in the documented shape', async () => {
+  const { fakeGridstats } = await import('../js/services/gridstats.js');
+  const g = fakeGridstats();
+  const p1 = await g.carsPage(1); ok(p1.data.length && p1.data[0].name && p1.data[0].class && p1.next_page_url, 'cars page');
+  const r = await g.racers(['IGTSH_Saby', 'MGTK_Dudu']); ok(r.drivers.every((d) => d.PSN_ID && d.DR && d.SR && d.stats), 'racers');
+});
+await test('fake backend: notifications and admin-only settings', async () => {
+  const b = createFakeBackend();
+  await b.auth.signOut(); await b.auth.signIn('pilota@mcsm.test', 'demo1234');
+  let threw = null; try { await b.notify.add({ kind: 'season', sid: 'mcsm31', type: 'resultsOut' }); } catch (e) { threw = e.code; }
+  eq(threw, 'permission-denied', 'drivers cannot broadcast');
+  await b.notify.add({ kind: 'users', uids: ['owner'], type: 'protestAgainst', params: {} });
+  threw = null; try { await b.config.get('gridstats'); } catch (e) { threw = e.code; }
+  eq(threw, 'permission-denied', 'token is admin-only');
+  await b.auth.signOut(); await b.auth.signIn('owner@mcsm.test', 'demo1234');
+  ok((await b.notify.list('owner')).some((n) => n.type === 'protestAgainst'), 'owner sees personal notice');
+  await b.config.save('gridstats', { token: 'x' }); eq((await b.config.get('gridstats')).token, 'x');
 });
 
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');

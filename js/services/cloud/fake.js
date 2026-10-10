@@ -171,6 +171,11 @@ function seedProtests(db) {
   race.penalties = { pen1: { id: 'pen1', protestId: 'p1', n: 1, L: 'A', S: 'GP', uid: culprit, kind: 'time', seconds: 5, at: now - 16 * DAY } };
   race.picks = {};
   void A1;
+  db.notifications = {
+    nn1: { id: 'nn1', kind: 'season', sid: 'mcsm31', type: 'resultsOut', params: { s: 'MCSM31', n: 2 }, link: '#/szezonok/mcsm31/fordulo/2', by: 'owner', at: now - 2 * DAY },
+    nn2: { id: 'nn2', kind: 'season', sid: 'mcsm31', type: 'lobbiesOut', params: { s: 'MCSM31', n: 3 }, link: '#/szezonok/mcsm31/fordulo/3', by: 'owner', at: now - DAY },
+    nn3: { id: 'nn3', kind: 'all', sid: 'mcsm32', type: 'regOpen', params: { s: 'MCSM32' }, link: '#/szezonok/mcsm32', by: 'owner', at: now - 2 * DAY },
+  };
 }
 
 export function createFakeBackend() {
@@ -246,6 +251,9 @@ export function createFakeBackend() {
         if (!next || next.length < 8) fail('auth/weak-password');
         a.password = next; persist();
       },
+      async applyCode(code) { await lag(); if (code === 'expired') fail('auth/invalid-action-code'); const a = currentAcct(); if (a) { a.emailVerified = true; persist(); fireAuth(); } },
+      async checkResetCode(code) { await lag(); if (code === 'expired') fail('auth/invalid-action-code'); return 'pilota@mcsm.test'; },
+      async confirmReset(code, password) { await lag(); if (!password || password.length < 8) fail('auth/weak-password'); const a = db.accounts['pilota@mcsm.test']; if (a) { a.password = password; persist(); } },
       // Test backend only: pretend the user clicked the link in the verification email.
       async devVerify() { const a = me(); a.emailVerified = true; persist(); fireAuth(); },
     },
@@ -418,6 +426,28 @@ export function createFakeBackend() {
         if (e && !(admin && e === 'specLocked')) fail(e === 'specLocked' ? 'permission-denied' : 'spec-used');
         const round = season.rounds.find((r) => r.n === n);
         bucket(sid).picks[`${n}_${teamId}`] = { n, teamId, car, lockAt: round.date, by: a.uid, at: Date.now() }; persist();
+      },
+    },
+    content: {
+      async get(id) { await lag(); return clone((db.content || {})[id]) || null; },
+      async save(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); db.content = db.content || {}; db.content[id] = { ...clone(data), updatedAt: Date.now(), by: a.uid }; persist(); },
+    },
+    config: {
+      async get(id) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); return clone((db.config || {})[id]) || null; },
+      async save(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); db.config = db.config || {}; db.config[id] = clone(data); persist(); },
+    },
+    notify: {
+      async list(uid) {
+        await lag();
+        return Object.values(clone(db.notifications || {})).filter((n) => n.kind === 'all' || n.kind === 'season' || (uid && (n.uids || []).includes(uid)));
+      },
+      async add(n) {
+        await lag(); const a = me();
+        const driverTypes = ['protestAgainst', 'protestNew', 'promoted', 'reservePending'];
+        if (!(isAdminUid(a.uid) || isJudgeUid(a.uid) || (n.kind === 'users' && driverTypes.includes(n.type) && (n.uids || []).length <= 60))) fail('permission-denied');
+        db.notifications = db.notifications || {};
+        const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        db.notifications[id] = { ...clone(n), id, by: a.uid, at: Date.now() }; persist();
       },
     },
     audit: {

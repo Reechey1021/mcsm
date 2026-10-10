@@ -24,12 +24,15 @@ export async function createFirebaseBackend(config) {
   const toUser = (u) => (u ? { uid: u.uid, email: u.email, emailVerified: u.emailVerified } : null);
   const fail = (code) => { const e = new Error(code); e.code = code; throw e; };
   const userRef = (uid) => F.doc(db, 'users', uid);
+  // Firebase doesn't fire onAuthStateChanged after user.reload(), so we tell our own listeners.
+  const authSubs = new Set();
+  const here = () => ({ url: location.origin + location.pathname, handleCodeInApp: false });
   const wrap = async (fn) => { try { return await fn(); } catch (e) { if (e && e.code === 'permission-denied') fail('permission-denied'); throw e; } };
 
   return {
     kind: 'firebase',
     auth: {
-      onChange(cb) { return A.onAuthStateChanged(auth, (u) => cb(toUser(u))); },
+      onChange(cb) { authSubs.add(cb); const un = A.onAuthStateChanged(auth, (u) => cb(toUser(u))); return () => { authSubs.delete(cb); un(); }; },
       async signUp(email, password) {
         auth.languageCode = lang();
         const cred = await A.createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -38,14 +41,27 @@ export async function createFirebaseBackend(config) {
         batch.set(userRef(uid), { createdAt: now, updatedAt: now, lang: lang() });
         batch.set(F.doc(db, 'users', uid, 'private', 'account'), { email: cred.user.email });
         await batch.commit();
-        A.sendEmailVerification(cred.user).catch(() => {});
+        A.sendEmailVerification(cred.user, here()).catch(() => {});
         return toUser(cred.user);
       },
       async signIn(email, password) { return toUser((await A.signInWithEmailAndPassword(auth, email.trim(), password)).user); },
       async signOut() { await A.signOut(auth); },
-      async sendReset(email) { auth.languageCode = lang(); await A.sendPasswordResetEmail(auth, email.trim()); },
-      async sendVerification() { auth.languageCode = lang(); if (auth.currentUser) await A.sendEmailVerification(auth.currentUser); },
-      async reload() { if (!auth.currentUser) return null; await auth.currentUser.reload(); return toUser(auth.currentUser); },
+      async sendReset(email) { auth.languageCode = lang(); await A.sendPasswordResetEmail(auth, email.trim(), here()); },
+      async sendVerification() { auth.languageCode = lang(); if (auth.currentUser) await A.sendEmailVerification(auth.currentUser, here()); },
+      // Refresh the user and their ID token (the security rules read email_verified from the token),
+      // then let the app know.
+      async reload() {
+        if (!auth.currentUser) return null;
+        await auth.currentUser.reload();
+        await auth.currentUser.getIdToken(true);
+        const u = toUser(auth.currentUser);
+        authSubs.forEach((cb) => cb(u));
+        return u;
+      },
+      // Links from Firebase's emails land on our own page (see FIREBASE_SETUP.md, "action URL").
+      async applyCode(code) { await A.applyActionCode(auth, code); if (auth.currentUser) await this.reload(); },
+      async checkResetCode(code) { return A.verifyPasswordResetCode(auth, code); },
+      async confirmReset(code, password) { await A.confirmPasswordReset(auth, code, password); },
       async changePassword(current, next) {
         const u = auth.currentUser; if (!u) fail('permission-denied');
         await A.reauthenticateWithCredential(u, A.EmailAuthProvider.credential(u.email, current));
@@ -171,7 +187,7 @@ export async function createFirebaseBackend(config) {
     picks: {
       async list(sid, { teamId = null, admin = false } = {}) {
         const col = F.collection(db, 'seasons', sid, 'picks');
-        const qs = admin ? [col] : [F.query(col, F.where('lockAt', '<=', Date.now())), ...(teamId ? [F.query(col, F.where('teamId', '==', teamId))] : [])];
+        const qs = admin ? [col] : [F.query(col, F.where('lockAt', '<=', Date.now() - 5 * 60000)), ...(teamId ? [F.query(col, F.where('teamId', '==', teamId))] : [])];
         const res = await Promise.all(qs.map((q) => F.getDocs(q)));
         const m = new Map(); res.forEach((r) => r.docs.forEach((d) => m.set(d.id, d.data())));
         return [...m.values()];
@@ -183,6 +199,25 @@ export async function createFirebaseBackend(config) {
           await F.setDoc(F.doc(db, 'seasons', sid, 'picks', `${n}_${teamId}`), { n, teamId, car, lockAt: round.date, by: auth.currentUser.uid, at: Date.now() });
         });
       },
+    },
+    content: {
+      async get(id) { const d = await F.getDoc(F.doc(db, 'content', id)); return d.exists() ? d.data() : null; },
+      async save(id, data) { return wrap(() => F.setDoc(F.doc(db, 'content', id), { ...data, updatedAt: Date.now(), by: auth.currentUser.uid })); },
+    },
+    config: {
+      async get(id) { return wrap(async () => { const d = await F.getDoc(F.doc(db, 'config', id)); return d.exists() ? d.data() : null; }); },
+      async save(id, data) { return wrap(() => F.setDoc(F.doc(db, 'config', id), data)); },
+    },
+    notify: {
+      async list(uid) {
+        const col = F.collection(db, 'notifications');
+        const qs = [F.query(col, F.where('kind', 'in', ['all', 'season']))];
+        if (uid) qs.push(F.query(col, F.where('uids', 'array-contains', uid)));
+        const res = await Promise.all(qs.map((q) => F.getDocs(q)));
+        const m = new Map(); res.forEach((r) => r.docs.forEach((d) => m.set(d.id, { id: d.id, ...d.data() })));
+        return [...m.values()];
+      },
+      async add(n) { return wrap(() => F.addDoc(F.collection(db, 'notifications'), { ...n, by: auth.currentUser.uid, at: Date.now() })); },
     },
     audit: {
       async add(entry) { await F.addDoc(F.collection(db, 'audit'), { ...entry, by: auth.currentUser.uid, at: Date.now() }); },

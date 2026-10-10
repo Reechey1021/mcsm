@@ -15,7 +15,9 @@ import { screenWizard } from './screens/wizard.js';
 import { screenMe } from './screens/me.js';
 import { screenDrivers, screenDriver } from './screens/drivers.js';
 import { screenTeams } from './screens/teams.js';
-import { screenSoon, screenRules, screenNotFound } from './screens/static.js';
+import { screenSoon, screenRules, screenRulesEdit, screenNotFound } from './screens/static.js';
+import { screenGt7 } from './screens/admin/gt7.js';
+import { screenAction } from './screens/action.js';
 import { screenSeasons, screenSeason } from './screens/seasons.js';
 import { screenSeasonWizard } from './screens/admin/season-wizard.js';
 import { screenRound, screenPqEntry } from './screens/race.js';
@@ -42,11 +44,14 @@ const ROUTES = [
   ['/pilotak/:psn', screenDriver, { tab: 3 }],
   ['/csapatok', screenTeams, { tab: 5 }],
   ['/szabalyzat', screenRules, {}],
+  ['/szabalyzat/szerkesztes', screenRulesEdit, { auth: true, admin: true }],
+  ['/admin/gt7', screenGt7, { tab: 4, auth: true, admin: true }],
   ['/sajat', screenMe, { tab: 4, auth: true, noBanner: true }],
   ['/profil', screenWizard, { tab: 4, auth: true, noBanner: true, keep: true }],
   ['/belepes', screenSignIn, { guest: true }],
   ['/regisztracio', screenSignUp, { guest: true }],
   ['/jelszo', screenReset, {}],
+  ['/muvelet', screenAction, { noBanner: true, keep: true }],
   ['/admin', screenAdmin, { tab: 4, auth: true, admin: true }],
   ['/admin/felhasznalok', screenAdminPeople, { tab: 4, auth: true, admin: true }],
   ['/admin/csapatok', screenAdminTeams, { tab: 4, auth: true, admin: true }],

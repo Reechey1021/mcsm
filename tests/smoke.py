@@ -86,7 +86,7 @@ with sync_playwright() as p:
         pg.fill('.sheet input.input', 'TESZT RACING'); pg.click('.sheet .btn.primary'); pg.wait_for_timeout(1300)
         check('TESZT RACING' in pg.inner_text('#view'), f'{size}: team created')
         # language switch
-        pg.click('.hdr-actions .icon-btn'); pg.wait_for_timeout(700)
+        pg.click('.hdr-actions button[aria-label="Menü megnyitása"]'); pg.wait_for_timeout(700)
         pg.click('.sheet .seg button:has-text("English")'); pg.wait_for_timeout(900)
         check('MCSM teams' in pg.inner_text('#view'), f'{size}: English')
         pg.evaluate("localStorage.setItem('mcsm:lang', JSON.stringify('hu'))")

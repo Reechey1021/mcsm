@@ -17,6 +17,8 @@ import { DEFAULT_TABLE } from '../../engine/scoring.js';
 import { TRACKS, trackById, roundTitle } from '../../data/tracks.js';
 import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
+import { carField } from '../../ui/car-picker.js';
+import { notifyAll } from '../../services/notify.js';
 
 const STEP_KEYS = ['swBasics', 'swRounds', 'swCars', 'swEntry', 'swScoring', 'swReview'];
 const STEP_OF_ERROR = { no: 0, name: 0, coverUrl: 0, rounds: 1, car: 2, window: 3, cap: 3, lobbySize: 3, points: 4 };
@@ -123,11 +125,11 @@ function build(d, editing, all, us, gts) {
     () => {
       const box = h('div', { class: 'stack', style: 'gap:12px' });
       const draw = () => {
-        if (d.format === 'oneMake') box.replaceChildren(txt(t('car'), d.car, (v) => { d.car = v; }, { ph: 'Toyota FT-1 Vision Gran Turismo (Gr.3)', max: 80 }).row);
-        else if (d.format === 'special') box.replaceChildren(...(d.rounds.length ? d.rounds.map((r, i) => txt(t('carForRound', { n: i + 1, track: roundTitle(r) || '?' }), r.car, (v) => { r.car = v; }, { max: 80 }).row) : [h('p', { class: 'note' }, t('errNoRounds'))]));
+        if (d.format === 'oneMake') box.replaceChildren(field(t('car'), carField(d.car, (v) => { d.car = v; }), { hint: t('carPickerHint') }).row);
+        else if (d.format === 'special') box.replaceChildren(...(d.rounds.length ? d.rounds.map((r, i) => field(t('carForRound', { n: i + 1, track: roundTitle(r) || '?' }), carField(r.car, (v) => { r.car = v; })).row) : [h('p', { class: 'note' }, t('errNoRounds'))]));
         else {
           if (!d.cars.length) d.cars = ['', ''];
-          box.replaceChildren(...d.cars.map((c, i) => h('div', { style: 'display:flex;gap:8px;align-items:center' }, h('input', { class: 'input', value: c, maxlength: 80, placeholder: t('carN', { n: i + 1 }), oninput: (e) => { d.cars[i] = e.target.value; } }),
+          box.replaceChildren(...d.cars.map((c, i) => h('div', { style: 'display:flex;gap:8px;align-items:center' }, h('div', { style: 'flex:1;min-width:0' }, carField(c, (v) => { d.cars[i] = v; }, { placeholder: t('carN', { n: i + 1 }) })),
             h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.cars.splice(i, 1); draw(); } }, icon('trash')))),
             h('button', { class: 'btn small', type: 'button', onclick: () => { d.cars.push(''); draw(); } }, icon('plus'), t('addCar')), h('p', { class: 'note', style: 'margin:0' }, t('specHint')));
         }
@@ -221,6 +223,7 @@ function build(d, editing, all, us, gts) {
     try {
       await backend.seasons.save(data);
       await backend.audit.add({ action: editing ? 'season.update' : 'season.create', target: data.id, targetName: 'MCSM' + data.no, before: null, after: { state: data.state }, reason: null });
+      if (state === 'announced' && d.state !== 'announced') notifyAll(data, 'seasonAnnounced', {}, '#/szezonok/' + data.id);
       invalidateSeason(data.id); toast(editing ? t('saved') : t('seasonCreated', { n: data.no })); go('/szezonok/' + data.id);
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   });

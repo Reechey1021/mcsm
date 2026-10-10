@@ -11,6 +11,7 @@ import { session, isAdmin, roles, profileComplete } from '../services/session.js
 import { fullName, ROLE_KEYS } from '../model/profile.js';
 import { teamMap, gtTeams } from '../core/data.js';
 import { verifyBanner } from './banners.js';
+import { fmtInt } from '../core/motion.js';
 import { go } from '../router.js';
 import { myEntries } from './seasons.js';
 
@@ -30,7 +31,9 @@ export function profileKv(p, team, gtName) {
     kvi(t('mcsmTeam'), team ? frag(h('span', { style: `display:inline-block;width:4px;height:18px;border-radius:2px;background:${team.c1}` }), team.name) : t('noTeam')),
     kvi(t('gtTeam'), gtName || t('none')),
     kvi(t('inputLabel'), frag(icon(p.input === 'wheel' ? 'wheel' : 'pad'), input)),
-    kvi(t('viewLabel'), p.view ? t('view_' + p.view) : '–'));
+    kvi(t('viewLabel'), p.view ? t('view_' + p.view) : '–'),
+    kvi('DR / SR', frag(`${p.dr || '–'} / ${p.sr || '–'}`, p.drPoints ? h('span', { class: 'faint', style: 'font-weight:500;font-size:13px' }, fmtInt(p.drPoints)) : null), false),
+    p.ratingsSyncedAt ? kvi(t('ratingsSynced'), fmtDate(p.ratingsSyncedAt)) : kvi(t('ratingsSynced'), t('notSyncedYet')));
 }
 
 export function screenMe() {

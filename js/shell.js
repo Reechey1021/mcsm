@@ -13,6 +13,8 @@ import { backend } from './services/backend.js';
 import { session, signedIn, isAdmin, isJudgeRole } from './services/session.js';
 import { fullName } from './model/profile.js';
 import { go, currentRoute } from './router.js';
+import { notes, refreshNotes, markAllRead } from './services/notify.js';
+import { relTime } from './i18n/index.js';
 
 const TABS = [['/', 'navHome', 'home', 0], ['/szezonok', 'navSeasons', 'flag', 1], ['/eredmenyek', 'navResults', 'trophy', 2], ['/pilotak', 'navDrivers', 'users', 3], ['/sajat', 'navMe', 'user', 4]];
 const TOPNAV = [['/', 'navHome', 0], ['/szezonok', 'navSeasons', 1], ['/eredmenyek', 'navResults', 2], ['/pilotak', 'navDrivers', 3], ['/csapatok', 'navTeams', 5]];
@@ -22,16 +24,19 @@ export function buildShell() {
   const topInd = h('span', { class: 'ind' });
   const topNav = h('nav', { class: 'top-nav', 'aria-label': t('mainNav') }, TOPNAV.map(([href, k, tab]) => h('a', { href: '#' + href, dataset: { tab } }, t(k))), topInd);
   const meBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('openMenu'), onclick: openMenu });
+  const badge = h('span', { class: 'badge-dot', style: 'display:none' });
+  const bell = h('button', { class: 'icon-btn bell-btn', type: 'button', 'aria-label': t('notifications'), onclick: openNotes, style: 'display:none' }, icon('bell'), badge);
   const mode = backend && backend.kind === 'fake' ? h('button', { class: 'mode-pill tap', type: 'button', onclick: openMenu }, t('testMode')) : null;
   const header = h('header', { class: 'app-header' }, h('div', { class: 'in' },
     h('a', { class: 'logo', href: '#/', 'aria-label': t('homeLabel') }, h('img', { src: 'assets/logo.webp', alt: 'MCSM', width: '91', height: '34' })),
-    topNav, h('div', { class: 'hdr-actions' }, mode, meBtn)));
+    topNav, h('div', { class: 'hdr-actions' }, mode, bell, meBtn)));
   const tabInd = h('span', { class: 'ind' });
   const tabbar = h('nav', { class: 'tabbar', 'aria-label': t('mainNav') }, h('div', { class: 'in' }, tabInd,
     TABS.map(([href, k, ic, tab]) => h('a', { href: '#' + href, dataset: { tab } }, icon(ic), h('span', null, t(k))))));
   const main = h('main', { id: 'view', tabindex: '-1' });
   document.body.replaceChildren(header, main, tabbar);
-  els = { topNav, topInd, tabbar, tabInd, meBtn };
+  els = { topNav, topInd, tabbar, tabInd, meBtn, bell, badge };
+  refreshBell();
   refreshMe();
 }
 
@@ -42,6 +47,27 @@ function refreshMe() {
   const p = session.profile;
   els.meBtn.replaceChildren(signedIn() && p && p.lastName ? avatar(p, teamsById[p.teamId], 'me-btn') : icon(signedIn() ? 'user' : 'logout'));
   if (!signedIn()) els.meBtn.replaceChildren(icon('user'));
+}
+
+function refreshBell() {
+  if (!els.bell) return;
+  els.bell.style.display = signedIn() ? '' : 'none';
+  const n = notes.unread;
+  els.badge.textContent = n > 9 ? '9+' : String(n);
+  els.badge.style.display = n ? '' : 'none';
+}
+const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock' };
+function openNotes() {
+  const list = h('div');
+  const draw = () => list.replaceChildren(...(notes.items.length ? notes.items.map((n) => h('a', { class: 'notif' + ((n.synthetic || (n.at || 0) > ((session.profile || {}).notifReadAt || 0)) && n.by !== (session.user || {}).uid ? ' unread' : ''), href: n.link || '#/', onclick: () => sh.close(true) },
+    h('span', { class: 'ic' }, icon(NOTE_ICON[n.type] || 'bell')),
+    h('span', null, h('b', null, t('nt_' + n.type, n.params || {})), n.params && n.params.title ? h('span', null, n.params.title) : null, h('time', null, n.synthetic ? t('today') : relTime(n.at)))))
+    : [h('div', { class: 'empty' }, t('noNotifications'))]));
+  draw();
+  const markBtn = h('button', { class: 'btn small block', type: 'button', style: 'margin-top:14px' }, t('markAllRead'));
+  markBtn.addEventListener('click', async () => { await markAllRead(); draw(); });
+  const sh = openSheet({ title: t('notifications'), body: frag(list, markBtn) });
+  refreshNotes().then(draw).catch(() => {});
 }
 
 export function updateNav(r) {
@@ -84,6 +110,10 @@ export function openMenu() {
 
 export function initShell() {
   on('session', refreshMe);
+  on('session', refreshBell);
+  on('notes', refreshBell);
+  let lastUid = null;
+  on('session', () => { const uid = session.user ? session.user.uid : null; if (uid !== lastUid && session.ready) { lastUid = uid; refreshNotes().catch(() => {}); } });
   on('route', updateNav);
   window.addEventListener('resize', () => updateNav(currentRoute()), { passive: true });
 }

@@ -31,7 +31,7 @@ export function errorKey(e) {
   const map = {
     'auth/email-already-in-use': 'errEmailUsed', 'auth/invalid-email': 'errEmail', 'auth/weak-password': 'errWeakPassword',
     'auth/invalid-credential': 'errCredentials', 'auth/wrong-password': 'errCredentials', 'auth/user-not-found': 'errCredentials',
-    'auth/too-many-requests': 'errTooMany', 'auth/network-request-failed': 'errNetwork', 'auth/requires-recent-login': 'errRecentLogin',
+    'auth/too-many-requests': 'errTooMany', 'auth/invalid-action-code': 'errActionCode', 'auth/expired-action-code': 'errActionCode', 'auth/network-request-failed': 'errNetwork', 'auth/requires-recent-login': 'errRecentLogin',
     'psn-taken': 'errPsnTaken', 'permission-denied': 'errPermission', 'unavailable': 'errNetwork',
   };
   return map[code] || 'errGeneric';

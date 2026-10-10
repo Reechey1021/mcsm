@@ -17,6 +17,7 @@ import { LOBBIES, sessionPoints, flHolder, gpGrid, promoteRelegate } from '../en
 import { SESSIONS, sheetId, lobbyOf, pqProposal, pqConflicts, noShows, fmtLap, fmtRace, parseLap } from '../model/race.js';
 import { roundTitle } from '../data/tracks.js';
 import { roundProtests } from './protests.js';
+import { notifySeason } from '../services/notify.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 const lobbyBadge = (L) => h('span', { class: 'lobby ' + L }, L);
@@ -162,6 +163,7 @@ function adminRoundCard(ctx, n, reload) {
       for (const x of roundSheets) if (x.state !== 'published') await backend.race.sheetSave(s.id, x.id, { state: 'published' });
       await backend.race.roundSave(s.id, n, { resultsState: 'provisional' });
       await audit('round.publish', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` });
+      if (doc.resultsState !== 'provisional') notifySeason(s, 'resultsOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
       toast(t('resultsPublished')); haptic(15); reload();
     } catch (e) { toast(t(errorKey(e)), 'alert'); }
   }));
@@ -220,7 +222,7 @@ function lobbyEditor(ctx, n, reload) {
     if (n === 1) { lobbies = pqProposal(ctx.pqRank, size); flags = new Set(ctx.pqRank.filter((r) => r.missing).map((r) => r.uid)); }
     else {
       if (!prev) { err.replaceChildren(formError(t('prevRoundMissing'))); return; }
-      lobbies = promoteRelegate(prev, s.promote ?? 2, ctx.points); flags = noShows(prev, ctx.entries);
+      flags = noShows(prev, ctx.entries); lobbies = promoteRelegate(prev, s.promote ?? 2, ctx.points, flags);
     }
     LOBBIES.forEach((L) => { lobbies[L] = lobbies[L] || []; });
     toast(flags.size ? t('proposalFlags', { n: flags.size }) : t('proposalReady'), flags.size ? 'alert' : 'check');
@@ -230,6 +232,7 @@ function lobbyEditor(ctx, n, reload) {
     try {
       await backend.race.roundSave(s.id, n, { lobbies, lobbiesPublished: publishIt || !!doc.lobbiesPublished, resultsState: doc.resultsState || 'none' });
       await audit(publishIt ? 'round.lobbies' : 'round.lobbiesDraft', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` });
+      if (publishIt) notifySeason(s, 'lobbiesOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
       toast(publishIt ? t('lobbiesPublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   });

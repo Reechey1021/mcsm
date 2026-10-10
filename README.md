@@ -11,8 +11,8 @@ cd mcsm
 python3 -m http.server 8765
 ```
 
-Open http://localhost:8765/ . With no Firebase config (see `FIREBASE_SETUP.md`) it runs on
-the **test backend**: everything lives in your browser, and each tab is its own "device".
+Open http://localhost:8765/?fakecloud . The build points at the real Firebase project; `?fakecloud`
+switches the tab to the **test backend**: everything lives in your browser, and each tab is its own "device".
 
 Test accounts (password `demo1234`):
 
@@ -37,6 +37,7 @@ python3 tests/smoke.py [shot-dir]          # accounts, wizard, directory, admin
 python3 tests/smoke_seasons.py [shot-dir]  # seasons, entering, waitlist, season wizard
 python3 tests/smoke_race.py [shot-dir]     # standings, rounds, PQ, lobbies, results entry
 python3 tests/smoke_protests.py [shot-dir] # protests, stewards, penalties, Spec picks
+python3 tests/smoke_v05.py [shot-dir]      # signed-out pages, rules editor, GT7 data, car picker, notifications
 # both need the server above and playwright
 ```
 

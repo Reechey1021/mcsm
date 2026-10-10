@@ -61,12 +61,20 @@ export function lobbyRanking(round, L, table = DEFAULT_TABLE) {
 }
 
 // Bottom n of A swap with top n of B, and the same between B and C.
-export function promoteRelegate(round, n = 2, table = DEFAULT_TABLE) {
-  const A = lobbyRanking(round, 'A', table), B = lobbyRanking(round, 'B', table), C = lobbyRanking(round, 'C', table);
+// No-shows (optional set) rank last in their lobby, so they are the first to drop,
+// and they are never promoted: the next driver who raced takes the place.
+export function promoteRelegate(round, n = 2, table = DEFAULT_TABLE, noShows = null) {
+  const absent = (id) => !!(noShows && noShows.has(id));
+  const rank = (L) => { const r = lobbyRanking(round, L, table); return [...r.filter((id) => !absent(id)), ...r.filter(absent)]; };
+  const A = rank('A'), B = rank('B'), C = rank('C');
+  const upFrom = (list) => list.filter((id) => !absent(id)).slice(0, n);
+  const upB = upFrom(B), upC = upFrom(C);
+  const downA = A.slice(A.length - upB.length), restB = B.filter((id) => !upB.includes(id));
+  const downB = restB.slice(restB.length - upC.length);
   return {
-    A: [...A.slice(0, A.length - n), ...B.slice(0, n)],
-    B: [...A.slice(-n), ...B.slice(n, B.length - n), ...C.slice(0, n)],
-    C: [...B.slice(-n), ...C.slice(n)],
+    A: [...A.slice(0, A.length - upB.length), ...upB],
+    B: [...downA, ...restB.filter((id) => !downB.includes(id)), ...upC],
+    C: [...downB, ...C.filter((id) => !upC.includes(id))],
   };
 }
 

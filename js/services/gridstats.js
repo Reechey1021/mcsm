@@ -63,7 +63,7 @@ export function fakeGridstats() {
       const drs = ['A+', 'A', 'B', 'C'], srs = ['S', 'A', 'B'];
       const known = ids.filter((x, i) => i % 7 !== 6);
       return { status: 'complete', count: known.length, not_found: ids.filter((x) => !known.includes(x)),
-        drivers: known.map((id) => { let hsh = 0; for (const c of id) hsh = (hsh * 31 + c.charCodeAt(0)) | 0; hsh = Math.abs(hsh); return { PSN_ID: id, DR: drs[hsh % 4], SR: srs[hsh % 3], stats: { dr_points: 5000 + (hsh % 60000) } }; }) };
+        drivers: known.map((id) => { let hsh = 0; for (const c of id) hsh = (hsh * 31 + c.charCodeAt(0)) | 0; hsh = Math.abs(hsh); const pts = 2000 + (hsh % 70000); const dr = pts >= 50000 ? 'A+' : pts >= 30000 ? 'A' : pts >= 10000 ? 'B' : pts >= 4000 ? 'C' : 'D'; return { PSN_ID: id, DR: dr, SR: srs[hsh % 3], country_code: 'HU', stats: { dr_points: pts, total_races: 50 + (hsh % 900), victories: hsh % 120, clean_races: 20 + (hsh % 400) } }; }) };
     },
   };
 }

@@ -15,7 +15,7 @@ import { fetchCatalog, fakeCatalog } from '../../services/gt7info.js';
 import { onLeave } from '../../router.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const gsError = (e) => t({ 'gs-blocked': 'gsBlocked', 'gs-auth': 'gsAuth', 'gs-quota': 'gsQuota', 'gs-notfound': 'gsNotFound', 'gs-http': 'gsHttp' }[e && e.code] || errorKey(e));
+const gsError = (e) => (e && e.code === 'permission-denied' ? t('permRulesHint') : t({ 'gs-blocked': 'gsBlocked', 'gs-auth': 'gsAuth', 'gs-quota': 'gsQuota', 'gs-notfound': 'gsNotFound', 'gs-http': 'gsHttp' }[e && e.code] || errorKey(e)));
 
 export function screenGt7() {
   const root = h('div', null, skelRows(3, 120));
@@ -51,8 +51,10 @@ export function screenGt7() {
     const carsBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('car'), t('gsCarsImport'));
     carsBtn.addEventListener('click', () => busy(carsBtn, async () => {
       carsProg.replaceChildren();
+      let all;
+      try { all = fake ? await fakeCatalog() : await fetchCatalog(); }
+      catch { carsProg.replaceChildren(formError(t('carsFetchFailed'))); toast(t('carsFetchFailed'), 'alert'); return; }
       try {
-        const all = fake ? await fakeCatalog() : await fetchCatalog();
         const classed = all.filter((c) => c.cls).length;
         await backend.content.save('cars', { cars: all, count: all.length, source: 'GT7 Info' });
         await backend.audit.add({ action: 'gt7.cars', target: 'cars', targetName: t('gsCarsTitle'), before: null, after: { count: all.length }, reason: null });
@@ -60,7 +62,7 @@ export function screenGt7() {
         carsInfo.textContent = t('gsCarsHave', { n: all.length, date: fmtDate(Date.now()) });
         carsProg.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('carsImported', { n: all.length, c: classed }))));
         toast(t('gsCarsDone', { n: all.length }));
-      } catch (e) { carsProg.replaceChildren(formError(t('carsFetchFailed'))); toast(t('carsFetchFailed'), 'alert'); }
+      } catch (e) { carsProg.replaceChildren(formError(gsError(e))); toast(gsError(e), 'alert'); }
     }));
     // ratings
     const rateProg = h('div');
@@ -80,7 +82,8 @@ export function screenGt7() {
           const res = await api.racers(batches[b].map((u) => u.psn));
           for (const d of res.drivers || []) {
             const u = byPsn[String(d.PSN_ID || '').toLowerCase()]; if (!u) continue;
-            const patch = { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: (d.stats && d.stats.dr_points) ?? null, ratingsSyncedAt: Date.now() };
+            const st = d.stats || {};
+            const patch = { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now() };
             await backend.users.save(u.uid, patch); updated++;
           }
           (res.not_found || []).forEach((p) => missing.push(p));

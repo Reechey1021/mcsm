@@ -49,7 +49,9 @@ export function screenRules() {
       LANG === 'en' && doc && !doc.en ? h('div', { class: 'callout', style: 'margin-bottom:14px' }, icon('info'), h('span', null, t('rulesHuOnly'))) : null,
       h('section', { class: 'panel pad' }, renderMarkdown(src)),
       doc && doc.updatedAt ? h('p', { class: 'note' }, t('lastUpdated', { date: fmtDate(doc.updatedAt) })) : h('p', { class: 'note' }, t('rulesDefaultNote')));
-  }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
+  }).catch(() => box.replaceChildren(
+    isAdmin() ? h('div', { class: 'callout warn', style: 'margin-bottom:14px' }, icon('alert'), h('span', null, t('rulesReadFailed'))) : null,
+    h('section', { class: 'panel pad' }, renderMarkdown(DEFAULT_RULES.hu))));
   return frag(h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('h1', { class: 'display page-title' }, t('rules')),
     isAdmin() ? h('a', { class: 'btn small', href: '#/szabalyzat/szerkesztes' }, icon('edit'), t('edit')) : null), box);
 }

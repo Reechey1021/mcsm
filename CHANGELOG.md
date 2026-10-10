@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.2 – Profile, phone fixes, clearer errors
+- New profile (My page and public driver pages): a rev-counter DR gauge with the class bands
+  (D 0–4K, C 4–10K, B 10–30K, A 30–50K, A+ 50K+), a needle that sweeps up on load, exact DR points
+  after a sync and how far to the next class; the SR scale; GT7 career numbers (races, wins, clean
+  races) from GridStats; and a one-column details list instead of the box grid.
+- Phones: text no longer grows with the browser's automatic text sizing; while the keyboard is
+  open the tab bar hides, the form gets room below it and the field you're typing in stays in view.
+- Tab bar: removed the little yellow line that ran through the labels.
+- Season wizard review: one column, titles above answers, dividers.
+- Rules page shows the default summary if the saved one can't be read (admins see why).
+- GT7 data page: permission problems now say so (and how to fix them) instead of a generic error;
+  the car list tries GT7 Info's GitHub copy if the main one can't be read; the DR/SR sync also
+  keeps races, wins, clean races and country.
+- Firestore rules: new profile fields, and admins may create imported profiles (for the import).
+
 ## 0.5.1 – Car list from GT7 Info
 - The car list now comes from GT7 Info (github.com/ddm999/gt7info): open community data from the
   game's own database, updated after GT7 updates, with no token and no daily limit. One button in

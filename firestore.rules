@@ -23,7 +23,7 @@ service cloud.firestore {
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
               'complete', 'updatedAt', 'createdAt', 'notifReadAt'];
     }
-    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt']); }
+    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy']); }
 
     function okStr(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
     function validProfile(d) {
@@ -60,9 +60,11 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if true;
-      allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(selfKeys())
-        && validProfile(request.resource.data) && psnLockOk(uid) && teamOk();
+      allow create: if (signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(selfKeys())
+          && validProfile(request.resource.data) && psnLockOk(uid) && teamOk())
+        || (isAdmin() && request.resource.data.keys().hasOnly(adminKeys())
+          && validProfile(request.resource.data) && psnLockOk(uid));
       allow update: if signedIn() && (
           (request.auth.uid == uid
             && request.resource.data.keys().hasOnly(adminKeys())

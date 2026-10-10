@@ -191,4 +191,6 @@ export const en = {
   carSearchPh: 'Start typing the car name…', carPickerHint: 'Suggests from the car list (Admin → GT7 data), but you can type anything.', ratingsSynced: 'DR/SR updated', notSyncedYet: 'Entered by hand',
   'audit_content.rules': 'edited the rules:', 'audit_gt7.cars': 'imported the car list:', 'audit_gt7.ratings': 'refreshed DR/SR:',
   carsImported: '{n} cars saved, {c} of them with a race class (Gr.1–Gr.4, Gr.B).', carsFetchFailed: "Couldn't download the car list from GT7 Info. Try again later.",
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} points', drNoPoints: 'Exact DR points after the GridStats sync.', drNext: 'Next: {cls}, {n} points to go', drTop: 'Top class: A+', syncedAt: 'Updated {date}', srNote: "The game doesn't show exact SR either, only the letter.", gt7Career: 'GT7 career', statRaces: 'races', wins: 'wins', statClean: 'clean races', rulesReadFailed: "The saved rules couldn't be loaded, so the default text is showing. The Firestore rules (firestore.rules) probably need publishing again.", permRulesHint: 'No permission: publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).',
+  drPointsCap: 'DR POINTS',
 };

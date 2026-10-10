@@ -11,6 +11,7 @@ import { buildShell, initShell, applyTheme, updateNav, setTeamsForShell } from '
 import { initRouter, currentRoute, rerender } from './router.js';
 import { teamMap } from './core/data.js';
 import { initNotes } from './services/notify.js';
+import { initKeyboard } from './ui/keyboard.js';
 
 // Guard: a conditional child that's empty (null/false) must never render as the word "null".
 const nativeReplace = Element.prototype.replaceChildren;
@@ -41,6 +42,7 @@ async function boot() {
   initRouter();
   initPress();
   initNotes();
+  initKeyboard();
   teamMap().then(setTeamsForShell).catch(() => {});
   on('relang', () => { buildShell(); rerender(); updateNav(currentRoute()); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => updateNav(currentRoute()));

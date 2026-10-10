@@ -12,6 +12,7 @@ import { fullName, ROLE_KEYS } from '../model/profile.js';
 import { teamMap, gtTeams } from '../core/data.js';
 import { verifyBanner } from './banners.js';
 import { fmtInt } from '../core/motion.js';
+import { ratingPanel } from '../ui/rating.js';
 import { go } from '../router.js';
 import { myEntries } from './seasons.js';
 
@@ -20,20 +21,20 @@ export function profileHead(p, team, opts = {}) {
   if (opts.vt) av.style.viewTransitionName = 'drv-hero';
   return h('section', { class: 'profile-head' }, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
     h('div', { style: 'min-width:0' }, h('h1', { class: 'display' }, (p.lastName || '').toLocaleUpperCase('hu'), h('br'), p.firstName || ''),
-      h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p))));
+      h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p)),
+      h('div', { class: 'head-chips' }, team ? h('span', { class: 'head-chip' }, h('span', { class: 'team-dot', style: `background:${team.c1}` }), team.name) : null, p.gtTeamId ? h('span', { class: 'head-chip' }, p.gtTeamId) : null)));
 }
 
 export function profileKv(p, team, gtName) {
-  const kvi = (k, v, big) => h('div', null, h('div', { class: 'label' }, k), h('div', { class: 'v' + (big ? ' big' : '') }, v));
+  const row = (ic, k, v) => h('div', { class: 'info-row' }, icon(ic), h('span', { class: 'k' }, k), h('span', { class: 'v' }, v));
   const input = p.input === 'wheel' ? `${t('wheel')}${p.wheelBrand ? ' (' + (p.wheelBrand === 'other' ? p.wheelOther : p.wheelBrand) + ')' : ''}` : t('pad');
-  return h('div', { class: 'kv', style: 'margin-top:16px' },
-    kvi(t('raceNumber'), '#' + (p.raceNumber ?? '–'), true),
-    kvi(t('mcsmTeam'), team ? frag(h('span', { style: `display:inline-block;width:4px;height:18px;border-radius:2px;background:${team.c1}` }), team.name) : t('noTeam')),
-    kvi(t('gtTeam'), gtName || t('none')),
-    kvi(t('inputLabel'), frag(icon(p.input === 'wheel' ? 'wheel' : 'pad'), input)),
-    kvi(t('viewLabel'), p.view ? t('view_' + p.view) : '–'),
-    kvi('DR / SR', frag(`${p.dr || '–'} / ${p.sr || '–'}`, p.drPoints ? h('span', { class: 'faint', style: 'font-weight:500;font-size:13px' }, fmtInt(p.drPoints)) : null), false),
-    p.ratingsSyncedAt ? kvi(t('ratingsSynced'), fmtDate(p.ratingsSyncedAt)) : kvi(t('ratingsSynced'), t('notSyncedYet')));
+  return frag(ratingPanel(p),
+    h('section', { class: 'panel info-list' },
+      row('flag', t('raceNumber'), h('b', { class: 'rnum', style: 'font-size:20px' }, '#' + (p.raceNumber ?? '–'))),
+      row('users', t('mcsmTeam'), team ? frag(h('span', { class: 'team-dot', style: `background:${team.c1}` }), team.name) : t('noTeam')),
+      row('grid', t('gtTeam'), gtName || t('none')),
+      row(p.input === 'wheel' ? 'wheel' : 'pad', t('inputLabel'), input),
+      row('eye', t('viewLabel'), p.view ? t('view_' + p.view) : '–')));
 }
 
 export function screenMe() {

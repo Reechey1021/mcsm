@@ -207,4 +207,6 @@ export const hu = {
   carSearchPh: 'Kezdd el gépelni az autó nevét…', carPickerHint: 'Az autólistából ajánl (Admin → GT7 adatok), de bármit beírhatsz.', ratingsSynced: 'DR/SR frissítve', notSyncedYet: 'Kézzel megadva',
   'audit_content.rules': 'módosította a szabályzatot:', 'audit_gt7.cars': 'letöltötte az autólistát:', 'audit_gt7.ratings': 'frissítette a DR/SR értékeket:',
   carsImported: '{n} autó mentve, ebből {c} versenyosztállyal (Gr.1–Gr.4, Gr.B).', carsFetchFailed: 'Nem sikerült letölteni az autólistát a GT7 Info oldaláról. Próbáld újra később.',
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} pont', drNoPoints: 'Pontos DR-érték a GridStats szinkron után.', drNext: 'Következő szint: {cls}, még {n} pont', drTop: 'Csúcskategória: A+', syncedAt: 'Frissítve: {date}', srNote: 'Az SR pontos értékét a játék sem mutatja, csak a betűt.', gt7Career: 'GT7 karrier', statRaces: 'futam', wins: 'győzelem', statClean: 'tiszta futam', rulesReadFailed: 'A mentett szabályzatot nem sikerült betölteni, ezért az alapértelmezett látszik. Valószínűleg frissíteni kell a Firestore szabályokat (firestore.rules).', permRulesHint: 'Nincs jogosultság: töltsd fel a legújabb firestore.rules fájlt a Firebase konzolban (Firestore → Rules → Publish).',
+  drPointsCap: 'DR PONT',
 };

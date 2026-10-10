@@ -48,7 +48,7 @@ with sync_playwright() as p:
         check('frissítve' in text(pg, 'body'), f'{size}: ratings synced')
         snap(pg, f'v5_gt7_{size}')
         go(pg, '/pilotak/mgtk_dudu', None, 2000)
-        check('DR/SR frissítve' in text(pg) and 'Kézzel megadva' not in text(pg), f'{size}: profile shows sync date')
+        check('Frissítve:' in text(pg) and 'Kézzel megadva' not in text(pg) and 'DR PONT' in text(pg), f'{size}: profile shows sync date')
         # car picker in the season wizard
         go(pg, '/admin/szezon/uj', 'owner', 1800)
         pg.click('.seg button:has-text("Autók")'); pg.wait_for_timeout(600)

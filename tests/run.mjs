@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear(), key: (i) => [...m.keys()][i] }; };
 globalThis.localStorage = mem(); globalThis.sessionStorage = mem();
 globalThis.location = { search: '' }; globalThis.window = { addEventListener() {} };
+globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, addListener() {} }); globalThis.CSS = globalThis.CSS || { supports: () => false };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let passed = 0; const failed = [];
@@ -395,6 +396,14 @@ await test('GT7 Info car list: CSV, makers, classes', async () => {
   const cat = G.buildCatalog('ID,ShortName,Maker\n2187,FT-1 VGT (Gr.3),43\n3311,911 RSR (991) \'17,136\n', 'ID,Name\n43,Toyota\n136,Porsche', 'ID,Group\n3311,3');
   eq(cat.map((c) => [c.name, c.cls]), [["Porsche 911 RSR (991) '17", 'Gr.3'], ['Toyota FT-1 VGT (Gr.3)', 'Gr.3']]);
   const fake = await G.fakeCatalog(); eq(fake.length, 20); ok(fake.some((c) => /Supra/.test(c.name)));
+});
+
+
+await test('DR gauge position and next class', async () => {
+  const R = await import('../js/ui/rating.js');
+  eq(R.drPosition(0), 0); eq(R.drPosition(4000), 0.2); eq(R.drPosition(7000), 0.3); eq(R.drPosition(50000), 0.8); eq(R.drPosition(250000), 1);
+  eq(R.drPosition(null, 'B'), 0.5); eq(R.drPosition(null, 'E'), 0.02);
+  eq(R.nextClass(9000), { cls: 'B', need: 1000 }); eq(R.nextClass(61000), null);
 });
 
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');

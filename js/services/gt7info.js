@@ -6,7 +6,7 @@
 //   cars.csv   ID,ShortName,Maker      (Maker = maker ID)
 //   maker.csv  maker IDs -> names       (read by header, so column order doesn't matter)
 //   cargrp.csv car IDs -> race group    (optional; updated more slowly, so it only fills gaps)
-const BASE = 'https://ddm999.github.io/gt7info/data/db/';
+const BASES = ['https://ddm999.github.io/gt7info/data/db/', 'https://raw.githubusercontent.com/ddm999/gt7info/web-new/_data/db/'];
 
 export function parseCsv(text) {
   const rows = [];
@@ -60,11 +60,14 @@ export function buildCatalog(carsCsv, makerCsv, grpCsv) {
 }
 
 async function get(file, optional) {
-  try {
-    const res = await fetch(BASE + file, { cache: 'no-store' });
-    if (!res.ok) { if (optional) return ''; throw Object.assign(new Error('gt7info-http'), { code: 'gt7info-http' }); }
-    return await res.text();
-  } catch (e) { if (optional) return ''; throw Object.assign(new Error('gt7info-network'), { code: e.code || 'gt7info-network' }); }
+  for (const base of BASES) {
+    try {
+      const res = await fetch(base + file, { cache: 'no-store' });
+      if (res.ok) return await res.text();
+    } catch { /* try the next copy */ }
+  }
+  if (optional) return '';
+  throw Object.assign(new Error('gt7info-network'), { code: 'gt7info-network' });
 }
 export async function fetchCatalog() {
   const [cars, makers, grp] = await Promise.all([get('cars.csv'), get('maker.csv'), get('cargrp.csv', true)]);

@@ -1,0 +1,9 @@
+rules_version = '2';
+// Phase 1 stores nothing in Cloud Storage yet (team logos and avatars come later).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

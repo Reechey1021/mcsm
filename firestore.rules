@@ -1,0 +1,222 @@
+rules_version = '2';
+// MCSM security rules (phase 1: accounts, profiles, roles, teams, audit log).
+// Bootstrapping: give the first owner { roles: { owner: true } } by hand in the
+// Firebase console (FIREBASE_SETUP.md, step 6). After that, owners manage roles in the app.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function userDoc(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function myRoles() {
+      return signedIn() && exists(userDoc(request.auth.uid))
+        ? get(userDoc(request.auth.uid)).data.get('roles', {}) : {};
+    }
+    function isOwner() { return myRoles().get('owner', false) == true; }
+    function isAdmin() { return isOwner() || myRoles().get('admin', false) == true; }
+    function isStaff() { return isAdmin() || myRoles().get('resultsEditor', false) == true; }
+    function isJudge() { return isAdmin() || myRoles().get('judge', false) == true || myRoles().get('judgeChair', false) == true; }
+    function isChair() { return isAdmin() || myRoles().get('judgeChair', false) == true; }
+
+    // Fields a driver may write on their own profile (mirrors model/profile.js SELF_KEYS).
+    function selfKeys() {
+      return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
+              'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
+              'complete', 'updatedAt', 'createdAt'];
+    }
+    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote']); }
+
+    function okStr(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
+    function validProfile(d) {
+      return okStr(d, 'firstName', 40) && okStr(d, 'lastName', 40) && okStr(d, 'psn', 16)
+        && okStr(d, 'psnLower', 16) && okStr(d, 'wheelBrand', 20) && okStr(d, 'wheelOther', 40)
+        && okStr(d, 'view', 12) && okStr(d, 'dr', 2) && okStr(d, 'sr', 1) && okStr(d, 'streamUrl', 200)
+        && okStr(d, 'gtTeamId', 12) && okStr(d, 'teamId', 40) && okStr(d, 'teamRequest', 40) && okStr(d, 'lang', 2)
+        && (!('input' in d) || d.input in ['wheel', 'pad'])
+        && (!('raceNumber' in d) || d.raceNumber == null || (d.raceNumber is int && d.raceNumber >= 1 && d.raceNumber <= 999))
+        && (!('psn' in d) || d.psn == null || d.psnLower == d.psn.lower());
+    }
+    // A new or changed PSN ID must be locked to this user in the same write.
+    function psnLockOk(uid) {
+      return !('psnLower' in request.resource.data) || request.resource.data.psnLower == null
+        || (resource != null && resource.data.get('psnLower', null) == request.resource.data.psnLower)
+        || getAfter(/databases/$(database)/documents/psnIds/$(request.resource.data.psnLower)).data.uid == uid;
+    }
+    // Drivers can only pick "free" teams themselves; permission teams go through an admin.
+    function teamOk() {
+      return !('teamId' in request.resource.data) || request.resource.data.teamId == null
+        || (resource != null && resource.data.get('teamId', null) == request.resource.data.teamId)
+        || get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)).data.status == 'free';
+    }
+    function rolesUnchanged() {
+      return request.resource.data.get('roles', {}) == (resource == null ? {} : resource.data.get('roles', {}));
+    }
+    // Only owners may grant or remove the owner and admin roles.
+    function ownerGrantOk() {
+      let before = resource == null ? {} : resource.data.get('roles', {});
+      let after = request.resource.data.get('roles', {});
+      return isOwner() || (before.get('owner', false) == after.get('owner', false)
+                          && before.get('admin', false) == after.get('admin', false));
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(selfKeys())
+        && validProfile(request.resource.data) && psnLockOk(uid) && teamOk();
+      allow update: if signedIn() && (
+          (request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(adminKeys())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(selfKeys())
+            && validProfile(request.resource.data) && psnLockOk(uid) && teamOk())
+          || (isAdmin() && request.resource.data.keys().hasOnly(adminKeys())
+            && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk()));
+      allow delete: if isOwner();
+
+      match /private/{doc} {
+        allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email']);
+        allow delete: if isOwner();
+      }
+    }
+
+    match /psnIds/{psn} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid'])
+        && (request.resource.data.uid == request.auth.uid || isAdmin());
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    match /teams/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /gtTeams/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- seasons & entries (phase 2) ----------
+    function nowMs() { return request.time.toMillis(); }
+    function seasonData(sid) { return get(/databases/$(database)/documents/seasons/$(sid)).data; }
+    function regOpen(s) {
+      return s.state == 'announced' && s.get('regOpensAt', null) != null && s.get('regClosesAt', null) != null
+        && nowMs() >= s.regOpensAt && nowMs() < s.regClosesAt;
+    }
+    function profileReady(uid) {
+      let u = get(userDoc(uid)).data;
+      return u.get('complete', false) == true && request.auth.token.email_verified == true
+        && (u.get('suspendedUntil', null) == null || u.suspendedUntil < nowMs());
+    }
+    function entryKeys() {
+      return ['uid', 'type', 'status', 'order', 'approved', 'seeded', 'snapshot', 'availability',
+              'absences', 'note', 'createdAt', 'updatedAt', 'withdrawnAt'];
+    }
+    function selfEntryCreate(sid, uid) {
+      let s = seasonData(sid);
+      let d = request.resource.data;
+      return d.keys().hasOnly(entryKeys()) && d.uid == uid && d.status == 'entered'
+        && d.get('seeded', false) == false && profileReady(uid)
+        && ((d.type == 'driver' && regOpen(s))
+            || (d.type == 'reserve' && (regOpen(s)
+                || (d.get('approved', true) == false && s.state in ['announced', 'pq', 'running']))));
+    }
+    function selfEntryUpdate(sid) {
+      let s = seasonData(sid);
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['status', 'absences', 'availability', 'note', 'updatedAt', 'withdrawnAt', 'order', 'snapshot'])
+        && d.status in ['entered', 'withdrawn']
+        // Coming back after withdrawing: only while registration is open, at the back of the queue.
+        && (!changed.hasAny(['order', 'snapshot'])
+            || (resource.data.status == 'withdrawn' && d.status == 'entered' && regOpen(s) && d.order >= nowMs() - 120000));
+    }
+
+    match /seasons/{sid} {
+      allow read: if resource.data.state != 'draft' || isAdmin();
+      allow create, update, delete: if isAdmin();
+
+
+
+      // ----- protests, votes, penalties (phase 4) -----
+      // Filing window: race night 21:30 (start + 2.5 h) until Monday 20:00 (start + 25 h),
+      // unless the round doc extends it with protestClosesAt.
+      function protestOpen(n) {
+        let r = seasonData(sid).rounds[n - 1];
+        let doc = get(/databases/$(database)/documents/seasons/$(sid)/rounds/$(string(n))).data;
+        return nowMs() >= doc.get('protestOpensAt', r.date + 9000000) && nowMs() < doc.get('protestClosesAt', r.date + 90000000);
+      }
+      function enteredHere() {
+        return exists(/databases/$(database)/documents/seasons/$(sid)/entries/$(request.auth.uid))
+          && get(/databases/$(database)/documents/seasons/$(sid)/entries/$(request.auth.uid)).data.status != 'withdrawn'
+          && get(/databases/$(database)/documents/seasons/$(sid)/entries/$(request.auth.uid)).data.get('approved', true) != false;
+      }
+      match /protests/{pid} {
+        allow read: if resource.data.status == 'published' || isJudge()
+          || (signedIn() && (resource.data.by == request.auth.uid || request.auth.uid in resource.data.get('involved', [])));
+        allow create: if signedIn() && request.resource.data.by == request.auth.uid
+          && ((request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n))
+              || (request.resource.data.type == 'judge' && isJudge()));
+        // The filer may withdraw while nobody has picked the case up; everything else is the chair's.
+        allow update: if isChair()
+          || (signedIn() && resource.data.by == request.auth.uid && resource.data.status == 'filed'
+              && request.resource.data.status == 'withdrawn'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        allow delete: if isAdmin();
+        match /votes/{judgeUid} {
+          allow read: if isJudge();
+          allow write: if isJudge() && judgeUid == request.auth.uid;
+        }
+        match /notes/{noteId} {
+          allow read: if isJudge();
+          allow create: if isJudge() && request.resource.data.by == request.auth.uid;
+        }
+      }
+      match /penalties/{penId} {
+        allow read: if true;
+        allow write: if isChair();
+      }
+      // Spec format: a team's car per round, hidden from other teams until quali starts.
+      function myTeam() {
+        return get(/databases/$(database)/documents/seasons/$(sid)/entries/$(request.auth.uid)).data.snapshot.teamId;
+      }
+      match /picks/{pickId} {
+        allow read: if resource.data.lockAt <= nowMs() || isAdmin() || (signedIn() && myTeam() == resource.data.teamId);
+        allow write: if isAdmin() || (signedIn() && enteredHere() && myTeam() == request.resource.data.teamId
+          && request.resource.data.lockAt == seasonData(sid).rounds[request.resource.data.n - 1].date
+          && nowMs() < request.resource.data.lockAt
+          && request.resource.data.car in seasonData(sid).cars);
+      }
+
+      // ----- race data (phase 3) -----
+      match /pq/{pqId} {
+        allow read: if true;
+        allow write: if isStaff();
+      }
+      match /rounds/{n} {
+        allow read: if resource.data.get('lobbiesPublished', false) == true || isStaff();
+        allow write: if isAdmin();
+      }
+      match /sheets/{id} {
+        allow read: if resource.data.get('state', 'draft') == 'published' || isStaff();
+        // Results editors save drafts; only admins publish.
+        allow create, update: if isAdmin() || (isStaff() && request.resource.data.state == 'draft'
+                                 && (resource == null || resource.data.get('state', 'draft') == 'draft'));
+        allow delete: if isAdmin();
+      }
+
+      match /entries/{uid} {
+        allow read: if true;
+        allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && selfEntryCreate(sid, uid));
+        allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && selfEntryUpdate(sid));
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /audit/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

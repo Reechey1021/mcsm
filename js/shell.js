@@ -1,0 +1,89 @@
+// shell.js
+// Header, desktop nav, mobile tab bar and the main menu sheet.
+import { $, h, frag } from './core/dom.js';
+import { on, emit } from './core/bus.js';
+import { icon } from './core/icons.js';
+import { moveThumb } from './core/motion.js';
+import { store } from './core/storage.js';
+import { openSheet, toast } from './ui/sheet.js';
+import { seg } from './ui/controls.js';
+import { avatar } from './ui/parts.js';
+import { t, LANG, setLang } from './i18n/index.js';
+import { backend } from './services/backend.js';
+import { session, signedIn, isAdmin, isJudgeRole } from './services/session.js';
+import { fullName } from './model/profile.js';
+import { go, currentRoute } from './router.js';
+
+const TABS = [['/', 'navHome', 'home', 0], ['/szezonok', 'navSeasons', 'flag', 1], ['/eredmenyek', 'navResults', 'trophy', 2], ['/pilotak', 'navDrivers', 'users', 3], ['/sajat', 'navMe', 'user', 4]];
+const TOPNAV = [['/', 'navHome', 0], ['/szezonok', 'navSeasons', 1], ['/eredmenyek', 'navResults', 2], ['/pilotak', 'navDrivers', 3], ['/csapatok', 'navTeams', 5]];
+let els = {};
+
+export function buildShell() {
+  const topInd = h('span', { class: 'ind' });
+  const topNav = h('nav', { class: 'top-nav', 'aria-label': t('mainNav') }, TOPNAV.map(([href, k, tab]) => h('a', { href: '#' + href, dataset: { tab } }, t(k))), topInd);
+  const meBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('openMenu'), onclick: openMenu });
+  const mode = backend && backend.kind === 'fake' ? h('button', { class: 'mode-pill tap', type: 'button', onclick: openMenu }, t('testMode')) : null;
+  const header = h('header', { class: 'app-header' }, h('div', { class: 'in' },
+    h('a', { class: 'logo', href: '#/', 'aria-label': t('homeLabel') }, h('img', { src: 'assets/logo.webp', alt: 'MCSM', width: '91', height: '34' })),
+    topNav, h('div', { class: 'hdr-actions' }, mode, meBtn)));
+  const tabInd = h('span', { class: 'ind' });
+  const tabbar = h('nav', { class: 'tabbar', 'aria-label': t('mainNav') }, h('div', { class: 'in' }, tabInd,
+    TABS.map(([href, k, ic, tab]) => h('a', { href: '#' + href, dataset: { tab } }, icon(ic), h('span', null, t(k))))));
+  const main = h('main', { id: 'view', tabindex: '-1' });
+  document.body.replaceChildren(header, main, tabbar);
+  els = { topNav, topInd, tabbar, tabInd, meBtn };
+  refreshMe();
+}
+
+let teamsById = {};
+export function setTeamsForShell(map) { teamsById = map || {}; refreshMe(); }
+function refreshMe() {
+  if (!els.meBtn) return;
+  const p = session.profile;
+  els.meBtn.replaceChildren(signedIn() && p && p.lastName ? avatar(p, teamsById[p.teamId], 'me-btn') : icon(signedIn() ? 'user' : 'logout'));
+  if (!signedIn()) els.meBtn.replaceChildren(icon('user'));
+}
+
+export function updateNav(r) {
+  if (!els.topNav) return;
+  const tab = r && r.route ? r.route.tab : null;
+  let topA = null, tabA = null;
+  els.topNav.querySelectorAll('a').forEach((a) => { const onn = +a.dataset.tab === tab; a.toggleAttribute('aria-current', false); if (onn) { a.setAttribute('aria-current', 'page'); topA = a; } });
+  els.tabbar.querySelectorAll('a').forEach((a) => { const onn = +a.dataset.tab === tab; a.removeAttribute('aria-current'); if (onn) { a.setAttribute('aria-current', 'page'); tabA = a; } });
+  const first = !updateNav.done; updateNav.done = true;
+  els.topInd.style.opacity = topA ? '1' : '0';
+  els.tabInd.style.opacity = tabA ? '1' : '0';
+  if (topA) moveThumb(els.topNav, topA, els.topInd, { instant: first });
+  if (tabA) moveThumb(els.tabbar, tabA, els.tabInd, { width: 56, instant: first });
+}
+
+export function applyTheme(v) {
+  if (!v || v === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+}
+
+export function openMenu() {
+  const p = session.profile || {};
+  const mi = (ic, label, href) => h('a', { class: 'menu-item', href: '#' + href, onclick: () => sh.close(true) }, icon(ic), label, icon('chevR', 'chev'));
+  const block = (label, el) => h('div', { style: 'margin:16px 0 4px' }, h('div', { class: 'label', style: 'margin-bottom:8px' }, label), el);
+  const langSeg = seg([{ value: 'hu', label: 'Magyar' }, { value: 'en', label: 'English' }], LANG, (v) => { setLang(v); sh.close(true); emit('relang'); });
+  const themeSeg = seg([{ value: 'system', label: t('themeSystem') }, { value: 'dark', label: t('themeDark') }, { value: 'light', label: t('themeLight') }], store.get('theme', 'system'), (v) => { store.set('theme', v); applyTheme(v); });
+  const items = signedIn()
+    ? [mi('user', t('myPage'), '/sajat'), isAdmin() ? mi('shield', t('admin'), '/admin') : null, isJudgeRole() ? mi('flag', t('judgesArea'), '/birosag') : null, mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')]
+    : [mi('user', t('signIn'), '/belepes'), mi('plus', t('signUp'), '/regisztracio'), mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')];
+  let dev = null;
+  if (backend.kind === 'fake') {
+    const quick = backend.dev.accounts().filter((a) => a.email.endsWith('@mcsm.test')).map((a) => h('button', { class: 'btn small', type: 'button', onclick: async () => { sh.close(true); await backend.auth.signOut(); await backend.auth.signIn(a.email, 'demo1234'); toast(t('signedInAs', { who: a.email })); } }, a.email.split('@')[0]));
+    dev = h('div', { class: 'callout', style: 'margin-bottom:6px;display:block' },
+      h('b', null, t('testModeTitle')), h('p', { style: 'margin:4px 0 10px;font-size:13.5px' }, t('testModeText')),
+      h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, quick,
+        h('button', { class: 'btn small', type: 'button', onclick: () => { backend.dev.reset(); try { sessionStorage.clear(); } catch { /* */ } location.reload(); } }, icon('refresh'), t('resetTest'))));
+  }
+  const signOut = signedIn() ? h('button', { class: 'menu-item', type: 'button', onclick: async () => { sh.close(true); await backend.auth.signOut(); toast(t('signedOut')); go('/'); } }, icon('logout'), t('signOut')) : null;
+  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg)) });
+}
+
+export function initShell() {
+  on('session', refreshMe);
+  on('route', updateNav);
+  window.addEventListener('resize', () => updateNav(currentRoute()), { passive: true });
+}

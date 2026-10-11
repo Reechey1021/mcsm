@@ -321,6 +321,7 @@ export function createFakeBackend() {
       },
       async patch(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); db.seasons[id] = { ...db.seasons[id], ...clone(data), updatedAt: Date.now() }; persist(); },
       async remove(id) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); delete db.seasons[id]; delete db.entries[id]; persist(); },
+      async purge(id) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); delete db.seasons[id]; delete db.entries[id]; if (db.race) delete db.race[id]; persist(); },
     },
     entries: {
       async list(sid) { await lag(); return Object.values(clone(db.entries[sid] || {})); },

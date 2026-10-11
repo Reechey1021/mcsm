@@ -21,6 +21,7 @@ import { notifySeason } from '../services/notify.js';
 import { trackDecor } from '../ui/season-parts.js';
 import { matchTrack } from '../data/track-match.js';
 import { tracks as loadTracks } from '../core/data.js';
+import { LOBBY_SESSIONS, LOBBY_FIELDS, lobbyFor, lobbyLine } from '../data/lobby-settings.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 const lobbyBadge = (L) => h('span', { class: 'lobby ' + L }, L);
@@ -127,7 +128,9 @@ function roundView(ctx, n, reload) {
     seg(lobbies.map((L) => ({ value: L, label: t('lobbyX', { l: L }) + (L === myL ? ' •' : '') })), rui.L, (v) => { rui.L = v; draw(true); }, { label: t('lobby') }),
     seg(sessions.map(([value, label]) => ({ value, label })), rui.S, (v) => { rui.S = v; draw(true); }, { scroll: true, label: t('session') })) : null;
   if (lobbies.length) draw(); else body.replaceChildren(empty(t('noLobbiesYet')));
-  return frag(head, isStaff() ? adminRoundCard(ctx, n, reload) : null,
+  const practice = h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '' }, icon('flag'), t('practiceRoom'));
+  practice.addEventListener('click', () => practiceSheet(info, ctx.season));
+  return frag(head, practice, isStaff() ? adminRoundCard(ctx, n, reload) : null,
     doc.resultsState === 'provisional' ? h('div', { class: 'callout', style: 'margin-bottom:12px' }, icon('info'), h('span', null, t('provisionalNote'))) : null,
     !published && built && isStaff() ? h('div', { class: 'callout warn', style: 'margin-bottom:12px' }, icon('alert'), h('span', null, t('draftResultsNote'))) : null,
     tools, body, roundProtests(ctx, n, reload));
@@ -170,6 +173,14 @@ export function resultsTable(ctx, rows, L, S, me) {
       h('td', { class: 'r' }, timeTxt), h('td', { class: 'r hide-sm' }, second), h('td', { class: 'r', style: 'font-weight:800' }, pts));
   });
   return h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' }, h('thead', null, thead), h('tbody', null, body)));
+}
+
+/* ---------- practice room settings ---------- */
+export function practiceSheet(info, season) {
+  const lob = lobbyFor(info);
+  const secs = LOBBY_SESSIONS.map((sk, i) => h('details', { class: 'lobby-sec', open: i === 0 }, h('summary', null, t('lobbySes_' + sk), icon('down', 'chev')),
+    h('div', { class: 'lobby-list' }, LOBBY_FIELDS[sk].map((fd) => h('div', { class: 'lobby-line' }, lobbyLine(fd, lob[sk][fd.k]))))));
+  openSheet({ title: t('practiceRoom'), body: frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, `MCSM${season.no}, ${t('roundN', { n: info.n })}: ${roundTitle(info)}${info.car ? ' · ' + info.car : ''}`), h('div', { class: 'stack', style: 'gap:8px' }, secs)) });
 }
 
 /* ---------- admin: round card ---------- */

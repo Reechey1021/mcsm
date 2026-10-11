@@ -125,7 +125,7 @@ await test('every t() key exists', () => {
   dyn.push(...raceErrs, ...['filed', 'review', 'decided', 'published', 'notInvestigated', 'withdrawn'].map((k) => 'pst_' + k),
     ...['none', 'warning', 'time', 'dsq', 'other'].map((k) => 'outcome_' + k), 'conflictInvolved', 'conflictTeammate', 'outOfScope', 'specLocked', 'specUsed',
     ...['lobbiesOut', 'resultsOut', 'regOpen', 'seasonAnnounced', 'protestAgainst', 'protestNew', 'decision', 'promoted', 'reservePending', 'teamApproved', 'teamDeclined', 'raceToday'].map((k) => 'nt_' + k),
-    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp', 'nt_claimDispute', 'nt_roleGranted', 'impWarnIncomplete', 'impWarnDr', 'impWarnCup', 'impWarnEntry', 'impWarnClash', ...['on', 'off', 'blocked', 'unsupported', 'ios-home'].map((k) => 'pushState_' + k));
+    'gsBlocked', 'gsAuth', 'gsQuota', 'gsNotFound', 'gsHttp', 'nt_claimDispute', 'nt_roleGranted', 'impWarnIncomplete', 'impWarnDr', 'impWarnCup', 'impWarnEntry', 'impWarnClash', ...['on', 'off', 'blocked', 'unsupported', 'ios-home'].map((k) => 'pushState_' + k), ...['pq', 'q', 's', 'gp'].map((k) => 'lobbySes_' + k));
   const missing = [...new Set([...keys, ...valErrs, ...backendErrs, ...seasonErrs, ...dyn])].filter((k) => !(k in hu));
   eq(missing, [], 'missing keys');
 });
@@ -525,6 +525,14 @@ await test('DR/SR: which drivers to refresh', async () => {
   eq(pickDrivers(us, 'all', now).length, 3);
 });
 
+await test('lobby settings: defaults match the league standard, options include them', async () => {
+  const L = await import('../js/data/lobby-settings.js');
+  const d = L.lobbyDefaults();
+  eq([d.pq.duration, d.pq.equal, d.q.fuel, d.s.start, d.gp.laps, d.gp.refuel, d.gp.rate], ['30 perc + 1 kör Finish Delay', 'ON', '3X', 'Lámpás állórajt', '30 kör', '6 L/sec', '15X']);
+  Object.entries(L.LOBBY_FIELDS).forEach(([s, fields]) => fields.forEach((f) => ok(f.options.includes(f.def), `${s}.${f.k} default in options`)));
+  eq(L.lobbyFor({ lobby: { gp: { laps: '25 kör' } } }).gp.laps, '25 kör'); eq(L.lobbyFor({}).s.laps, '10 kör');
+  eq(L.lobbyLine(L.LOBBY_FIELDS.pq[7], 'C02 • Cloudy & Warm'), '☀️ C02 • Cloudy & Warm');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

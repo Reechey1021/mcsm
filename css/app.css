@@ -713,3 +713,42 @@ details.adv > summary svg{ width:20px; height:20px; color:var(--ink-3); }
 .drv-card .team-line{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-3); margin-top:2px; min-width:0; }
 .drv-card .team-line span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .head-chip .team-badge{ border-radius:4px; }
+
+/* ===== 0.7.1: trophies, team grid, title cards ===== */
+.tcount{ display:inline-flex; align-items:center; gap:4px; font-weight:800; font-variant-numeric:tabular-nums; margin-left:8px; vertical-align:-2px; }
+.mt-row .cnt{ display:flex; gap:10px; }
+.mt-row .cnt .tcount{ margin-left:0; }
+.pod .e{ display:grid; place-items:center; }
+.team-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap:10px; }
+.team-grid .team-card{ height:100%; align-items:flex-start; }
+.team-grid .team-card .nm b{ display:flex; align-items:center; flex-wrap:wrap; gap:2px; }
+.team-grid .team-card .nm span{ white-space:normal; overflow:visible; line-height:1.4; }
+.medal{ position:relative; overflow:hidden; justify-items:start; text-align:left; padding:14px 14px 12px; border:0; color:#1B1405; }
+.medal.m0{ background:linear-gradient(135deg, #FFE9A6 0%, #F2C14E 45%, #C98F1E 100%); }
+.medal.m1{ background:linear-gradient(135deg, #F4F7FC 0%, #C9D2E3 50%, #8D99AE 100%); color:#141a26; }
+.medal.m2{ background:linear-gradient(135deg, #F6C9A0 0%, #D4884A 50%, #9A5525 100%); color:#1e1006; }
+.medal.none{ opacity:.35; filter:saturate(.4); }
+.medal .m-top{ display:flex; align-items:center; gap:8px; }
+.medal .m-top .trophy{ color:rgba(0,0,0,.55) !important; }
+.medal b{ font-size:44px; line-height:.9; color:inherit; }
+.medal .k{ color:inherit; opacity:.8; font-size:12.5px; font-weight:750; margin-top:4px; }
+.medal .m-list{ color:inherit; opacity:.85; font-size:11.5px; margin-top:6px; }
+.medal::after{ content:""; position:absolute; inset:0; background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,.35) 45%, transparent 60%); pointer-events:none; }
+.status.champ{ display:inline-flex; align-items:center; gap:6px; background:rgba(242,193,78,.18); color:#F2C14E; }
+.status.champ .tcount{ margin-left:0; }
+.head-titles .tcount{ color:#F2C14E; margin-left:4px; font-size:15px; }
+
+/* ===== 0.7.1: lobby settings ===== */
+.round-edit .seg{ margin:2px 0 4px; }
+.lobby-sec{ border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-2); padding:0 12px; }
+.lobby-sec > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:48px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; font-size:14px; }
+.lobby-sec > summary::-webkit-details-marker{ display:none; }
+.lobby-sec > summary .chev{ margin-left:auto; transition:transform .25s; width:18px; height:18px; }
+.lobby-sec[open] > summary .chev{ transform:rotate(180deg); }
+.lobby-sec[open]{ padding-bottom:10px; }
+.lobby-field{ display:grid; gap:4px; font-size:13px; font-weight:650; color:var(--ink-2); }
+.lobby-list{ display:grid; gap:2px; padding:4px 0; }
+.lobby-line{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13.5px; padding:7px 10px; border-radius:8px; background:var(--bg-3); }
+.practice-btn{ margin:0 0 14px; }
+.lobby-field, .lobby-sec, .lobby-sec > div{ min-width:0; }
+.lobby-field select{ min-width:0; max-width:100%; width:100%; text-overflow:ellipsis; }

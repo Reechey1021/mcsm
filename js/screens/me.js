@@ -16,6 +16,7 @@ import { ratingPanel } from '../ui/rating.js';
 import { teamBadge, medalRow } from '../ui/parts.js';
 import { honours } from '../services/honours.js';
 import { medalsForUser } from '../model/honours.js';
+import { trophy, trophyCount } from '../ui/trophy.js';
 import { pickFile, uploadImage } from '../ui/upload.js';
 import { emit } from '../core/bus.js';
 import { toggle } from '../ui/controls.js';
@@ -35,15 +36,22 @@ export function profileHead(p, team, opts = {}) {
   if (opts.vt) av.style.viewTransitionName = 'drv-hero';
   return h('section', { class: 'profile-head' + (p.gt7Cover ? ' has-cover' : '') }, p.gt7Cover ? h('span', { class: 'head-cover', vars: { 'background-image': `url("${String(p.gt7Cover).replace(/"/g, '')}")` }, 'aria-hidden': 'true' }) : null, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
     h('div', { style: 'min-width:0' }, h('h1', { class: 'display' }, (p.lastName || '').toLocaleUpperCase('hu'), h('br'), p.firstName || ''),
-      h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p)),
+      h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p), headTitles(p, opts)),
       h('div', { class: 'head-chips' }, team ? h('a', { class: 'head-chip', href: '#/csapatok/' + team.id, style: 'color:inherit' }, teamBadge(team, 18), team.name) : null, p.gtTeamId ? h('span', { class: 'head-chip' }, opts.gt && opts.gt.logoUrl ? teamBadge(opts.gt, 18) : null, p.gtTeamId) : null)));
+}
+
+// Titles next to the name in the profile header (filled in once the honours are loaded).
+function headTitles(p, opts) {
+  const el = h('span', { class: 'head-titles' });
+  honours().then((H) => { const m = medalsForUser(H.people, { ...p, uid: p.uid || opts.uid }); if (m && m.medals[0]) el.replaceChildren(trophyCount(m.medals[0], 0, 18)); }).catch(() => {});
+  return el;
 }
 
 // Championship titles from the hall of fame and finished seasons (overall drivers' title only;
 // the MGTK table lives on the hall of fame page).
 function titlesBox(p) {
   const box = h('section', { style: 'margin-top:12px' });
-  honours().then((H) => { const m = medalsForUser(H.people, p); if (!m) { box.remove(); return; } box.replaceChildren(h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status live' }, t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true }))); }).catch(() => box.remove());
+  honours().then((H) => { const m = medalsForUser(H.people, p); if (!m) { box.remove(); return; } box.replaceChildren(h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status champ' }, trophy(0, 14), t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true }))); }).catch(() => box.remove());
   return box;
 }
 
@@ -71,7 +79,7 @@ export function screenMe() {
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const myRoles = ROLE_KEYS.filter((k) => roles()[k]);
     box.replaceChildren(...[
-      profileComplete() ? frag(profileHead(p, team, { editable: true, gt }), profileKv({ ...p, uid: session.user.uid }, team, gt && gt.tag, gt)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
+      profileComplete() ? frag(profileHead(p, team, { editable: true, gt, uid: session.user.uid }), profileKv({ ...p, uid: session.user.uid }, team, gt && gt.tag, gt)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
       p.teamRequest ? h('div', { class: 'callout', style: 'margin-top:12px' }, icon('clock'), h('span', null, t('teamRequestPending', { team: (tm[p.teamRequest] || {}).name || '' }))) : null,
       myRoles.length ? h('div', { class: 'roles', style: 'margin-top:12px' }, myRoles.map((k) => h('span', { class: 'role-tag ' + k }, t('role_' + k)))) : null,
       myEntriesBox,

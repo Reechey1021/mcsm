@@ -47,11 +47,18 @@ export function adminSeasonCard(st, reload) {
   if (openNow) openNow.addEventListener('click', () => { win(openNow, { state: 'announced', regOpensAt: Date.now(), regClosesAt: Math.max(s.regClosesAt || 0, Date.now() + 7 * DAY) }, 'season.regOpen'); notifyAll(s, 'regOpen', {}, '#/szezonok/' + s.id); });
   if (closeNow) closeNow.addEventListener('click', () => win(closeNow, { regClosesAt: Date.now() }, 'season.regClose'));
   if (extend) extend.addEventListener('click', () => win(extend, { regClosesAt: Math.max(s.regClosesAt || 0, Date.now()) + 3 * DAY }, 'season.regExtend'));
-  const del = s.state === 'draft' ? h('button', { class: 'btn small danger', type: 'button' }, icon('trash'), t('delete')) : null;
-  if (del) del.addEventListener('click', () => busy(del, async () => {
-    try { await backend.seasons.remove(s.id); await audit('season.delete', s); invalidateSeason(s.id); toast(t('deleted')); location.hash = '#/szezonok'; }
-    catch (e) { toast(t(errorKey(e)), 'alert'); }
-  }));
+  const del = h('button', { class: 'btn small danger', type: 'button' }, icon('trash'), t('deleteSeason'));
+  del.addEventListener('click', () => {
+    const word = 'MCSM' + s.no;
+    const inp = h('input', { class: 'input', autocapitalize: 'characters', autocomplete: 'off', placeholder: word });
+    const yes = h('button', { class: 'btn danger block', type: 'button', disabled: true }, icon('trash'), t('deleteSeasonConfirm'));
+    inp.addEventListener('input', () => { yes.disabled = inp.value.trim().toUpperCase() !== word; });
+    const sh = openSheet({ title: t('deleteSeasonTitle', { s: word }), body: h('div', { class: 'stack', style: 'gap:12px' }, h('div', { class: 'callout warn', style: 'display:block' }, t('deleteSeasonText', { s: word })), h('label', { class: 'f-row' }, h('span', { class: 'f-label' }, t('deleteSeasonType', { s: word })), inp), yes) });
+    yes.addEventListener('click', () => busy(yes, async () => {
+      try { await backend.seasons.purge(s.id); await audit('season.delete', s); invalidateSeason(s.id); sh.close(true); toast(t('deleted')); location.hash = '#/szezonok'; }
+      catch (e) { toast(t(errorKey(e)) + (e.message ? ` (${e.message})` : ''), 'alert'); }
+    }));
+  });
   return h('section', { class: 'panel pad', style: 'margin-top:12px' },
     h('div', { class: 'row-between' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('manageSeason')), h('span', { class: 'status' }, icon('shield'), t('admin'))),
     h('div', { class: 'label', style: 'margin:14px 0 8px' }, t('seasonState')), stateSeg,

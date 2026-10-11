@@ -19,6 +19,7 @@ import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
 import { carField } from '../../ui/car-picker.js';
 import { uploadImage, dropZone } from '../../ui/upload.js';
+import { LOBBY_SESSIONS, LOBBY_FIELDS, lobbyFor } from '../../data/lobby-settings.js';
 import { notifyAll } from '../../services/notify.js';
 
 const STEP_KEYS = ['swBasics', 'swRounds', 'swCars', 'swEntry', 'swScoring', 'swReview'];
@@ -105,14 +106,33 @@ function build(d, editing, all, us, gts) {
         const up = h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--ink)', 'aria-label': t('moveUp'), disabled: i === 0, onclick: () => { [d.rounds[i - 1], d.rounds[i]] = [d.rounds[i], d.rounds[i - 1]]; drawRounds(); } }, icon('up'));
         const del = h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.rounds.splice(i, 1); drawRounds(); } }, icon('trash'));
         void tr;
-        return h('div', { class: 'round-edit' }, h('div', { class: 'head' }, h('b', { class: 'display' }, t('roundN', { n: i + 1 })), h('span', null, up, del)),
-          dt(t('roundStart'), r.date, (v) => { r.date = v; }).row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('track')), sel), layoutBox, otherBox);
+        const trackPane = h('div', { class: 'stack', style: 'gap:10px' }, dt(t('roundStart'), r.date, (v) => { r.date = v; }).row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('track')), sel), layoutBox, otherBox);
+        const lobbyPane = h('div', { style: 'display:none' }, lobbyEditor(r, i));
+        const tabs = seg([{ value: 'track', label: t('trackTab') }, { value: 'lobby', label: t('lobbyTab') }], 'track', (v) => { trackPane.style.display = v === 'track' ? '' : 'none'; lobbyPane.style.display = v === 'lobby' ? '' : 'none'; });
+        return h('div', { class: 'round-edit' }, h('div', { class: 'head' }, h('b', { class: 'display' }, t('roundN', { n: i + 1 })), h('span', null, up, del)), tabs, trackPane, lobbyPane);
       };
+      // Lobby settings for the practice rooms: four sessions, each a fold-out list of dropdowns.
+      function lobbyEditor(r, i) {
+        r.lobby = lobbyFor(r);
+        const box = h('div', { class: 'stack', style: 'gap:8px' });
+        LOBBY_SESSIONS.forEach((sk, si) => {
+          const rows = LOBBY_FIELDS[sk].map((fd) => {
+            const sel = h('select', { class: 'select', style: 'width:100%;min-height:44px' }, fd.options.map((o) => h('option', { value: o, selected: r.lobby[sk][fd.k] === o }, o)));
+            if (!fd.options.includes(r.lobby[sk][fd.k])) sel.prepend(h('option', { value: r.lobby[sk][fd.k], selected: true }, r.lobby[sk][fd.k]));
+            sel.addEventListener('change', () => { r.lobby[sk][fd.k] = sel.value; });
+            return h('label', { class: 'lobby-field' }, h('span', null, `${fd.icon} ${fd.label || t('weatherPreset')}`), sel);
+          });
+          box.append(h('details', { class: 'lobby-sec', open: si === 0 }, h('summary', null, t('lobbySes_' + sk), icon('down', 'chev')), h('div', { class: 'stack', style: 'gap:8px;padding:8px 0 4px' }, rows)));
+        });
+        const copy = h('button', { class: 'btn small', type: 'button', onclick: () => { d.rounds.forEach((o, j) => { if (j !== i) o.lobby = JSON.parse(JSON.stringify(r.lobby)); }); toast(t('lobbyCopied')); } }, icon('list'), t('lobbyCopyAll'));
+        box.append(h('div', null, copy));
+        return box;
+      }
       drawRounds();
       const add = h('button', { class: 'btn block', type: 'button' }, icon('plus'), t('addRound'));
       add.addEventListener('click', () => {
         const last = d.rounds[d.rounds.length - 1];
-        d.rounds.push({ n: d.rounds.length + 1, date: last && last.date ? shiftDay(last.date, 7, '19:00') : shiftDay(Date.now(), 21, '19:00'), trackId: null, track: '', layout: '', cc: '', car: '' });
+        d.rounds.push({ n: d.rounds.length + 1, date: last && last.date ? shiftDay(last.date, 7, '19:00') : shiftDay(Date.now(), 21, '19:00'), trackId: null, track: '', layout: '', cc: '', car: '', lobby: last && last.lobby ? JSON.parse(JSON.stringify(last.lobby)) : undefined });
         drawRounds(); list.lastChild && list.lastChild.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' });
       });
       const pqList = h('div', { class: 'stack', style: 'gap:10px' });

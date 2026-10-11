@@ -11,16 +11,16 @@ import { medalsForTeam } from '../model/honours.js';
 import { isAdmin } from '../services/session.js';
 import { editTeam } from './admin/teams.js';
 import { emit } from '../core/bus.js';
+import { trophyCount } from '../ui/trophy.js';
 
 export function screenTeams() {
-  const grid = h('div', { class: 'drv-grid' }, skelRows(6, 80));
+  const grid = h('div', { class: 'team-grid' }, skelRows(6, 80));
   Promise.all([teams(), users(), honours().catch(() => null)]).then(([tms, us, H]) => {
     const members = (id) => us.filter((u) => u.teamId === id && isComplete(u));
     const shown = tms.filter((x) => x.status !== 'retired').map((tm) => ({ tm, m: H ? medalsForTeam(H.teams, tm) : null }))
       .sort((a, b) => ((b.m && b.m.medals[0]) || 0) - ((a.m && a.m.medals[0]) || 0) || a.tm.name.localeCompare(b.tm.name, 'hu'));
     grid.replaceChildren(...(shown.length ? shown.map(({ tm, m }) => h('a', { class: 'panel team-card', href: '#/csapatok/' + tm.id }, teamBadge(tm, 44),
-      h('span', { class: 'nm' }, h('b', null, tm.name), h('span', null, members(tm.id).map(fullName).join(', ') || t('noMembers'))),
-      m && (m.medals[0] || m.medals[1] || m.medals[2]) ? h('span', { class: 'cups' }, `🥇${m.medals[0]} 🥈${m.medals[1]} 🥉${m.medals[2]}`) : null)) : [empty(t('noTeams'))]));
+      h('span', { class: 'nm' }, h('b', null, tm.name, m && m.medals[0] ? trophyCount(m.medals[0], 0, 15) : null), h('span', null, members(tm.id).map((u) => (u.lastName || '').toLocaleUpperCase('hu')).join(', ') || t('noMembers'))))) : [empty(t('noTeams'))]));
   }).catch(() => grid.replaceChildren(empty(t('loadFailed'))));
   return frag(pageTitle(t('teams'), t('teamsSub')), grid);
 }

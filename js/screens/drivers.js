@@ -11,6 +11,7 @@ import { profileHead, profileKv } from './me.js';
 import { teamBadge } from '../ui/parts.js';
 import { honours } from '../services/honours.js';
 import { medalsForUser } from '../model/honours.js';
+import { trophyCount } from '../ui/trophy.js';
 import { seasons as loadSeasons } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
 import { roundTotals } from '../engine/scoring.js';
@@ -49,7 +50,7 @@ export function screenDrivers() {
     const av = avatar(d, tm);
     const m = medals[d.uid];
     const a = h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(d.psnLower), dataset: { key: d.uid } }, av,
-      h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? h('span', { class: 'faint', style: 'font-weight:600;font-size:12.5px' }, ` 🏆${m.medals[0]}`) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
+      h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? trophyCount(m.medals[0], 0, 14) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
         tm ? h('span', { class: 'team-line' }, teamBadge(tm, 14), h('span', null, tm.name)) : null), ratingEl(d));
     a.addEventListener('click', () => { av.style.viewTransitionName = 'drv-hero'; });
     if (vtBack === d.uid) { av.style.viewTransitionName = 'drv-hero'; vtBack = null; setTimeout(() => { av.style.viewTransitionName = ''; }, 700); }

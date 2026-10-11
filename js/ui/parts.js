@@ -5,6 +5,7 @@ import { icon } from '../core/icons.js';
 import { initials } from '../model/profile.js';
 import { t } from '../i18n/index.js';
 import { avatarUrl } from '../data/gt7-images.js';
+import { trophy } from './trophy.js';
 
 export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); return m ? +m[1] : null; }
 export function avatar(p, team, cls = '') {
@@ -23,8 +24,10 @@ export function teamBadge(team, size = 20) {
 }
 export function medalRow(m, opts = {}) {
   if (!m) return null;
-  const cell = (i, emoji, label) => h('div', { class: 'medal' + (m.medals[i] ? '' : ' none') }, h('span', { class: 'm-emoji', 'aria-hidden': 'true' }, emoji), h('b', { class: 'display num' }, m.medals[i]), h('span', { class: 'k' }, label), opts.seasons && m.seasons[i].length ? h('span', { class: 'm-list' }, m.seasons[i].map((n) => 'MCSM' + n).join(', ')) : null);
-  return h('div', { class: 'medals' }, cell(0, '🥇', t('medalGold')), cell(1, '🥈', t('medalSilver')), cell(2, '🥉', t('medalBronze')));
+  const cell = (i, label) => h('div', { class: 'medal m' + i + (m.medals[i] ? '' : ' none') },
+    h('div', { class: 'm-top' }, trophy(i, 30), h('b', { class: 'display num' }, m.medals[i])),
+    h('span', { class: 'k' }, label), opts.seasons && m.seasons[i].length ? h('span', { class: 'm-list' }, m.seasons[i].map((n) => 'MCSM' + n).join(', ')) : null);
+  return h('div', { class: 'medals' }, cell(0, t('medalGold')), cell(1, t('medalSilver')), cell(2, t('medalBronze')));
 }
 export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class: 'dr' }, p.dr || '–'), h('span', { class: 'srb' }, p.sr || '–'));
 export const pageTitle = (title, sub) => [h('h1', { class: 'display page-title' }, title), sub ? h('p', { class: 'page-sub' }, sub) : null];

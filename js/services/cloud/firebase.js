@@ -131,6 +131,22 @@ export async function createFirebaseBackend(config) {
       async save(season) { return wrap(async () => { const { id, ...data } = season; await F.setDoc(F.doc(db, 'seasons', id), { ...data, updatedAt: Date.now(), createdAt: data.createdAt || Date.now() }); return id; }); },
       async patch(id, data) { return wrap(() => F.updateDoc(F.doc(db, 'seasons', id), { ...data, updatedAt: Date.now() })); },
       async remove(id) { return wrap(() => F.deleteDoc(F.doc(db, 'seasons', id))); },
+      // Delete a season with everything under it (entries, rounds, results, PQ, protests, penalties, picks).
+      async purge(id) {
+        return wrap(async () => {
+          const subs = ['entries', 'rounds', 'sheets', 'pq', 'penalties', 'picks', 'protests'];
+          const refs = [];
+          for (const c of subs) {
+            const qs = await F.getDocs(F.collection(db, 'seasons', id, c));
+            for (const d of qs.docs) {
+              if (c === 'protests') { const vs = await F.getDocs(F.collection(db, 'seasons', id, 'protests', d.id, 'votes')); vs.docs.forEach((v) => refs.push(v.ref)); }
+              refs.push(d.ref);
+            }
+          }
+          for (let i = 0; i < refs.length; i += 400) { const b = F.writeBatch(db); refs.slice(i, i + 400).forEach((r) => b.delete(r)); await b.commit(); }
+          await F.deleteDoc(F.doc(db, 'seasons', id));
+        });
+      },
     },
     entries: {
       async list(sid) { const qs = await F.getDocs(F.collection(db, 'seasons', sid, 'entries')); return qs.docs.map((d) => d.data()); },

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.1 – Trophies, lobby settings, season delete
+- Trophy icon (gold/silver/bronze) instead of medal emoji everywhere: hall of fame, team list,
+  driver cards, next to the name on profiles.
+- Title cards on profiles and team pages: gold, silver and bronze gradients, big numbers with the
+  trophy beside them.
+- Team list: every card the same width, drivers' surnames wrap, only titles shown.
+- Lobby settings per round (season wizard → each round → "Lobby beállítások"): pre-qualifying,
+  qualifying, Sprint and Gran'Prix, each a fold-out list of dropdowns with the league's defaults;
+  "copy to every round". New rounds copy the previous round's settings.
+- Round page: a "Gyakorlószoba beállítások" button shows the settings by session, for everyone.
+- Admins can delete any season (type its name to confirm); entries, rounds, results, PQ times,
+  protests, penalties and car picks go with it.
+
 ## 0.7.0 – Hall of fame, team pages, logos, sync options
 - Eredmények → Dicsőségfal: all-time medal tables (drivers and teams) and a box per season with
   the top three drivers and teams (MGTK podium folded under each). MCSM 1–29 come from the old

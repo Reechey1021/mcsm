@@ -671,3 +671,45 @@ details.adv > summary svg{ width:20px; height:20px; color:var(--ink-3); }
 .profile-head .head-cover{ position:absolute; inset:0; z-index:-1; background-size:cover; background-position:center; opacity:.42;
   -webkit-mask-image:linear-gradient(90deg, rgba(0,0,0,.2), #000 70%); mask-image:linear-gradient(90deg, rgba(0,0,0,.2), #000 70%); }
 .script-box{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; min-height:110px; }
+
+/* ===== 0.7: teams, hall of fame, medals ===== */
+.team-badge{ display:inline-block; vertical-align:middle; }
+.medals{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.medal{ display:grid; justify-items:center; text-align:center; gap:2px; padding:12px 6px; border-radius:var(--r-md); background:var(--bg-3); border:1px solid var(--line); }
+.medal.none{ opacity:.45; }
+.medal .m-emoji{ font-size:22px; line-height:1; }
+.medal b{ font-size:30px; line-height:1; }
+.medal .k{ font-size:12px; color:var(--ink-3); font-weight:650; }
+.medal .m-list{ font-size:11px; color:var(--ink-2); line-height:1.35; margin-top:4px; }
+.hof{ display:grid; gap:12px; }
+@media (min-width:900px){ .hof{ grid-template-columns:1fr 1fr; } }
+.hof-card{ padding:14px 16px; }
+.hof-card .hof-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.hof-card .hof-head .display{ font-size:26px; }
+.hof-card .hof-head span{ color:var(--ink-3); font-size:13px; }
+.hof-cols{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.hof-col .label{ margin-bottom:6px; }
+.pod{ display:flex; align-items:center; gap:8px; min-height:30px; font-size:14px; }
+.pod .e{ width:20px; text-align:center; }
+.pod a, .pod span.n{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650; }
+.pod a{ color:inherit; }
+.pod small{ color:var(--ink-3); font-weight:500; }
+.hof details{ margin-top:8px; }
+.hof details summary{ cursor:pointer; font-size:13px; font-weight:700; color:var(--ink-2); }
+.medal-table{ display:grid; gap:6px; }
+.mt-row{ display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:var(--r-sm); background:var(--bg-2); border:1px solid var(--line); font-size:14px; }
+.mt-row .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650; color:inherit; }
+.mt-row .cnt{ font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:700; }
+.team-hero{ position:relative; overflow:hidden; padding:20px 16px; border-radius:var(--r-lg); background:var(--chrome); color:var(--chrome-ink); display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+.team-hero::before{ content:""; position:absolute; inset:0; background:linear-gradient(120deg, var(--t1, transparent) 0%, transparent 60%); opacity:.35; }
+.team-hero > *{ position:relative; }
+.team-hero h1{ font-size:clamp(30px, 7vw, 46px); margin:0; line-height:.95; }
+.team-hero .logo-big{ width:84px; height:84px; border-radius:18px; background:rgba(255,255,255,.08) center/contain no-repeat; flex:0 0 auto; display:grid; place-items:center; }
+.team-card{ display:flex; gap:12px; align-items:center; padding:14px; color:inherit; }
+.team-card .nm{ flex:1; min-width:0; }
+.team-card .nm b{ display:block; font-size:16px; }
+.team-card .nm span{ display:block; font-size:13px; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.team-card .cups{ font-size:13px; white-space:nowrap; }
+.drv-card .team-line{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-3); margin-top:2px; min-width:0; }
+.drv-card .team-line span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.head-chip .team-badge{ border-radius:4px; }

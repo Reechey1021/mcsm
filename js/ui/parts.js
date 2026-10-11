@@ -14,6 +14,18 @@ export function avatar(p, team, cls = '') {
   const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: p.photoUrl ? '' : 'gt7', onerror: (e) => e.target.remove() }) : null;
   return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
+// A team's logo, or its colour as a small rounded square when there's no logo yet.
+export function teamBadge(team, size = 20) {
+  if (!team) return null;
+  const st = `width:${size}px;height:${size}px;flex:0 0 auto;border-radius:${Math.round(size / 4)}px;`;
+  if (team.logoUrl) return h('img', { class: 'team-badge', src: team.logoUrl, alt: '', loading: 'lazy', style: st + 'object-fit:contain', onerror: (e) => { e.target.replaceWith(h('span', { class: 'team-badge', style: st + `background:${team.c1 || 'var(--line-2)'}` })); } });
+  return h('span', { class: 'team-badge', style: st + `background:${team.c1 || 'var(--line-2)'}` });
+}
+export function medalRow(m, opts = {}) {
+  if (!m) return null;
+  const cell = (i, emoji, label) => h('div', { class: 'medal' + (m.medals[i] ? '' : ' none') }, h('span', { class: 'm-emoji', 'aria-hidden': 'true' }, emoji), h('b', { class: 'display num' }, m.medals[i]), h('span', { class: 'k' }, label), opts.seasons && m.seasons[i].length ? h('span', { class: 'm-list' }, m.seasons[i].map((n) => 'MCSM' + n).join(', ')) : null);
+  return h('div', { class: 'medals' }, cell(0, '🥇', t('medalGold')), cell(1, '🥈', t('medalSilver')), cell(2, '🥉', t('medalBronze')));
+}
 export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class: 'dr' }, p.dr || '–'), h('span', { class: 'srb' }, p.sr || '–'));
 export const pageTitle = (title, sub) => [h('h1', { class: 'display page-title' }, title), sub ? h('p', { class: 'page-sub' }, sub) : null];
 export const secHead = (title, linkLabel, href) => h('div', { class: 'sec-head' }, h('h2', { class: 'display' }, title), linkLabel ? h('a', { class: 'link', href }, linkLabel) : null);

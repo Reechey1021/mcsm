@@ -13,6 +13,8 @@ import { isComplete, fullName } from '../../model/profile.js';
 import { gridstatsClient, fakeGridstats, PACE_MS } from '../../services/gridstats.js';
 import { fetchCatalog, fakeCatalog } from '../../services/gt7info.js';
 import { profileScript, GT7_DEFAULT_AVATAR } from '../../data/gt7-images.js';
+import { syncRatings, pickDrivers } from '../../services/ratings.js';
+import { seg, toggle } from '../../ui/controls.js';
 import { onLeave } from '../../router.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -82,9 +84,15 @@ export function screenGt7() {
     let withGuid = [];
     const refreshPics = async () => { invalidate('users'); const us = await loadUsers(); withGuid = us.filter((u) => u.gt7Guid); picInfo.textContent = t('picsInfo', { n: withGuid.length, a: us.filter((u) => u.gt7Avatar).length, all: us.filter(isComplete).length }); };
     refreshPics().catch(() => {});
+    const onlyMissing = toggle(true, () => {}, { label: t('picsOnlyMissing') });
+    const psnFilter = h('input', { class: 'input', placeholder: t('picsPsnPh'), autocapitalize: 'off', spellcheck: 'false' });
     copyBtn.addEventListener('click', () => busy(copyBtn, async () => {
       await refreshPics();
       if (!withGuid.length) { toast(t('picsNoGuid'), 'alert'); return; }
+      const wanted = psnFilter.value.split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const pick = withGuid.filter((u) => (wanted.length ? wanted.includes(String(u.psn).toLowerCase()) : onlyMissing.getAttribute('aria-checked') !== 'true' || !u.gt7Avatar));
+      if (!pick.length) { toast(t('picsNothingToDo'), 'info'); return; }
+      withGuid = pick;
       const script = profileScript(withGuid.map((u) => ({ guid: u.gt7Guid, psn: u.psn })));
       try { await navigator.clipboard.writeText(script); toast(t('picsCopied', { n: withGuid.length })); }
       catch { picOut.replaceChildren(h('textarea', { class: 'input script-box', readonly: true }, script)); toast(t('picsCopyManual'), 'info'); }
@@ -125,35 +133,23 @@ export function screenGt7() {
     // ratings
     const rateProg = h('div');
     const rateBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('refresh'), t('gsRatingsSync'));
+    let rateMode = 'missing';
+    const rateSeg = seg([{ value: 'missing', label: t('rateMissing') }, { value: 'stale', label: t('rateStale') }, { value: 'all', label: t('rateAll') }], rateMode, (v) => { rateMode = v; }, { scroll: true });
     rateBtn.addEventListener('click', () => busy(rateBtn, async () => {
       stop = false;
       const pr = progress(); rateProg.replaceChildren(pr.el);
-      const api = client();
       invalidate('users');
-      const drivers = (await loadUsers()).filter((u) => isComplete(u) && u.psn);
-      const byPsn = Object.fromEntries(drivers.map((u) => [u.psn.toLowerCase(), u]));
-      const batches = []; for (let i = 0; i < drivers.length; i += 16) batches.push(drivers.slice(i, i + 16));
-      let updated = 0; const missing = []; const pending = [];
+      const drivers = pickDrivers(await loadUsers(), rateMode);
+      if (!drivers.length) { pr.line(t('rateNone')); return; }
       try {
-        for (let b = 0; b < batches.length; b++) {
-          if (stop) { pr.line(t('gsStopped')); break; }
-          const res = await api.racers(batches[b].map((u) => u.psn));
-          for (const d of res.drivers || []) {
-            const u = byPsn[String(d.PSN_ID || '').toLowerCase()]; if (!u) continue;
-            const st = d.stats || {};
-            const patch = { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now(), ...(d.GUID ? { gt7Guid: String(d.GUID) } : {}), ...(d.Nickname ? { gt7Nick: String(d.Nickname) } : {}) };
-            pending.push({ path: ['users', u.uid], data: patch, merge: true }); updated++;
-          }
-          (res.not_found || []).forEach((p) => missing.push(p));
-          await writeUsers(pending.splice(0));
-          pr.set((b + 1) / batches.length); pr.line(t('gsBatch', { b: b + 1, total: batches.length, n: updated }));
-          if (b < batches.length - 1 && !fake) await sleep(PACE_MS);
-        }
-        if (missing.length) pr.line(t('gsMissing', { list: missing.join(', ') }));
-        await backend.audit.add({ action: 'gt7.ratings', target: 'users', targetName: 'DR/SR', before: null, after: { updated, missing: missing.length }, reason: null });
-        invalidate('users'); toast(t('gsRatingsDone', { n: updated }));
-      } catch (e) { pr.line(gsError(e)); toast(gsError(e), 'alert'); }
+        const r = await syncRatings(drivers, client(), { fake, stop: () => stop, onBatch: (b, total, n) => { pr.set(b / total); pr.line(t('gsBatch', { b, total, n })); } });
+        if (r.missing.length) pr.line(t('gsMissing', { list: r.missing.join(', ') }));
+        await backend.audit.add({ action: 'gt7.ratings', target: 'users', targetName: 'DR/SR', before: null, after: { updated: r.updated, missing: r.missing.length }, reason: null });
+        toast(t('gsRatingsDone', { n: r.updated })); refreshPics().catch(() => {});
+      } catch (e) { pr.line(gsError(e) + (e.message ? ` (${e.message})` : '')); toast(gsError(e), 'alert'); }
     }));
+    const autoRow = h('div', { class: 'toggle-row' }, h('span', null, t('rateAuto'), h('small', null, cfg && cfg.lastAuto ? t('rateAutoLast', { date: fmtDate(cfg.lastAuto, true) }) : t('rateAutoHint'))),
+      toggle(!cfg || cfg.autoDaily !== false, async (v) => { try { const cur = (await backend.config.get('gridstats')) || {}; await backend.config.save('gridstats', { ...cur, token: tokenIn.input.value.trim(), base: baseIn.value.trim(), autoDaily: v }); toast(t('saved')); } catch (e) { toast(gsError(e), 'alert'); } }, { label: t('rateAuto') }));
     const stopBtn = h('button', { class: 'btn small', type: 'button', onclick: () => { stop = true; } }, t('stop'));
     root.replaceChildren(
       fake ? h('div', { class: 'callout', style: 'margin-bottom:14px' }, icon('info'), h('span', null, t('gsFakeNote'))) : null,
@@ -163,9 +159,10 @@ export function screenGt7() {
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
         h('ol', { class: 'note', style: 'margin:0;padding-left:20px;line-height:1.6' }, h('li', null, t('picsStep1')), h('li', null, t('picsStep2')), h('li', null, t('picsStep3')), h('li', null, t('picsStep4'))),
+        h('div', { class: 'toggle-row' }, h('span', null, t('picsOnlyMissing'), h('small', null, t('picsOnlyMissingHint'))), onlyMissing), field(t('picsPsnFilter'), psnFilter, { hint: t('picsPsnHint') }).row,
         h('div', null, copyBtn), paste, h('div', null, saveBtn), picOut),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg));
+      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('rateWho')), rateSeg), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg, autoRow));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));
   return frag(backLink(t('admin'), '#/admin'), pageTitle(t('gsTitle'), t('gsSub')), root);
 }

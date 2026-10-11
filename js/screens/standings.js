@@ -8,13 +8,18 @@ import { t } from '../i18n/index.js';
 import { seasons as loadSeasons } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
 import { go } from '../router.js';
+import { hallView } from './hall.js';
 
-const ui = { kind: 'drivers', upTo: null, sid: null };
+const ui = { kind: 'drivers', upTo: null, sid: null, view: 'table' };
 const RESULT_STATES = ['pq', 'running', 'finished', 'archived'];
 
-export function screenStandings({ sid }) {
+export function screenStandings({ sid }, query) {
+  if (query && query.get('nezet') === 'dicsosegfal') ui.view = 'hall';
+  const viewSeg = seg([{ value: 'table', label: t('standings') }, { value: 'hall', label: t('hallOfFame') }], ui.view, (v) => { ui.view = v; history.replaceState(null, '', v === 'hall' ? '#/eredmenyek?nezet=dicsosegfal' : '#/eredmenyek'); paintView(); });
   const head = h('div');
   const box = h('div', null, skelRows(10, 54));
+  const wrap = h('div');
+  const paintView = () => wrap.replaceChildren(...(ui.view === 'hall' ? [hallView()] : [head, box]));
   loadSeasons().then(async (all) => {
     const list = all.filter((s) => RESULT_STATES.includes(s.state)).sort((a, b) => (a.state === 'running' ? -1 : 0) - (b.state === 'running' ? -1 : 0) || b.no - a.no);
     if (!list.length) { box.replaceChildren(empty(t('noResultsYet'))); return; }
@@ -26,5 +31,6 @@ export function screenStandings({ sid }) {
     const ctx = await loadRace(chosen.id);
     box.replaceChildren(ctx && ctx.built.length ? standingsBlock(ctx, ui, seg) : empty(t('noResultsYet')));
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
-  return frag(pageTitle(t('standings')), head, box);
+  paintView();
+  return frag(h('h1', { class: 'display page-title' }, t('navResults')), h('div', { style: 'margin-bottom:14px' }, viewSeg), wrap);
 }

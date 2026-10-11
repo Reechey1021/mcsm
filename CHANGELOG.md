@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.0 – Hall of fame, team pages, logos, sync options
+- Eredmények → Dicsőségfal: all-time medal tables (drivers and teams) and a box per season with
+  the top three drivers and teams (MGTK podium folded under each). MCSM 1–29 come from the old
+  "Dicsőségfal" sheet; later finished seasons are added automatically from the site's standings.
+  Drivers are matched across PSN changes and spelling differences (e.g. MGTK_Baboca96 =
+  MGTK_Baboca, "Torda Hornyák" = "Hornyàk Torda").
+- Profiles: a "Bajnoki címek" box with gold/silver/bronze counts and the seasons (overall
+  championship only; MGTK stays on the hall of fame).
+- Pilóták: every card shows "#number · PSN ID", with the team (logo + name) on its own line and a
+  trophy count; new "Címek szerint" sort.
+- Teams: each team has its own page (logo, titles with seasons, drivers); admins edit name,
+  colours, status and logo right there. The team list shows logos and medal counts.
+- Logos: GT teams can have logos too. Logos show on profiles (header and details), team pages,
+  the team list, the hall of fame and the drivers list.
+- DR/SR: choose who to refresh (only without data / older than a day / everyone), plus an
+  automatic daily refresh that runs quietly when an admin first opens the site each day.
+- Profile pictures: "only drivers without a picture" (on by default) or a list of PSN IDs.
+
 ## 0.6.5 – Merge accounts
 - Admin → Haladó → Fiókok összevonása (owners): type a PSN ID, see every account and all race
   history tied to it, pick the account to keep, and everything moves onto it: profile details

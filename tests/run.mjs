@@ -500,6 +500,31 @@ await test('0.6.2: linked members keep their entries; no undefined anywhere in t
   eq(undef, [], 'nothing undefined');
 });
 
+
+// ---------- 0.7 ----------
+await test('hall of fame: 29 seasons, medal tables match the sheet', async () => {
+  const { HALL } = await import('../js/data/hall-of-fame.js');
+  const HM = await import('../js/model/honours.js');
+  eq(HALL.length, 29); eq(HALL[0].teams, [null, null, null], 'MCSM1 had no teams championship');
+  const people = HM.driverMedals(HALL);
+  const saby = people.find((p) => /Saghmeister/.test(p.name)); eq(saby.medals, [11, 6, 5]);
+  const baboca = people.find((p) => /Kind/.test(p.name)); eq(baboca.medals, [4, 3, 3], 'Baboca96 and Baboca are one person');
+  const chris = people.find((p) => /Christop/.test(p.name)); eq(chris.medals, [3, 5, 3], 'ChrisG under three PSN IDs and two spellings');
+  const torda = people.find((p) => /Torda/.test(p.name)); eq(torda.medals, [2, 5, 3], '"Torda Hornyák" = "Hornyàk Torda"');
+  const teams = HM.teamMedals(HALL); eq(teams[0].name, 'SuperSonic'); eq(teams[0].medals, [14, 3, 1]);
+  ok(HM.sameTeam('TheChoosenOnes', 'THE CHOSEN ONES') && HM.sameTeam('B&B Fun ', 'B&B FUN') && HM.sameTeam('NoTime2Play', '#NOTIME2PLAY'), 'team name variants');
+  eq(HM.medalsForUser(people, { uid: 'x', firstName: 'Richárd', lastName: 'Horváth', psn: 'IGTSH_Reechey-' }).medals, [0, 1, 1]);
+  eq(HM.medalsForUser(people, { uid: 'y', firstName: 'Nobody', lastName: 'Here', psn: 'XX_None' }), null);
+});
+await test('DR/SR: which drivers to refresh', async () => {
+  const { pickDrivers } = await import('../js/services/ratings.js');
+  const base = { lastName: 'A', firstName: 'B', psn: 'Abc_x', input: 'pad', view: 'tv', raceNumber: 5, dr: 'B', sr: 'A' };
+  const now = 1e12, us = [{ ...base, uid: 'new' }, { ...base, uid: 'old', ratingsSyncedAt: now - 2 * 86400000 }, { ...base, uid: 'fresh', ratingsSyncedAt: now - 3600000 }];
+  eq(pickDrivers(us, 'missing', now).map((u) => u.uid), ['new']);
+  eq(pickDrivers(us, 'stale', now).map((u) => u.uid), ['new', 'old']);
+  eq(pickDrivers(us, 'all', now).length, 3);
+});
+
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

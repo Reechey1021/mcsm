@@ -48,6 +48,9 @@ async function boot() {
   initKeyboard();
   on('pushed', () => refreshNotes().catch(() => {}));
   on('session', () => { if (session_ready()) listenForeground(); });
+  // Once a day, the first admin to open the site refreshes DR/SR quietly in the background.
+  let autoDone = false;
+  on('session', () => { if (!autoDone && session_ready() && session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true)) { autoDone = true; setTimeout(() => import('./services/ratings.js').then((m) => m.autoDailySync()), 8000); } });
   teamMap().then(setTeamsForShell).catch(() => {});
   on('relang', () => { buildShell(); rerender(); updateNav(currentRoute()); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => updateNav(currentRoute()));

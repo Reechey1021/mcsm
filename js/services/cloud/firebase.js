@@ -117,7 +117,7 @@ export async function createFirebaseBackend(config) {
     },
     gtTeams: {
       async list() { const qs = await F.getDocs(F.collection(db, 'gtTeams')); return qs.docs.map((d) => ({ id: d.id, ...d.data() })); },
-      async save(tm) { return wrap(async () => { const id = tm.tag.trim().toUpperCase(); await F.setDoc(F.doc(db, 'gtTeams', id), { tag: id, name: tm.name.trim() }); return id; }); },
+      async save(tm) { return wrap(async () => { const id = tm.tag.trim().toUpperCase(); await F.setDoc(F.doc(db, 'gtTeams', id), { tag: id, name: tm.name.trim(), logoUrl: tm.logoUrl || null }); return id; }); },
       async remove(id) { return wrap(() => F.deleteDoc(F.doc(db, 'gtTeams', id))); },
     },
     seasons: {

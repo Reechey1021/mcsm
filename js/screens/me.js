@@ -13,6 +13,9 @@ import { teamMap, gtTeams } from '../core/data.js';
 import { verifyBanner } from './banners.js';
 import { fmtInt } from '../core/motion.js';
 import { ratingPanel } from '../ui/rating.js';
+import { teamBadge, medalRow } from '../ui/parts.js';
+import { honours } from '../services/honours.js';
+import { medalsForUser } from '../model/honours.js';
 import { pickFile, uploadImage } from '../ui/upload.js';
 import { emit } from '../core/bus.js';
 import { toggle } from '../ui/controls.js';
@@ -33,17 +36,25 @@ export function profileHead(p, team, opts = {}) {
   return h('section', { class: 'profile-head' + (p.gt7Cover ? ' has-cover' : '') }, p.gt7Cover ? h('span', { class: 'head-cover', vars: { 'background-image': `url("${String(p.gt7Cover).replace(/"/g, '')}")` }, 'aria-hidden': 'true' }) : null, h('span', { class: 'bign', 'aria-hidden': 'true' }, p.raceNumber ?? ''), av,
     h('div', { style: 'min-width:0' }, h('h1', { class: 'display' }, (p.lastName || '').toLocaleUpperCase('hu'), h('br'), p.firstName || ''),
       h('div', { class: 'sub' }, h('span', null, p.psn || ''), ratingEl(p)),
-      h('div', { class: 'head-chips' }, team ? h('span', { class: 'head-chip' }, h('span', { class: 'team-dot', style: `background:${team.c1}` }), team.name) : null, p.gtTeamId ? h('span', { class: 'head-chip' }, p.gtTeamId) : null)));
+      h('div', { class: 'head-chips' }, team ? h('a', { class: 'head-chip', href: '#/csapatok/' + team.id, style: 'color:inherit' }, teamBadge(team, 18), team.name) : null, p.gtTeamId ? h('span', { class: 'head-chip' }, opts.gt && opts.gt.logoUrl ? teamBadge(opts.gt, 18) : null, p.gtTeamId) : null)));
 }
 
-export function profileKv(p, team, gtName) {
+// Championship titles from the hall of fame and finished seasons (overall drivers' title only;
+// the MGTK table lives on the hall of fame page).
+function titlesBox(p) {
+  const box = h('section', { style: 'margin-top:12px' });
+  honours().then((H) => { const m = medalsForUser(H.people, p); if (!m) { box.remove(); return; } box.replaceChildren(h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status live' }, t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true }))); }).catch(() => box.remove());
+  return box;
+}
+
+export function profileKv(p, team, gtName, gt) {
   const row = (ic, k, v) => h('div', { class: 'info-row' }, icon(ic), h('span', { class: 'k' }, k), h('span', { class: 'v' }, v));
   const input = p.input === 'wheel' ? `${t('wheel')}${p.wheelBrand ? ' (' + (p.wheelBrand === 'other' ? p.wheelOther : p.wheelBrand) + ')' : ''}` : t('pad');
-  return frag(ratingPanel(p),
+  return frag(ratingPanel(p), titlesBox(p),
     h('section', { class: 'panel info-list' },
       row('flag', t('raceNumber'), h('b', { class: 'rnum', style: 'font-size:20px' }, '#' + (p.raceNumber ?? '–'))),
-      row('users', t('mcsmTeam'), team ? frag(h('span', { class: 'team-dot', style: `background:${team.c1}` }), team.name) : t('noTeam')),
-      row('grid', t('gtTeam'), gtName || t('none')),
+      row('users', t('mcsmTeam'), team ? h('a', { href: '#/csapatok/' + team.id, style: 'color:inherit;display:flex;gap:8px;align-items:center' }, teamBadge(team, 20), team.name) : t('noTeam')),
+      row('grid', t('gtTeam'), gtName ? frag(gt && gt.logoUrl ? teamBadge(gt, 20) : null, gtName) : t('none')),
       row(p.input === 'wheel' ? 'wheel' : 'pad', t('inputLabel'), input),
       row('eye', t('viewLabel'), p.view ? t('view_' + p.view) : '–')));
 }
@@ -60,7 +71,7 @@ export function screenMe() {
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const myRoles = ROLE_KEYS.filter((k) => roles()[k]);
     box.replaceChildren(...[
-      profileComplete() ? frag(profileHead(p, team, { editable: true }), profileKv(p, team, gt && gt.tag)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
+      profileComplete() ? frag(profileHead(p, team, { editable: true, gt }), profileKv({ ...p, uid: session.user.uid }, team, gt && gt.tag, gt)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
       p.teamRequest ? h('div', { class: 'callout', style: 'margin-top:12px' }, icon('clock'), h('span', null, t('teamRequestPending', { team: (tm[p.teamRequest] || {}).name || '' }))) : null,
       myRoles.length ? h('div', { class: 'roles', style: 'margin-top:12px' }, myRoles.map((k) => h('span', { class: 'role-tag ' + k }, t('role_' + k)))) : null,
       myEntriesBox,

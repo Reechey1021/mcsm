@@ -39,7 +39,7 @@ export function screenAdminTeams() {
   return frag(backLink(t('admin'), '#/admin'), pageTitle(t('adminTeams'), t('adminTeamsSub')), h('div', { style: 'margin-bottom:14px' }, add), list);
 }
 
-function editTeam(tm, reload) {
+export function editTeam(tm, reload) {
   const draft = tm ? { ...tm } : { name: '', status: 'free', c1: '#B6F03C', c2: '#38BDF8' };
   const err = h('div');
   const name = h('input', { class: 'input', value: draft.name, maxlength: 40 });
@@ -85,19 +85,23 @@ export function screenAdminGt() {
     h('div', { style: 'margin-bottom:14px' }, h('button', { class: 'btn primary', type: 'button', onclick: () => editGt(null, reload) }, icon('plus'), t('newGt'))), list);
 }
 
-function editGt(g, reload) {
+export function editGt(g, reload) {
   const tag = h('input', { class: 'input', value: g ? g.tag : '', maxlength: 12, autocapitalize: 'characters', disabled: !!g });
   const name = h('input', { class: 'input', value: g ? g.name : '', maxlength: 60 });
   const tf = field(t('gtTag'), tag, { hint: t('gtTagHint') }), nf = field(t('gtName'), name);
+  let logoUrl = g ? g.logoUrl || null : null;
+  const logoPrev = h('span', { class: 'logo-prev', style: logoUrl ? `background-image:url("${logoUrl}")` : '' });
+  const logoBtn = h('button', { class: 'btn small', type: 'button' }, icon('plus'), t('logoUpload'));
+  logoBtn.addEventListener('click', async () => { const f = await pickFile('image/*'); if (!f) return; busy(logoBtn, async () => { try { logoUrl = await uploadImage(`teams/gt-${(tag.value || 'new').trim().toLowerCase()}/logo`, f, { max: 512 }); logoPrev.style.backgroundImage = `url("${logoUrl}")`; } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); } }); });
   const err = h('div');
   const save = h('button', { class: 'btn primary block', type: 'button' }, icon('check'), t('save'));
   const del = g ? h('button', { class: 'btn danger block', type: 'button' }, icon('trash'), t('delete')) : null;
-  const sh = openSheet({ title: g ? g.tag : t('newGt'), body: h('div', { class: 'form' }, err, tf.row, nf.row, save, del) });
+  const sh = openSheet({ title: g ? g.tag : t('newGt'), body: h('div', { class: 'form' }, err, tf.row, nf.row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('teamLogo')), h('div', { style: 'display:flex;gap:12px;align-items:center' }, logoPrev, logoBtn)), save, del) });
   save.addEventListener('click', () => busy(save, async () => {
     const tg = tag.value.trim(), nm = name.value.trim();
     tf.setError(/^[A-Za-z0-9_-]{1,12}$/.test(tg) ? '' : t('errGtTag')); nf.setError(nm ? '' : t('errRequired'));
     if (!/^[A-Za-z0-9_-]{1,12}$/.test(tg) || !nm) return;
-    try { const id = await backend.gtTeams.save({ tag: tg, name: nm }); await backend.audit.add({ action: g ? 'gt.update' : 'gt.create', target: id, targetName: nm, before: g || null, after: { tag: tg, name: nm }, reason: null }); sh.close(true); toast(t('saved')); reload(); }
+    try { const id = await backend.gtTeams.save({ tag: tg, name: nm, logoUrl }); await backend.audit.add({ action: g ? 'gt.update' : 'gt.create', target: id, targetName: nm, before: g || null, after: { tag: tg, name: nm }, reason: null }); sh.close(true); toast(t('saved')); reload(); }
     catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   }));
   if (del) del.addEventListener('click', () => busy(del, async () => {

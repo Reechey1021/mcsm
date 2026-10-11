@@ -35,7 +35,7 @@ with sync_playwright() as p:
         check(pg.query_selector('[aria-invalid="true"]') is not None, f'{size}: wizard step 1 validates')
         inputs = pg.query_selector_all('.wizard-body input')
         inputs[0].fill('Próba'); inputs[1].fill('Péter'); inputs[2].fill('Teszt_Elek'); pg.wait_for_timeout(900)
-        check('foglalt' in pg.inner_text('.wizard-body'), f'{size}: PSN taken detected')
+        check('másik fiókhoz' in pg.inner_text('.wizard-body'), f'{size}: PSN taken detected')
         inputs[2].fill(f'Proba_{size}'); pg.wait_for_timeout(900)
         pg.click('.wizard-foot .btn.primary'); pg.wait_for_timeout(1200)
         check('2/3' in pg.inner_text('.page-sub'), f'{size}: on step 2')

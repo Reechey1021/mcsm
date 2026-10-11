@@ -19,7 +19,7 @@ import { screenMerge } from './screens/admin/merge.js';
 import { screenWizard } from './screens/wizard.js';
 import { screenMe } from './screens/me.js';
 import { screenDrivers, screenDriver } from './screens/drivers.js';
-import { screenTeams } from './screens/teams.js';
+import { screenTeams, screenTeam } from './screens/teams.js';
 import { screenSoon, screenRules, screenRulesEdit, screenNotFound } from './screens/static.js';
 import { screenGt7 } from './screens/admin/gt7.js';
 import { screenAction } from './screens/action.js';
@@ -48,6 +48,7 @@ const ROUTES = [
   ['/pilotak', screenDrivers, { tab: 3 }],
   ['/pilotak/:psn', screenDriver, { tab: 3 }],
   ['/csapatok', screenTeams, { tab: 5 }],
+  ['/csapatok/:id', screenTeam, { tab: 5 }],
   ['/szabalyzat', screenRules, {}],
   ['/szabalyzat/szerkesztes', screenRulesEdit, { auth: true, admin: true }],
   ['/admin/gt7', screenGt7, { tab: 4, auth: true, admin: true }],

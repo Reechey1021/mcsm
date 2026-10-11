@@ -752,3 +752,20 @@ details.adv > summary svg{ width:20px; height:20px; color:var(--ink-3); }
 .practice-btn{ margin:0 0 14px; }
 .lobby-field, .lobby-sec, .lobby-sec > div{ min-width:0; }
 .lobby-field select{ min-width:0; max-width:100%; width:100%; text-overflow:ellipsis; }
+
+/* ===== 0.8: lobby editor, tickers, diagnostics ===== */
+select.select{ box-sizing:border-box; max-width:100%; }
+.lobby-field select.select{ width:100%; min-height:44px; }
+.ticker{ display:grid; gap:6px; }
+.tick-row{ display:flex; align-items:center; gap:10px; }
+.tick-row .icon-btn{ width:44px; height:44px; border:1px solid var(--line); border-radius:12px; background:var(--bg-3); }
+.tick-val{ min-width:120px; text-align:center; font-size:16px; font-variant-numeric:tabular-nums; }
+.ticker input[type=range]{ width:100%; accent-color:var(--accent); }
+.lobby-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.lobby-chips .chip{ min-height:36px; padding:0 10px; font-size:13px; }
+.pq-chip{ display:grid; justify-items:end; font-variant-numeric:tabular-nums; font-weight:800; font-size:14px; margin-left:auto; }
+.pq-chip small{ font-weight:600; color:var(--ink-3); font-size:11.5px; }
+.diag-list{ display:grid; gap:4px; margin:6px 0 4px; }
+.diag-row{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:2px 10px; padding:8px 10px; border-radius:10px; background:var(--bg-3); color:inherit; font-size:13.5px; }
+.diag-row small{ grid-column:1 / -1; color:var(--ink-3); }
+.diag-row:empty{ display:none; }

@@ -13,8 +13,9 @@ const DAY = 86400000;
 // Which drivers to refresh: 'all', 'missing' (never synced) or 'stale' (not in the last day).
 export function pickDrivers(us, mode = 'all', now = Date.now()) {
   const done = us.filter((u) => isComplete(u) && u.psn);
-  if (mode === 'missing') return done.filter((u) => !u.ratingsSyncedAt);
-  if (mode === 'stale') return done.filter((u) => !u.ratingsSyncedAt || now - u.ratingsSyncedAt > DAY * 0.9);
+  const changed = (u) => !!u.psnSynced && u.psnSynced !== u.psnLower;
+  if (mode === 'missing') return done.filter((u) => !u.ratingsSyncedAt || !u.gt7Guid || changed(u));
+  if (mode === 'stale') return done.filter((u) => !u.ratingsSyncedAt || changed(u) || now - u.ratingsSyncedAt > DAY * 0.9);
   return done;
 }
 
@@ -35,7 +36,7 @@ export async function syncRatings(drivers, api, { fake = false, onBatch = () => 
     for (const d of res.drivers || []) {
       const u = byPsn[String(d.PSN_ID || '').toLowerCase()]; if (!u) continue;
       const st = d.stats || {};
-      ops.push({ path: ['users', u.uid], merge: true, data: { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now(), ...(d.GUID ? { gt7Guid: String(d.GUID) } : {}), ...(d.Nickname ? { gt7Nick: String(d.Nickname) } : {}) } });
+      ops.push({ path: ['users', u.uid], merge: true, data: { dr: d.DR || u.dr, sr: d.SR || u.sr, drPoints: st.dr_points ?? null, gtStats: { races: st.total_races ?? null, wins: st.victories ?? null, clean: st.clean_races ?? null, country: d.country_code || null }, ratingsSyncedAt: Date.now(), psnSynced: u.psnLower, ...(d.GUID ? { gt7Guid: String(d.GUID) } : {}), ...(d.GUID && u.gt7Guid && String(d.GUID) !== u.gt7Guid ? { gt7Avatar: null, gt7Cover: null } : {}), ...(d.Nickname ? { gt7Nick: String(d.Nickname) } : {}) } });
       updated++;
     }
     await writeUsers(ops);

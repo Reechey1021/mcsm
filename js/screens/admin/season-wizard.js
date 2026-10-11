@@ -19,11 +19,15 @@ import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
 import { carField } from '../../ui/car-picker.js';
 import { uploadImage, dropZone } from '../../ui/upload.js';
-import { LOBBY_SESSIONS, LOBBY_FIELDS, lobbyFor } from '../../data/lobby-settings.js';
+import { ROUND_SESSIONS, lobbyFor, pqLobbyFor } from '../../data/lobby-settings.js';
+import { lobbyEditor } from '../../ui/lobby-editor.js';
+import { lobbySizes } from '../../model/season.js';
+import { honours } from '../../services/honours.js';
+import { samePerson } from '../../model/honours.js';
 import { notifyAll } from '../../services/notify.js';
 
-const STEP_KEYS = ['swBasics', 'swRounds', 'swCars', 'swEntry', 'swScoring', 'swReview'];
-const STEP_OF_ERROR = { no: 0, name: 0, coverUrl: 0, rounds: 1, car: 2, window: 3, cap: 3, lobbySize: 3, points: 4 };
+const STEP_KEYS = ['swBasics', 'swPq', 'swRounds', 'swCars', 'swEntry', 'swLobbies', 'swScoring', 'swReview'];
+const STEP_OF_ERROR = { no: 0, name: 0, coverUrl: 0, rounds: 2, car: 3, window: 4, cap: 5, lobbySize: 5, points: 6 };
 
 export function screenSeasonWizard({ id }, query) {
   const root = h('div', { class: 'narrow', style: 'max-width:640px' }, loading());
@@ -80,7 +84,23 @@ function build(d, editing, all, us, gts) {
         txt(t('description'), d.description, (v) => { d.description = v; }, { area: true, max: 600, hint: t('descriptionHint') }).row,
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('preview')), preview));
     },
-    // 1 rounds + PQ
+    // 1 pre-qualifying: sessions and the PQ room's lobby settings (one setup for the season)
+    () => {
+      const pqList = h('div', { class: 'stack', style: 'gap:10px' });
+      const drawPq = () => pqList.replaceChildren(...(d.pq.length ? d.pq.map((p, i) => h('div', { class: 'round-edit' },
+        h('div', { class: 'head' }, h('b', { class: 'display' }, p.name || 'PQ'), h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.pq.splice(i, 1); drawPq(); } }, icon('trash'))),
+        h('div', { class: 'inline' }, txt(t('pqName'), p.name, (v) => { p.name = v; }, { max: 20 }).row, dt(t('pqStart'), p.date, (v) => { p.date = v; }).row))) : [h('p', { class: 'note', style: 'margin:0' }, t('noPq'))]));
+      drawPq();
+      const defaults = h('button', { class: 'btn small', type: 'button' }, icon('refresh'), t('defaultPq'));
+      defaults.addEventListener('click', () => { const r1 = d.rounds.map((r) => r.date).filter(Boolean).sort((a, b) => a - b)[0] || shiftDay(Date.now(), 21, '19:00'); d.pq = defaultPq(r1); drawPq(); });
+      const addPq = h('button', { class: 'btn small', type: 'button' }, icon('plus'), t('addPq'));
+      addPq.addEventListener('click', () => { d.pq.push({ id: 'pq' + Date.now().toString(36), name: 'PQ' + (d.pq.length + 1), date: d.pq.length ? d.pq[d.pq.length - 1].date + DAY : shiftDay(Date.now(), 14, '20:00') }); drawPq(); });
+      d.pqLobby = pqLobbyFor(d);
+      return frag(h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, defaults, addPq), pqList,
+        h('h2', { class: 'display', style: 'font-size:24px;margin-top:14px' }, t('pqLobbyTitle')), h('p', { class: 'note', style: 'margin:0' }, t('pqLobbyHint')),
+        lobbyEditor({ pq: d.pqLobby }, ['pq']));
+    },
+    // 2 rounds
     () => {
       const list = h('div', { class: 'stack', style: 'gap:12px' });
       const drawRounds = () => list.replaceChildren(...d.rounds.map((r, i) => roundEditor(r, i)));
@@ -107,26 +127,15 @@ function build(d, editing, all, us, gts) {
         const del = h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.rounds.splice(i, 1); drawRounds(); } }, icon('trash'));
         void tr;
         const trackPane = h('div', { class: 'stack', style: 'gap:10px' }, dt(t('roundStart'), r.date, (v) => { r.date = v; }).row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('track')), sel), layoutBox, otherBox);
-        const lobbyPane = h('div', { style: 'display:none' }, lobbyEditor(r, i));
+        const lobbyPane = h('div', { style: 'display:none' }, roundLobbyEditor(r, i));
         const tabs = seg([{ value: 'track', label: t('trackTab') }, { value: 'lobby', label: t('lobbyTab') }], 'track', (v) => { trackPane.style.display = v === 'track' ? '' : 'none'; lobbyPane.style.display = v === 'lobby' ? '' : 'none'; });
         return h('div', { class: 'round-edit' }, h('div', { class: 'head' }, h('b', { class: 'display' }, t('roundN', { n: i + 1 })), h('span', null, up, del)), tabs, trackPane, lobbyPane);
       };
-      // Lobby settings for the practice rooms: four sessions, each a fold-out list of dropdowns.
-      function lobbyEditor(r, i) {
+      // Lobby settings for the practice rooms: General, Qualifying, Sprint, Gran'Prix.
+      function roundLobbyEditor(r, i) {
         r.lobby = lobbyFor(r);
-        const box = h('div', { class: 'stack', style: 'gap:8px' });
-        LOBBY_SESSIONS.forEach((sk, si) => {
-          const rows = LOBBY_FIELDS[sk].map((fd) => {
-            const sel = h('select', { class: 'select', style: 'width:100%;min-height:44px' }, fd.options.map((o) => h('option', { value: o, selected: r.lobby[sk][fd.k] === o }, o)));
-            if (!fd.options.includes(r.lobby[sk][fd.k])) sel.prepend(h('option', { value: r.lobby[sk][fd.k], selected: true }, r.lobby[sk][fd.k]));
-            sel.addEventListener('change', () => { r.lobby[sk][fd.k] = sel.value; });
-            return h('label', { class: 'lobby-field' }, h('span', null, `${fd.icon} ${fd.label || t('weatherPreset')}`), sel);
-          });
-          box.append(h('details', { class: 'lobby-sec', open: si === 0 }, h('summary', null, t('lobbySes_' + sk), icon('down', 'chev')), h('div', { class: 'stack', style: 'gap:8px;padding:8px 0 4px' }, rows)));
-        });
         const copy = h('button', { class: 'btn small', type: 'button', onclick: () => { d.rounds.forEach((o, j) => { if (j !== i) o.lobby = JSON.parse(JSON.stringify(r.lobby)); }); toast(t('lobbyCopied')); } }, icon('list'), t('lobbyCopyAll'));
-        box.append(h('div', null, copy));
-        return box;
+        return h('div', { class: 'stack', style: 'gap:8px' }, lobbyEditor(r.lobby, ROUND_SESSIONS), h('div', null, copy));
       }
       drawRounds();
       const add = h('button', { class: 'btn block', type: 'button' }, icon('plus'), t('addRound'));
@@ -135,18 +144,9 @@ function build(d, editing, all, us, gts) {
         d.rounds.push({ n: d.rounds.length + 1, date: last && last.date ? shiftDay(last.date, 7, '19:00') : shiftDay(Date.now(), 21, '19:00'), trackId: null, track: '', layout: '', cc: '', car: '', lobby: last && last.lobby ? JSON.parse(JSON.stringify(last.lobby)) : undefined });
         drawRounds(); list.lastChild && list.lastChild.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' });
       });
-      const pqList = h('div', { class: 'stack', style: 'gap:10px' });
-      const drawPq = () => pqList.replaceChildren(...(d.pq.length ? d.pq.map((p, i) => h('div', { class: 'round-edit' },
-        h('div', { class: 'head' }, h('b', { class: 'display' }, p.name || 'PQ'), h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.pq.splice(i, 1); drawPq(); } }, icon('trash'))),
-        h('div', { class: 'inline' }, txt(t('pqName'), p.name, (v) => { p.name = v; }, { max: 20 }).row, dt(t('pqStart'), p.date, (v) => { p.date = v; }).row))) : [h('p', { class: 'note', style: 'margin:0' }, t('noPq'))]));
-      drawPq();
-      const defaults = h('button', { class: 'btn small', type: 'button' }, icon('refresh'), t('defaultPq'));
-      defaults.addEventListener('click', () => { const r1 = d.rounds.map((r) => r.date).filter(Boolean).sort((a, b) => a - b)[0]; if (!r1) { toast(t('errNoRounds'), 'alert'); return; } d.pq = defaultPq(r1); drawPq(); });
-      const addPq = h('button', { class: 'btn small', type: 'button' }, icon('plus'), t('addPq'));
-      addPq.addEventListener('click', () => { d.pq.push({ id: 'pq' + Date.now().toString(36), name: 'PQ' + (d.pq.length + 1), date: d.pq.length ? d.pq[d.pq.length - 1].date + DAY : shiftDay(Date.now(), 14, '20:00') }); drawPq(); });
-      return frag(list, add, h('h2', { class: 'display', style: 'font-size:24px;margin-top:14px' }, t('pqSessions')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, defaults, addPq), pqList);
+      return frag(list, add);
     },
-    // 2 cars
+    // 3 cars
     () => {
       const box = h('div', { class: 'stack', style: 'gap:12px' });
       const draw = () => {
@@ -162,7 +162,7 @@ function build(d, editing, all, us, gts) {
       draw();
       return frag(h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('format')), seg(FORMATS.map((f) => ({ value: f, label: t('format_' + f) })), d.format, (v) => { d.format = v; draw(); }), h('span', { class: 'hint' }, t('formatHint'))), box);
     },
-    // 3 registration
+    // 4 registration
     () => {
       const champSel = h('select', { class: 'select', style: 'width:100%;min-height:50px' }, h('option', { value: '' }, t('noChampion')),
         us.filter(isComplete).sort((a, b) => fullName(a).localeCompare(fullName(b), 'hu')).map((u) => h('option', { value: u.uid, selected: d.championUid === u.uid }, `${fullName(u)} (${u.psn})`)));
@@ -172,12 +172,37 @@ function build(d, editing, all, us, gts) {
       drawWin();
       const def = h('button', { class: 'btn small', type: 'button' }, icon('refresh'), t('defaultWindow'));
       def.addEventListener('click', () => { const r1 = d.rounds.map((r) => r.date).filter(Boolean).sort((a, b) => a - b)[0]; if (!r1) { toast(t('errNoRounds'), 'alert'); return; } Object.assign(d, defaultWindow(r1, d.pq.slice().sort((a, b) => a.date - b.date))); drawWin(); });
+      // Reigning champion: suggest last season's winner when nothing is set yet.
+      const champHint = h('span', { class: 'hint' }, t('championHint'));
+      if (!d.championUid && !editing) honours().then((H) => {
+        const prev = H.seasons.find((x) => x.no === Number(d.no) - 1);
+        const w = prev && prev.drivers && prev.drivers[0];
+        if (!w) return;
+        const u = w.uid ? us.find((x) => x.uid === w.uid) : us.find((x) => samePerson({ name: `${x.lastName || ''} ${x.firstName || ''}`, psn: x.psn }, w));
+        if (!u || d.championUid) return;
+        d.championUid = u.uid; champSel.value = u.uid; champHint.textContent = t('championAuto', { s: 'MCSM' + prev.no });
+      }).catch(() => {});
       return frag(winBox, h('div', null, def, h('p', { class: 'note' }, t('windowHint'))),
-        h('div', { class: 'inline' }, num(t('cap'), d.cap, (v) => { d.cap = v; }, { hint: t('capHint') }).row, num(t('lobbySize'), d.lobbySize, (v) => { d.lobbySize = v; }, { hint: t('lobbySizeHint') }).row),
-        h('div', { class: 'toggle-row' }, h('span', null, t('waitlist'), h('small', null, t('waitlistHint'))), toggle(d.waitlist !== false, (v) => { d.waitlist = v; }, { label: t('waitlist') })),
-        h('div', { class: 'f-row', style: 'margin-top:8px' }, h('span', { class: 'f-label' }, t('champion')), champSel, h('span', { class: 'hint' }, t('championHint'))));
+        h('div', { class: 'f-row', style: 'margin-top:8px' }, h('span', { class: 'f-label' }, t('champion')), champSel, champHint));
     },
-    // 4 scoring
+    // 5 lobbies: cap, waitlist, size and host per lobby
+    () => {
+      const sizes = lobbySizes(d);
+      d.lobbies = d.lobbies || {};
+      const people = us.filter(isComplete).sort((a, b) => fullName(a).localeCompare(fullName(b), 'hu'));
+      const card = (L) => {
+        d.lobbies[L] = { size: sizes[L], host: (d.lobbies[L] || {}).host || null };
+        const host = h('select', { class: 'select' }, h('option', { value: '' }, t('noHost')), people.map((u) => h('option', { value: u.uid, selected: d.lobbies[L].host === u.uid }, `${fullName(u)} (${u.psn})`)));
+        host.addEventListener('change', () => { d.lobbies[L].host = host.value || null; });
+        return h('div', { class: 'round-edit' }, h('div', { class: 'head' }, h('b', { class: 'display' }, t('lobbyX', { l: L }))),
+          h('div', { class: 'inline' }, num(t('lobbySize'), d.lobbies[L].size, (v) => { d.lobbies[L].size = v; d.lobbySize = Math.max(...['A', 'B', 'C'].map((k) => Number(d.lobbies[k] && d.lobbies[k].size) || 0)); }, { hint: t('lobbySizeOneHint') }).row,
+            h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('lobbyHost')), host)));
+      };
+      return frag(h('div', { class: 'inline' }, num(t('cap'), d.cap, (v) => { d.cap = v; }, { hint: t('capHint') }).row),
+        h('div', { class: 'toggle-row' }, h('span', null, t('waitlist'), h('small', null, t('waitlistHint'))), toggle(d.waitlist !== false, (v) => { d.waitlist = v; }, { label: t('waitlist') })),
+        h('p', { class: 'note', style: 'margin:4px 0 0' }, t('lobbiesHint')), ...['A', 'B', 'C'].map(card));
+    },
+    // 6 scoring
     () => {
       const P = d.points;
       const grid = (arr, label) => h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, label), h('div', { class: 'pts-grid' }, arr.map((v, i) => h('label', null, 'P' + (i + 1), h('input', { class: 'input', inputmode: 'numeric', value: v, oninput: (e) => { const n = Number(e.target.value.replace(/[^\d]/g, '')); e.target.value = e.target.value.replace(/[^\d]/g, ''); arr[i] = Number.isFinite(n) ? n : 0; } })))));
@@ -199,7 +224,7 @@ function build(d, editing, all, us, gts) {
           h('div', { class: 'choice multi' }, gts.map((g) => { const b = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(gtSet.has(g.id)) }, g.tag); b.addEventListener('click', () => { gtSet.has(g.id) ? gtSet.delete(g.id) : gtSet.add(g.id); b.setAttribute('aria-pressed', String(gtSet.has(g.id))); d.championships.gt = [...gtSet]; }); return b; })),
           h('span', { class: 'hint' }, t('gtChampsHint'))));
     },
-    // 5 review
+    // 7 review
     () => {
       normalize();
       const errs = validateSeason(d, existingIds);
@@ -213,7 +238,8 @@ function build(d, editing, all, us, gts) {
           row(t('rounds'), d.rounds.map((r, i) => `${i + 1}. ${roundTitle(r)} (${r.date ? fmtDate(r.date, true) : '?'})`).join('\n') || '–'),
           row(t('pqSessions'), d.pq.map((p) => `${p.name} (${fmtDate(p.date, true)})`).join(', ') || '–'),
           row(t('regOpens'), d.regOpensAt ? fmtDate(d.regOpensAt, true) : '–'), row(t('regCloses'), d.regClosesAt ? fmtDate(d.regClosesAt, true) : '–'),
-          row(t('cap'), `${d.cap} (${d.waitlist !== false ? t('withWaitlist') : t('noWaitlist')})`), row(t('lobbySize'), String(d.lobbySize)),
+          row(t('cap'), `${d.cap} (${d.waitlist !== false ? t('withWaitlist') : t('noWaitlist')})`),
+          row(t('swLobbies'), ['A', 'B', 'C'].map((L) => { const z = lobbySizes(d)[L], hu = (d.lobbies && d.lobbies[L] && d.lobbies[L].host) ? us.find((u) => u.uid === d.lobbies[L].host) : null; return `${L}: ${z}${hu ? ' · host: ' + fullName(hu) : ''}`; }).join('\n')),
           row(t('championships'), [t('champDrivers'), d.championships.teams ? t('champTeams') : null, ...(d.championships.gt || [])].filter(Boolean).join(', ')),
           row(t('raceA'), `${d.points.raceA[0]}…${d.points.raceA[d.points.raceA.length - 1]}`))));
     },

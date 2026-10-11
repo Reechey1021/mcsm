@@ -102,9 +102,21 @@ export function screenGt7() {
       const us = await loadUsers(); const byGuid = Object.fromEntries(us.filter((u) => u.gt7Guid).map((u) => [u.gt7Guid, u]));
       const ops = []; let missing = 0;
       rows.forEach((r) => { const u = byGuid[r.guid]; if (!u) { missing++; return; } ops.push({ path: ['users', u.uid], data: { gt7Avatar: r.avatar || GT7_DEFAULT_AVATAR, gt7Cover: r.cover || null }, merge: true }); });
-      try { await writeUsers(ops); invalidate('users'); await refreshPics(); picOut.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('picsSaved', { n: ops.length, m: missing })))); paste.value = ''; }
+      try { await writeUsers(ops); invalidate('users'); await refreshPics(); drawDiag().catch(() => {}); picOut.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('picsSaved', { n: ops.length, m: missing })))); paste.value = ''; }
       catch (e) { picOut.replaceChildren(formError(gsError(e) + (e.message ? ` (${e.message})` : ''))); }
     }));
+    // Diagnostics: who has no GT7 ID (GridStats couldn't find the PSN ID), who has no picture.
+    const diagBox = h('div');
+    const drawDiag = async () => {
+      invalidate('users');
+      const us = (await loadUsers()).filter(isComplete).sort((a, b) => fullName(a).localeCompare(fullName(b), 'hu'));
+      const noId = us.filter((u) => !u.gt7Guid), noPic = us.filter((u) => u.gt7Guid && !u.gt7Avatar);
+      const list = (arr, why) => h('div', { class: 'diag-list' }, arr.map((u) => h('a', { class: 'diag-row', href: '#/pilotak/' + encodeURIComponent(u.psnLower) }, h('b', null, u.psn), h('span', null, fullName(u)), h('small', null, why(u)))));
+      diagBox.replaceChildren(
+        h('details', { class: 'lobby-sec' }, h('summary', null, t('diagNoId', { n: noId.length }), icon('down', 'chev')), h('p', { class: 'note' }, t('diagNoIdHint')), list(noId, (u) => (u.psnSynced && u.psnSynced !== u.psnLower ? t('diagPsnChanged') : u.ratingsSyncedAt ? t('diagNotFound') : t('diagNeverSynced')))),
+        h('details', { class: 'lobby-sec', style: 'margin-top:8px' }, h('summary', null, t('diagNoPic', { n: noPic.length }), icon('down', 'chev')), h('p', { class: 'note' }, t('diagNoPicHint')), list(noPic, () => '')));
+    };
+    drawDiag().catch(() => {});
     // tracks (GridStats): photo, map, length, corners
     const trackInfo = h('p', { class: 'muted', style: 'margin:0' }, t('tracksNone'));
     backend.content.get('tracks').then((d) => { if (d && d.tracks) trackInfo.textContent = t('tracksHave', { n: d.tracks.length, date: fmtDate(d.updatedAt) }); }).catch(() => {});
@@ -145,7 +157,7 @@ export function screenGt7() {
         const r = await syncRatings(drivers, client(), { fake, stop: () => stop, onBatch: (b, total, n) => { pr.set(b / total); pr.line(t('gsBatch', { b, total, n })); } });
         if (r.missing.length) pr.line(t('gsMissing', { list: r.missing.join(', ') }));
         await backend.audit.add({ action: 'gt7.ratings', target: 'users', targetName: 'DR/SR', before: null, after: { updated: r.updated, missing: r.missing.length }, reason: null });
-        toast(t('gsRatingsDone', { n: r.updated })); refreshPics().catch(() => {});
+        toast(t('gsRatingsDone', { n: r.updated })); refreshPics().catch(() => {}); drawDiag().catch(() => {});
       } catch (e) { pr.line(gsError(e) + (e.message ? ` (${e.message})` : '')); toast(gsError(e), 'alert'); }
     }));
     const autoRow = h('div', { class: 'toggle-row' }, h('span', null, t('rateAuto'), h('small', null, cfg && cfg.lastAuto ? t('rateAutoLast', { date: fmtDate(cfg.lastAuto, true) }) : t('rateAutoHint'))),
@@ -157,6 +169,7 @@ export function screenGt7() {
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
         h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
         h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
+      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('diagTitle')), diagBox),
       h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
         h('ol', { class: 'note', style: 'margin:0;padding-left:20px;line-height:1.6' }, h('li', null, t('picsStep1')), h('li', null, t('picsStep2')), h('li', null, t('picsStep3')), h('li', null, t('picsStep4'))),
         h('div', { class: 'toggle-row' }, h('span', null, t('picsOnlyMissing'), h('small', null, t('picsOnlyMissingHint'))), onlyMissing), field(t('picsPsnFilter'), psnFilter, { hint: t('picsPsnHint') }).row,

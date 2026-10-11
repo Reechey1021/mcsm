@@ -426,7 +426,7 @@ await test('import: merge duplicates, teams, seasons, entries, PQ, totals', () =
   eq(p.merged[0].kept, 'MGTK_HOPPÁ');
   eq(p.authUsers.map((a) => a.uid), ['p1']); eq(p.noEmail, ['IGTSH_Saby']);
   const u1 = p.users[0].data; eq([u1.lastName, u1.input, u1.view, u1.gtTeamId, u1.teamId], ['Pál', 'wheel', 'tv', 'MGTK', 'sufni-tuning']);
-  const u3 = p.users[1].data; eq([u3.dr, u3.input, u3.view, u3.teamId, u3.roles], [null, 'pad', 'vr', null, { admin: true }]);
+  const u3 = p.users[1].data; eq([u3.dr, u3.input, u3.view, u3.teamId, u3.roles], ['S', 'pad', 'vr', null, { admin: true }], 'DR S is a real GT7 rank');
   eq(p.seasons[0].id, 'mcsm30'); eq(p.seasons[0].data.name, 'ELANTRA TCR [GR.4]');
   eq([p.seasons[0].data.rounds[0].trackId, p.seasons[0].data.rounds[0].layout], ['stcroix', 'B Reverse']);
   eq(p.pq[0].data.times, { p1: 132.484 }, 'PQ time re-keyed to the kept profile');
@@ -519,19 +519,37 @@ await test('hall of fame: 29 seasons, medal tables match the sheet', async () =>
 await test('DR/SR: which drivers to refresh', async () => {
   const { pickDrivers } = await import('../js/services/ratings.js');
   const base = { lastName: 'A', firstName: 'B', psn: 'Abc_x', input: 'pad', view: 'tv', raceNumber: 5, dr: 'B', sr: 'A' };
-  const now = 1e12, us = [{ ...base, uid: 'new' }, { ...base, uid: 'old', ratingsSyncedAt: now - 2 * 86400000 }, { ...base, uid: 'fresh', ratingsSyncedAt: now - 3600000 }];
-  eq(pickDrivers(us, 'missing', now).map((u) => u.uid), ['new']);
-  eq(pickDrivers(us, 'stale', now).map((u) => u.uid), ['new', 'old']);
-  eq(pickDrivers(us, 'all', now).length, 3);
+  const now = 1e12, us = [{ ...base, uid: 'new' }, { ...base, uid: 'old', gt7Guid: 'g1', ratingsSyncedAt: now - 2 * 86400000 }, { ...base, uid: 'fresh', gt7Guid: 'g2', ratingsSyncedAt: now - 3600000 }, { ...base, uid: 'renamed', psnLower: 'abc_x', psnSynced: 'abc_typo', gt7Guid: 'g3', ratingsSyncedAt: now - 3600000 }];
+  eq(pickDrivers(us, 'missing', now).map((u) => u.uid), ['new', 'renamed'], 'a changed PSN ID counts as missing');
+  eq(pickDrivers(us, 'stale', now).map((u) => u.uid), ['new', 'old', 'renamed']);
+  eq(pickDrivers(us, 'all', now).length, 4);
 });
 
-await test('lobby settings: defaults match the league standard, options include them', async () => {
+await test('lobby settings v2: sessions, defaults, ranges, old values', async () => {
   const L = await import('../js/data/lobby-settings.js');
-  const d = L.lobbyDefaults();
-  eq([d.pq.duration, d.pq.equal, d.q.fuel, d.s.start, d.gp.laps, d.gp.refuel, d.gp.rate], ['30 perc + 1 kör Finish Delay', 'ON', '3X', 'Lámpás állórajt', '30 kör', '6 L/sec', '15X']);
-  Object.entries(L.LOBBY_FIELDS).forEach(([s, fields]) => fields.forEach((f) => ok(f.options.includes(f.def), `${s}.${f.k} default in options`)));
-  eq(L.lobbyFor({ lobby: { gp: { laps: '25 kör' } } }).gp.laps, '25 kör'); eq(L.lobbyFor({}).s.laps, '10 kör');
-  eq(L.lobbyLine(L.LOBBY_FIELDS.pq[7], 'C02 • Cloudy & Warm'), '☀️ C02 • Cloudy & Warm');
+  eq(L.ROUND_SESSIONS, ['general', 'q', 's', 'gp']);
+  const r = L.lobbyFor({});
+  eq([r.general.bop, r.general.slip, r.general.category, r.general.drivetrain, r.general.aspiration, r.general.flags, r.s.flags], ['ON', 'Real', 'Gr.3', 'FF', 'TC', 'ON', 'OFF']);
+  eq([r.q.tyreWear, r.q.fuel, r.gp.tyreWear, r.gp.refuel, r.gp.rate, r.s.rate, r.gp.fuelInit], [1, 3, 3, 6, 15, 1, 100]);
+  eq(L.pqLobbyFor({}).duration, '30 perc + 1 kör Finish Delay'); eq(L.pqLobbyFor({}).weather, 'C02 | Cloudy and Warm');
+  eq(L.WEATHER.length, 32); eq(L.TIMES.length, 11);
+  const fields = Object.values(L.LOBBY_FIELDS).flat();
+  ok(fields.filter((f) => f.type === 'mult').every((f) => f.max === 50), 'wear/fuel up to 50X');
+  ok(fields.filter((f) => f.type === 'select').every((f) => f.options.includes(f.def)), 'every default is an option');
+  const dur = L.LOBBY_FIELDS.q[0].options; ok(dur.includes('1 perc + 1 kör Finish Delay') && dur.includes('90 perc + 1 kör Finish Delay') && dur.includes('24 óra + 1 kör Finish Delay'));
+  const old = L.lobbyFor({ lobby: { s: { tyreWear: '1X', fuel: 'OFF', start: 'Lámpás állórajt', weather: 'C02 • Cloudy & Warm' }, gp: { refuel: '6 L/sec', fuelInit: '100 L / Default' } } });
+  eq([old.s.tyreWear, old.s.fuel, old.s.start, old.s.weather, old.gp.refuel, old.gp.fuelInit], [1, 0, 'Grid Start', 'C02 | Cloudy and Warm', 6, 100], 'values saved by 0.7.1 still read');
+  eq(L.lobbyLine(L.LOBBY_FIELDS.q[2], 0), '🛞 Tyre Wear • OFF');
+  eq(L.visibleFields('gp', { cards: 'All Random Cards' }).some((f) => f.k === 'cardList'), false); eq(L.visibleFields('gp', { cards: 'Custom' }).some((f) => f.k === 'cardList'), true);
+});
+await test('times typed as digits; lobby sizes per lobby', async () => {
+  const R = RM;
+  eq([R.parseLap('157105'), R.parseLap('57105'), R.parseLap('3456'), R.parseRaceTime('2013400'), R.parseRaceTime('10024843'), R.parseLap('1:57.105'), R.parseLap('199999')], [117.105, 57.105, 3.456, 1213.4, 3624.843, 117.105, null]);
+  eq(R.parseGap('3456'), { gap: 3.456 });
+  const rank = Array.from({ length: 40 }, (_, i) => ({ uid: 'u' + i }));
+  const p = R.pqProposal(rank, { A: 15, B: 16, C: 16 }); eq([p.A.length, p.B.length, p.C.length, p.B[0]], [15, 16, 9, 'u15']);
+  const SM = await import('../js/model/season.js');
+  eq(SM.lobbySizes({ lobbySize: 16, lobbies: { A: { size: 15 } } }), { A: 15, B: 16, C: 16 });
 });
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);

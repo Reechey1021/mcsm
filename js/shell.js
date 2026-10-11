@@ -56,7 +56,7 @@ function refreshBell() {
   els.badge.textContent = n > 9 ? '9+' : String(n);
   els.badge.style.display = n ? '' : 'none';
 }
-const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock', claimDispute: 'alert', roleGranted: 'shield' };
+const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock', claimDispute: 'alert', roleGranted: 'shield', lobbyHost: 'users' };
 function openNotes() {
   const list = h('div');
   const draw = () => list.replaceChildren(...(notes.items.length ? notes.items.map((n) => h('a', { class: 'notif' + ((n.synthetic || (n.at || 0) > ((session.profile || {}).notifReadAt || 0)) && n.by !== (session.user || {}).uid ? ' unread' : ''), href: n.link || '#/', onclick: () => sh.close(true) },

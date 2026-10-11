@@ -29,7 +29,7 @@ with sync_playwright() as p:
         pg.click('.seg button:has-text("Dicsőségfal")'); pg.wait_for_timeout(1800)
         v = text(pg)
         check(len(pg.query_selector_all('.hof-card')) >= 29 and 'MCSM1' in v and 'Egyéni éremtáblázat' in v, f'{size}: hall of fame seasons')
-        check('🥇11' in v, f'{size}: medal table')
+        check(pg.query_selector('.mt-row .tcount') is not None and pg.query_selector_all('.mt-row')[0].inner_text().split()[-3:][0] == '11', f'{size}: medal table')
         snap(pg, f'v7_hall_{size}')
         # driver with titles (IGTSH_Saby is in the test data)
         go(pg, '/pilotak/igtsh_saby', None, 2400)

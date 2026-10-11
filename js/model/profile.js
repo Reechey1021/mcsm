@@ -2,9 +2,9 @@
 // What a driver profile is, how it's validated, and when it counts as complete.
 // Pure functions: used by the wizard, the admin editor and the tests.
 
-export const DR_OPTS = ['A+', 'A', 'B', 'C', 'D', 'E'];
+export const DR_OPTS = ['S', 'A+', 'A', 'B', 'C', 'D', 'E'];
 export const SR_OPTS = ['S', 'A', 'B', 'C', 'D', 'E'];
-export const DR_RANK = { 'A+': 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
+export const DR_RANK = { S: 7, 'A+': 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
 export const INPUTS = ['wheel', 'pad'];
 export const WHEEL_BRANDS = ['Fanatec', 'Logitech', 'Thrustmaster', 'Moza', 'Simagic', 'other'];
 // Open question: camera view vs display (TV/monitor/PSVR2). Easy to change here.

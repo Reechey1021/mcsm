@@ -21,7 +21,10 @@ import { notifySeason } from '../services/notify.js';
 import { trackDecor } from '../ui/season-parts.js';
 import { matchTrack } from '../data/track-match.js';
 import { tracks as loadTracks } from '../core/data.js';
-import { LOBBY_SESSIONS, LOBBY_FIELDS, lobbyFor, lobbyLine } from '../data/lobby-settings.js';
+import { ROUND_SESSIONS, lobbyFor, pqLobbyFor } from '../data/lobby-settings.js';
+import { lobbyView } from '../ui/lobby-editor.js';
+import { lobbySizes, lobbyHost } from '../model/season.js';
+import { notifyUsers } from '../services/notify.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 const lobbyBadge = (L) => h('span', { class: 'lobby ' + L }, L);
@@ -30,17 +33,21 @@ const nameCell = (ctx, uid) => { const p = ctx.snaps[uid] || {}; return h('a', {
 /* ---------- PQ tab (season page) ---------- */
 export function pqTab(st) {
   const box = h('div', null, skelRows(6, 54));
+  const pqBtn = h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '' }, icon('flag'), t('pqRoom'));
+  pqBtn.addEventListener('click', () => pqRoomSheet(st.season));
   loadRace(st.season.id).then((ctx) => {
-    const s = ctx.season, size = s.lobbySize || 16;
+    const s = ctx.season, sz = lobbySizes(s);
+    const cuts = [sz.A, sz.A + sz.B];
+    const lobbyAt = (i) => (i < sz.A ? 'A' : i < sz.A + sz.B ? 'B' : 'C');
     const sessions = (s.pq || []).slice().sort((a, b) => a.date - b.date);
     const count = (id) => Object.keys((ctx.pqDocs.find((d) => d.id === id) || {}).times || {}).length;
     const r1 = ctx.roundDoc(1);
     const fastest = (ctx.pqRank.find((r) => r.t) || {}).t;
     const items = [];
     ctx.pqRank.forEach((r, i) => {
-      if (i > 0 && i % size === 0) items.push(h('li', { class: 'pq-cut' }, t('lobbyCut', { l: LOBBIES[i / size - 1] || '' })));
+      if (cuts.includes(i)) items.push(h('li', { class: 'pq-cut' }, t('lobbyCut', { l: i === cuts[0] ? 'A' : 'B' })));
       const p = ctx.snaps[r.uid] || {}, tm = ctx.tmap[p.teamId];
-      const L = r1 && r1.lobbiesPublished ? lobbyOf(r1.lobbies, r.uid) : (LOBBIES[Math.floor(i / size)] || 'C');
+      const L = r1 && r1.lobbiesPublished ? lobbyOf(r1.lobbies, r.uid) : lobbyAt(i);
       const pqName = r.pq ? ((sessions.find((x) => x.id === r.pq) || {}).name || '') : '';
       items.push(h('li', { dataset: { key: r.uid } }, h('a', { class: 'trow' + (session.user && r.uid === session.user.uid ? ' me' : ''), href: '#/pilotak/' + encodeURIComponent(p.psnLower || '') },
         h('span', { class: 'pos' }, i + 1), h('span'),
@@ -51,14 +58,14 @@ export function pqTab(st) {
     const ol = h('ol', { class: 'tower' }, items);
     if (!reduced()) requestAnimationFrame(() => [...ol.children].slice(0, 40).forEach((li, i) => li.animate([{ opacity: 0, transform: li.classList.contains('pq-cut') ? 'scaleX(.3)' : 'translateX(-14px)' }, { opacity: 1, transform: 'none' }], { duration: li.classList.contains('pq-cut') ? 500 : 300, delay: i * 14, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' })));
     box.replaceChildren(
-      h('p', { class: 'muted', style: 'margin:6px 0 12px' }, t('pqIntro2', { n: ctx.pqRank.filter((r) => r.seeded).length, size })),
+      h('p', { class: 'muted', style: 'margin:6px 0 12px' }, t('pqIntro2', { n: ctx.pqRank.filter((r) => r.seeded).length, size: sz.A })),
       h('div', { class: 'stack', style: 'gap:8px;margin-bottom:16px' }, sessions.map((p) => h('div', { class: 'round-item' }, icon('clock', 'chev'),
         h('span', { class: 't' }, h('b', null, p.name), h('span', { class: 'sub' }, fmtDate(p.date, true), h('span', null, t('nTimes', { n: count(p.id) })))),
         isStaff() ? h('a', { class: 'btn small', href: `#/admin/pq/${s.id}/${p.id}` }, icon('edit'), t('enterTimes')) : null))),
       isAdmin() ? h('div', { style: 'margin-bottom:14px' }, h('a', { class: 'btn', href: `#/szezonok/${s.id}/fordulo/1?szerk=lobbyk` }, icon('grid'), t('round1Lobbies'))) : null,
       ctx.pqRank.length ? h('div', { class: 'tower-wrap' }, ol) : empty(t('noEntries')));
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
-  return box;
+  return frag(pqBtn, box);
 }
 
 /* ---------- round list items (season page) ---------- */
@@ -130,7 +137,11 @@ function roundView(ctx, n, reload) {
   if (lobbies.length) draw(); else body.replaceChildren(empty(t('noLobbiesYet')));
   const practice = h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '' }, icon('flag'), t('practiceRoom'));
   practice.addEventListener('click', () => practiceSheet(info, ctx.season));
-  return frag(head, practice, isStaff() ? adminRoundCard(ctx, n, reload) : null,
+  const myLobby = session.user && doc.lobbiesPublished ? lobbyOf(doc.lobbies || {}, session.user.uid) : null;
+  const hostUid = myLobby ? lobbyHost(ctx.season, myLobby) : null;
+  const hostP = hostUid ? ctx.person(hostUid) : null;
+  const hostNote = hostP && hostUid !== session.user.uid ? h('div', { class: 'callout', style: 'margin:-4px 0 14px' }, icon('users'), h('span', null, h('b', { style: 'display:block' }, t('yourHost', { l: myLobby, name: fullName(hostP) || hostP.psn || '?' })), t('addHostOnPsn', { psn: hostP.psn || '?' }))) : null;
+  return frag(head, practice, hostNote, isStaff() ? adminRoundCard(ctx, n, reload) : null,
     doc.resultsState === 'provisional' ? h('div', { class: 'callout', style: 'margin-bottom:12px' }, icon('info'), h('span', null, t('provisionalNote'))) : null,
     !published && built && isStaff() ? h('div', { class: 'callout warn', style: 'margin-bottom:12px' }, icon('alert'), h('span', null, t('draftResultsNote'))) : null,
     tools, body, roundProtests(ctx, n, reload));
@@ -177,10 +188,10 @@ export function resultsTable(ctx, rows, L, S, me) {
 
 /* ---------- practice room settings ---------- */
 export function practiceSheet(info, season) {
-  const lob = lobbyFor(info);
-  const secs = LOBBY_SESSIONS.map((sk, i) => h('details', { class: 'lobby-sec', open: i === 0 }, h('summary', null, t('lobbySes_' + sk), icon('down', 'chev')),
-    h('div', { class: 'lobby-list' }, LOBBY_FIELDS[sk].map((fd) => h('div', { class: 'lobby-line' }, lobbyLine(fd, lob[sk][fd.k]))))));
-  openSheet({ title: t('practiceRoom'), body: frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, `MCSM${season.no}, ${t('roundN', { n: info.n })}: ${roundTitle(info)}${info.car ? ' · ' + info.car : ''}`), h('div', { class: 'stack', style: 'gap:8px' }, secs)) });
+  openSheet({ title: t('practiceRoom'), body: frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, `MCSM${season.no}, ${t('roundN', { n: info.n })}: ${roundTitle(info)}${info.car ? ' · ' + info.car : ''}`), lobbyView(lobbyFor(info), ROUND_SESSIONS)) });
+}
+export function pqRoomSheet(season) {
+  openSheet({ title: t('pqRoom'), body: frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, `MCSM${season.no} · ${t('lobbySes_pq')}`), lobbyView({ pq: pqLobbyFor(season) }, ['pq'])) });
 }
 
 /* ---------- admin: round card ---------- */
@@ -214,7 +225,8 @@ function adminRoundCard(ctx, n, reload) {
 
 /* ---------- admin: lobby editor ---------- */
 function lobbyEditor(ctx, n, reload) {
-  const s = ctx.season, size = s.lobbySize || 16;
+  const s = ctx.season, sz = lobbySizes(s), size = sz;
+  const pqOf = Object.fromEntries((ctx.pqRank || []).map((r, i) => [r.uid, { t: r.t, seeded: r.seeded, pos: i + 1 }]));
   const doc = ctx.roundDoc(n) || {};
   let lobbies = JSON.parse(JSON.stringify(doc.lobbies || { A: [], B: [], C: [] }));
   LOBBIES.forEach((L) => { lobbies[L] = lobbies[L] || []; });
@@ -232,13 +244,14 @@ function lobbyEditor(ctx, n, reload) {
     const mv = wasL && wasL !== L ? (wasL > L ? 'up' : 'down') : null;
     return h('button', { class: 'row-card', type: 'button', dataset: { key: uid }, onclick: () => moveSheet(uid, L) }, avatar(p, tm),
       h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, '#' + (p.raceNumber ?? '') + '  ' + (tm ? tm.name : ''), flags.has(uid) ? '  ' + t('noShowTag') : '')),
+      pqOf[uid] ? h('span', { class: 'pq-chip' }, pqOf[uid].seeded ? '★' : pqOf[uid].t ? fmtLap(pqOf[uid].t) : '–', h('small', null, 'P' + pqOf[uid].pos)) : null,
       mv ? h('span', { class: 'delta ' + mv, style: 'font-size:12.5px' }, mv === 'up' ? '▲ ' + t('promoted') : '▼ ' + t('relegated')) : null);
   };
   const totals = h('span', { class: 'prog' });
   const draw = (animate) => {
     totals.textContent = t('lobbyTotals', { a: lobbies.A.length, b: lobbies.B.length, c: lobbies.C.length });
     const build = () => wrap.replaceChildren(...LOBBIES.map((L) => h('section', null,
-      h('div', { class: 'row-between', style: 'margin-bottom:8px' }, h('div', { style: 'display:flex;gap:10px;align-items:center' }, lobbyBadge(L), h('b', { style: 'font-size:17px' }, t('lobbyX', { l: L }))), h('span', { class: 'faint' + (lobbies[L].length > size ? '' : ''), style: lobbies[L].length > size ? 'color:var(--red);font-weight:700' : '' }, `${lobbies[L].length} / ${size}`)),
+      h('div', { class: 'row-between', style: 'margin-bottom:8px' }, h('div', { style: 'display:flex;gap:10px;align-items:center' }, lobbyBadge(L), h('b', { style: 'font-size:17px' }, t('lobbyX', { l: L }))), h('span', { class: 'faint', style: lobbies[L].length > sz[L] ? 'color:var(--red);font-weight:700' : '' }, `${lobbies[L].length} / ${sz[L]}`, lobbyHost(s, L) ? ` · host: ${fullName(ctx.person(lobbyHost(s, L))) || '?'}` : '')),
       h('div', { class: 'stack', style: 'gap:6px' }, lobbies[L].length ? lobbies[L].map((uid) => rowEl(uid, L)) : [h('div', { class: 'empty', style: 'padding:14px' }, t('emptyLobby'))])),
     ), (() => { const rest = pool(); return rest.length ? h('section', null, h('div', { class: 'label', style: 'margin-bottom:8px' }, t('notInLobby', { n: rest.length })), h('div', { class: 'stack', style: 'gap:6px' }, rest.map((e) => rowEl(e.uid, null)))) : null; })());
     animate ? flip(wrap, build, { stagger: 6 }) : build();
@@ -266,7 +279,10 @@ function lobbyEditor(ctx, n, reload) {
     try {
       await backend.race.roundSave(s.id, n, { lobbies, lobbiesPublished: publishIt || !!doc.lobbiesPublished, resultsState: doc.resultsState || 'none' });
       await audit(publishIt ? 'round.lobbies' : 'round.lobbiesDraft', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` });
-      if (publishIt) notifySeason(s, 'lobbiesOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
+      if (publishIt) {
+        notifySeason(s, 'lobbiesOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
+        LOBBIES.forEach((L) => { const hu = lobbyHost(s, L); const hp = hu ? ctx.person(hu) : null; if (hp && lobbies[L].length) notifyUsers(lobbies[L].filter((u) => u !== hu), 'lobbyHost', { n, l: L, name: fullName(hp), psn: hp.psn || '' }, `#/szezonok/${s.id}/fordulo/${n}`); });
+      }
       toast(publishIt ? t('lobbiesPublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   });

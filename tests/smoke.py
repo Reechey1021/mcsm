@@ -42,7 +42,7 @@ with sync_playwright() as p:
         # step 2
         pg.click('.wizard-body .chip:text-is("Fanatec")')
         pg.click('.wizard-body .chip:text-is("Monitor")')
-        pg.fill('.wizard-body input.big', '1'); pg.click('.wizard-body .chip:text-is("A+")'); pg.click('.wizard-body .chip:text-is("S")')
+        pg.fill('.wizard-body input.big', '1'); pg.click('.wizard-body .chip:text-is("A+")'); pg.query_selector_all('.wizard-body .chip:text-is("S")')[-1].click()
         pg.click('.wizard-foot .btn.primary'); pg.wait_for_timeout(900)
         check('regnáló' in pg.inner_text('.wizard-body'), f'{size}: #1 reserved')
         pg.fill('.wizard-body input.big', '44')

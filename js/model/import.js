@@ -19,7 +19,7 @@ const hue = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charC
 
 const NO_TEAM = new Set(['', 'NO TEAM', 'NINCS', 'TARTALEKPILOTA', 'TARTALÉKPILÓTA']);
 const TEAM_ALIASES = { CHOSENONES: 'THE CHOSEN ONES' };
-const DRS = ['A+', 'A', 'B', 'C', 'D', 'E'], SRS = ['S', 'A', 'B', 'C', 'D', 'E'];
+const DRS = ['S', 'A+', 'A', 'B', 'C', 'D', 'E'], SRS = ['S', 'A', 'B', 'C', 'D', 'E'];
 export const LAP_RE = /^(\d{1,2}):(\d{2})[.,](\d{1,3})$/;
 export const lapToSec = (s) => { const m = LAP_RE.exec(String(s || '').trim()); return m ? +m[1] * 60 + +m[2] + +('0.' + m[3]) : null; };
 
@@ -185,7 +185,7 @@ export function planOps(plan, { claimed = new Set() } = {}) {
     if (claimed.has(u.id)) return;
     // The PSN lock goes first: the rules check it exists when the profile is written.
     if (u.data.psnLower) ops.push({ path: ['psnIds', u.data.psnLower], data: { uid: u.id } });
-    ops.push({ path: ['users', u.id], data: u.data });
+    ops.push({ path: ['users', u.id], data: u.data, merge: true });
     if (u.email) ops.push({ path: ['users', u.id, 'private', 'account'], data: { email: u.email } });
   });
   plan.seasons.forEach((s) => ops.push({ path: ['seasons', s.id], data: s.data }));

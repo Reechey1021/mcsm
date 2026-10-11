@@ -23,7 +23,7 @@ service cloud.firestore {
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
               'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn'];
     }
-    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy', 'gt7Guid', 'gt7Nick', 'gt7Avatar', 'gt7Cover']); }
+    function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy', 'gt7Guid', 'gt7Nick', 'gt7Avatar', 'gt7Cover', 'psnSynced']); }
 
     function okStr(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
     function validProfile(d) {

@@ -18,6 +18,7 @@ export function drPosition(points, letter) {
     let i = 0; while (i < 4 && p >= DR_BOUNDS[i + 1]) i++;
     return (i + (p - DR_BOUNDS[i]) / (DR_BOUNDS[i + 1] - DR_BOUNDS[i])) / 5;
   }
+  if (letter === 'S') return 1;
   const i = DR_CLASSES.indexOf(letter);
   return i < 0 ? 0.02 : (i + 0.5) / 5;
 }
@@ -71,7 +72,7 @@ export function drGauge(p) {
 
 export function ratingPanel(p) {
   const nxt = nextClass(p.drPoints);
-  const note = p.drPoints == null ? t('drNoPoints') : nxt ? t('drNext', { cls: nxt.cls, n: fmtInt(nxt.need) }) : t('drTop');
+  const note = p.dr === 'S' ? t('drTopS') : p.drPoints == null ? t('drNoPoints') : nxt ? t('drNext', { cls: nxt.cls, n: fmtInt(nxt.need) }) : t('drTop');
   const gs = p.gtStats || null;
   const stat = (v, k) => h('div', null, h('div', { class: 'v display num' }, v == null ? '–' : fmtInt(v)), h('div', { class: 'k' }, k));
   return h('section', { class: 'rating-grid' },

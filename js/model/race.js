@@ -13,9 +13,17 @@ export const sheetId = (n, L, S) => `${n}-${L}-${S}`;
 /* ---------- time formats ---------- */
 const num = (s) => Number(String(s).replace(',', '.'));
 // '1:57.234' -> 117.234, '57.2' -> 57.2
+const digitsToSec = (d) => {
+  const ms = Number(d.slice(-3)), sec = Number(d.slice(-5, -3) || 0), rest = d.slice(0, -5);
+  const min = rest.length > 2 ? Number(rest.slice(-2)) : Number(rest || 0), hr = rest.length > 2 ? Number(rest.slice(0, -2)) : 0;
+  if (sec >= 60 || (rest.length > 2 && min >= 60)) return null;
+  return Math.round((hr * 3600 + min * 60 + sec + ms / 1000) * 1000) / 1000;
+};
+// Digits only: "157105" -> 1:57.105, "57105" -> 57.105, "3456" -> 3.456, "2013400" -> 20:13.400
 export function parseLap(str) {
   const s = String(str || '').trim().replace(/^\+/, '');
   if (!s) return null;
+  if (/^\d{4,7}$/.test(s)) { const v = digitsToSec(s); return v > 0 ? v : null; }
   const m = /^(?:(\d{1,2}):)?(\d{1,2}(?:[.,]\d{1,3})?)$/.exec(s);
   if (!m) return null;
   const v = (m[1] ? Number(m[1]) * 60 : 0) + num(m[2]);
@@ -24,6 +32,7 @@ export function parseLap(str) {
 // '20:13.400' or '1:00:24.843' -> seconds
 export function parseRaceTime(str) {
   const s = String(str || '').trim();
+  if (/^\d{4,9}$/.test(s)) { const v = digitsToSec(s); return v > 0 ? v : null; }
   const m = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2}(?:[.,]\d{1,3})?)$/.exec(s);
   if (!m) return parseLap(s);
   return Math.round(((m[1] ? Number(m[1]) * 3600 : 0) + Number(m[2]) * 60 + num(m[3])) * 1000) / 1000;
@@ -63,7 +72,8 @@ export function pqRanking(inList, pqDocs) {
 }
 export function pqProposal(ranking, size = 16) {
   const order = ranking.map((r) => r.uid);
-  return { A: order.slice(0, size), B: order.slice(size, size * 2), C: order.slice(size * 2) };
+  const z = typeof size === 'object' ? size : { A: size, B: size, C: size };
+  return { A: order.slice(0, z.A), B: order.slice(z.A, z.A + z.B), C: order.slice(z.A + z.B) };
 }
 // One PQ per driver per season: who already has a time in another session?
 export function pqConflicts(pqDocs, pqId) {

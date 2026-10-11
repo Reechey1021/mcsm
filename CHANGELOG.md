@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.8.0 – Lobby settings v2, wizard restructure, lobby hosts, data fixes
+- Lobby settings: General settings (BOP, driving option limits, boost, slipstream, damage, grip,
+  category, drivetrain, aspiration, penalties, flag rules), Qualifying, Sprint (flag rules off)
+  and Gran'Prix per round; Pre-qualifying is one setup per season. Tyre wear and fuel 1–50X,
+  initial fuel 1–100 L, refuel 1–20 L/sec and time speed 1–30X as tickers with a slider;
+  durations 1 minute to 24 hours; Grid Start / Grid Start with False Start Check / Rolling Start;
+  Time of Day and all 32 GT7 weather presets (S01–S18, C01–C06, R01–R08); custom weather cards
+  as a multi-pick. Settings saved by 0.7.1 are read and converted.
+- Season wizard: Basics, Pre-qualifying (sessions + PQ room), Rounds, Cars, Entries (window and
+  reigning champion, which defaults to last season's winner), Lobbies (cap, waitlist, size and
+  host per lobby), Scoring, Review.
+- Lobby sizes per lobby drive the PQ cut lines and lobby proposals. Drivers see their lobby host
+  on the round page with a reminder to add them on PSN, and get a notification when lobbies go out.
+- PQ tab: "Prekvalifikációs szoba beállításai" button.
+- Lobby editor shows each driver's PQ time and PQ position.
+- Times can be typed as digits only: 157105 = 1:57.105, 2013400 = 20:13.400.
+- DR S (GT7's top rank) is accepted. Without it, the DR/SR sync marked S drivers incomplete and
+  they dropped off the drivers list (IGTSH_Szotyi42x).
+- GT7 data page: "Hiányzó adatok" lists drivers without a GT7 ID (with the reason) and with an ID
+  but no picture. The sync remembers which PSN ID it looked up: a changed PSN ID counts as
+  missing data, and a different GT7 player drops the old pictures so they're fetched again.
+- Re-importing merges into existing profiles instead of overwriting them (GT7 ID, pictures and
+  ratings are kept).
+- Desktop: dropdowns no longer spill out of their boxes.
+- Firestore rules: new profile field psnSynced (publish again).
+
 ## 0.7.1 – Trophies, lobby settings, season delete
 - Trophy icon (gold/silver/bronze) instead of medal emoji everywhere: hall of fame, team list,
   driver cards, next to the name on profiles.

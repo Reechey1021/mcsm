@@ -103,7 +103,7 @@ export function newSeason(no, from) {
     points: JSON.parse(JSON.stringify(DEFAULT_TABLE)), championships: { teams: true, gt: ['MGTK'] },
   };
   if (!from) return base;
-  const keep = ['format', 'car', 'cars', 'cap', 'waitlist', 'lobbySize', 'promote', 'points', 'championships', 'coverUrl'];
+  const keep = ['format', 'car', 'cars', 'cap', 'waitlist', 'lobbySize', 'lobbies', 'promote', 'points', 'championships', 'coverUrl', 'pqLobby'];
   keep.forEach((k) => { if (from[k] !== undefined) base[k] = JSON.parse(JSON.stringify(from[k])); });
   return base;
 }
@@ -135,3 +135,11 @@ export function validateSeason(s, existingIds = []) {
   if (!Array.isArray(p.quali) || p.quali.some((x) => !Number.isFinite(x))) e.points = 'errPoints';
   return e;
 }
+
+// Lobby sizes can differ per lobby (e.g. a streamer takes a slot in A). Falls back to lobbySize.
+export function lobbySizes(s) {
+  const base = Number((s && s.lobbySize) || 16);
+  const own = (s && s.lobbies) || {};
+  return { A: Number((own.A && own.A.size) || base), B: Number((own.B && own.B.size) || base), C: Number((own.C && own.C.size) || base) };
+}
+export const lobbyHost = (s, L) => ((s && s.lobbies && s.lobbies[L]) || {}).host || null;

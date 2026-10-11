@@ -16,7 +16,7 @@ def text(pg, sel='#view'):
     except Exception: return ''
 def fresh_visit(pg, route, who=None, wait=2600):
     pg.evaluate("sessionStorage.removeItem('mcsm:newsShown')")
-    pg.goto(BASE + f'?fakecloud&v={fresh_visit.n}' + (f'&fakeuser={who}' if who else '') + '#' + route); fresh_visit.n += 1; pg.wait_for_timeout(wait)
+    pg.goto(BASE + f'?fakecloud&autoconfirm&v={fresh_visit.n}' + (f'&fakeuser={who}' if who else '') + '#' + route); fresh_visit.n += 1; pg.wait_for_timeout(wait)
 fresh_visit.n = 0
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -25,7 +25,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset&fakeuser=owner#/'); pg.wait_for_timeout(2000)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset&fakeuser=owner#/'); pg.wait_for_timeout(2000)
         check(pg.query_selector('.nc-overlay') is None, f'{size}: no carousel without news')
         # admin writes an article for the welcome carousel
         pg.click('button[aria-label="Hírek"]'); pg.wait_for_timeout(700)
@@ -92,7 +92,7 @@ with sync_playwright() as p:
         snap(pg, f'v9_profile_{size}')
         fresh_visit(pg, '/sajat', 'owner', 2600)
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
-        pg.goto(BASE + '?fakecloud&mrdemo#/sajat'); pg.wait_for_timeout(2400)
+        pg.goto(BASE + '?fakecloud&autoconfirm&mrdemo#/sajat'); pg.wait_for_timeout(2400)
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
         check('MINTA' in text(pg, '.mr-card') and '131,5' in text(pg, '.mr-card'), f'{size}: ?mrdemo shows a sample')
         snap(pg, f'v9_demo_{size}')

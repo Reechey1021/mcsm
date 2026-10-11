@@ -16,7 +16,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def as_user(pg, who, route):
-    pg.goto(BASE + f'?fakecloud&fakeuser={who}#{route}'); pg.wait_for_timeout(1500)
+    pg.goto(BASE + f'?fakecloud&autoconfirm&fakeuser={who}#{route}'); pg.wait_for_timeout(1500)
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, vw in (('m', (390, 844)), ('d', (1440, 900))):
@@ -25,7 +25,7 @@ with sync_playwright() as p:
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
         # visitor
-        pg.goto(BASE + '?fakecloud&fakereset#/'); pg.wait_for_timeout(1600)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset#/'); pg.wait_for_timeout(1600)
         check('Nevezés nyitva' in text(pg), f'{size}: home hero shows open entries')
         check(pg.query_selector('.countdown') is not None, f'{size}: countdown on home')
         snap(pg, f'p2_home_visitor_{size}')
@@ -41,7 +41,7 @@ with sync_playwright() as p:
         pg.click('.sheet .btn.primary'); pg.wait_for_timeout(1800)
         check('Neveztél' in text(pg), f'{size}: hero shows entered ({text(pg)[:80]!r})')
         # season page: my entry, absence, withdraw, re-enter
-        pg.goto(BASE + '?fakecloud#/szezonok/mcsm32'); pg.wait_for_timeout(1600)
+        pg.goto(BASE + '?fakecloud&autoconfirm#/szezonok/mcsm32'); pg.wait_for_timeout(1600)
         check(pg.query_selector('.my-entry') is not None, f'{size}: my entry card')
         snap(pg, f'p2_season_{size}')
         sw = pg.query_selector_all('.my-entry .switch')

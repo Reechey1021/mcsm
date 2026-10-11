@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2 – Publish confirmation
+- Reverted 0.9.1's "only the first lobby publish notifies" and the 10-minute duplicate guard.
+- Every publish that sends notifications now asks first ("Biztosan közzéteszed? Mindenki
+  értesítést kap. Ideiglenes mentéshez használd inkább a Piszkozat gombot."), and the
+  notification fires only after "Közzététel (végleges)" in that window: lobbies, results,
+  stewards' decisions and the season announcement. The lobby button is now
+  "Közzététel (végleges)".
+
 ## 0.9.1 – Fixes and the new rating card
 - Fixed: the X on pop-ups didn't close them with a mouse (the header's drag-to-close captured
   the click). Affected every pop-up, including news and the article editor.

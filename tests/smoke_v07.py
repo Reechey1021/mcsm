@@ -15,7 +15,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def go(pg, route, who=None, wait=1800):
-    pg.goto(BASE + '?fakecloud' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
+    pg.goto(BASE + '?fakecloud&autoconfirm' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
 open('/tmp/mcsm-logo.png', 'wb').write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJklEQVR4nGP8z8Dwn4EIwESMIlYGhv+MDAz/GRgY/jMyMDAwEAMAlUQGAQ6m7qYAAAAASUVORK5CYII='))
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -24,7 +24,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset#/eredmenyek'); pg.wait_for_timeout(2200)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset#/eredmenyek'); pg.wait_for_timeout(2200)
         check(pg.query_selector('.tower') is not None, f'{size}: results tab still opens on the standings')
         pg.click('.seg button:has-text("Dicsőségfal")'); pg.wait_for_timeout(1800)
         v = text(pg)

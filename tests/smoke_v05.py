@@ -70,11 +70,11 @@ with sync_playwright() as p:
         check(not pg.query_selector('.bell-btn .badge-dot').is_visible(), f'{size}: badge cleared')
         # owner publishes round 3 lobbies -> pilota gets a new notice
         go(pg, '/szezonok/mcsm31/fordulo/3?szerk=lobbyk', 'owner', 2000)
-        pg.click('.entry-bar .btn.primary'); pg.wait_for_timeout(2000)
+        pg.click('.entry-bar .btn.primary'); pg.wait_for_timeout(700)
+        check(pg.query_selector('.sheet .confirm-publish') is not None and 'Mindenki értesítést kap' in pg.inner_text('.sheet') or 'értesítést kap' in pg.inner_text('.sheet'), f'{size}: publish asks for confirmation')
+        pg.click('.sheet .confirm-publish'); pg.wait_for_timeout(2000)
         go(pg, '/', 'pilota', 2500)
-        # round 3's lobbies are already out in the test data: publishing them again must not notify again
-        vis = pg.query_selector('.bell-btn .badge-dot').is_visible()
-        check(not vis, f'{size}: re-publishing lobbies sends no duplicate notice (visible={vis})')
+        check(pg.query_selector('.bell-btn .badge-dot').is_visible(), f'{size}: new notice after confirmed publish')
         ow = pg.evaluate('document.documentElement.scrollWidth - innerWidth')
         check(ow <= 0, f'{size}: no horizontal overflow ({ow})')
         ctx.close()

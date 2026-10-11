@@ -158,7 +158,7 @@ export const hu = {
   savedWithGaps: 'Mentve. Még hiányos, közzététel előtt pótold.', correctionSaved: 'Javítás mentve, a tabella frissült', draftSaved2: 'Piszkozat mentve', restoredLocal: 'Visszatöltöttük a nem mentett változtatásaidat erről az eszközről.',
   'audit_round.publish': 'közzétette az eredményeket:', 'audit_round.final': 'véglegesítette:', 'audit_round.lobbies': 'közzétette a lobbykat:', 'audit_round.lobbiesDraft': 'lobbyvázlatot mentett:',
   'audit_pq.save': 'PQ-időket rögzített:', 'audit_sheet.create': 'eredménylapot rögzített:', 'audit_sheet.update': 'eredménylapot módosított:',
-  lobbyDraftShort: 'Piszkozat', lobbyPublishShort: 'Közzététel',
+  lobbyDraftShort: 'Piszkozat', lobbyPublishShort: 'Közzététel (végleges)',
 
   // ----- phase 4: protests & penalties, Spec picks -----
   protests: 'Óvások', fileProtest: 'Óvás benyújtása', judgeCase: 'Bírói ügy', protestOpenUntil: 'Óvni {date}-ig lehet ({rel}).', protestOpensAt: 'Az óvási időszak {date}-kor nyílik.', protestClosed: 'Az óvási időszak lezárult.',
@@ -274,4 +274,6 @@ export const hu = {
   installAnd1: 'Nyisd meg az oldalt a Chrome-ban.', installAnd2: 'Koppints a jobb felső ⋮ menüre.', installAnd3: 'Válaszd az „Alkalmazás telepítése” vagy „Hozzáadás a kezdőképernyőhöz” lehetőséget.',
   mrUnranked: 'Besorolatlan', mrAbove: 'Átlag felett', mrBelow: 'Átlag alatt', mrPar: 'Átlagos', mrRoundsToRank: '{n}/{total} forduló a besorolásig', mrHidden: '5 forduló után', mrPaceShort: 'Tempó', mrRaceShort: 'Verseny', mrDisciplineShort: 'Fegyelem', mrRelSub: 'célba érés', mrDemo: 'MINTA',
   lobbiesRepublished: 'Lobbik frissítve (értesítés csak az első közzétételkor megy ki)',
+  publishFinal: 'Közzététel (végleges)', confirmPublishTitle: 'Biztosan közzéteszed?', confirmPublishText: 'Mindenki értesítést kap.', confirmPublishDraft: 'Ideiglenes mentéshez használd inkább a Piszkozat gombot.', confirmLobbies: 'A(z) {n}. forduló lobbybeosztása megjelenik, és minden pilóta értesítést kap.', confirmResults: 'A(z) {n}. forduló eredményei ideiglenesként megjelennek, és minden pilóta értesítést kap.', confirmResultsAgain: 'A(z) {n}. forduló frissített eredményei megjelennek.', confirmDecision: 'A döntés megjelenik, a büntetés beépül az eredménybe, és az érintettek értesítést kapnak.', confirmAnnounce: 'A(z) {s} megjelenik, és minden pilóta értesítést kap.',
+  cancel: 'Mégse',
 };

@@ -15,7 +15,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def go(pg, route, who=None, wait=1800):
-    pg.goto(BASE + '?fakecloud' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
+    pg.goto(BASE + '?fakecloud&autoconfirm' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, vw in (('m', (390, 844)), ('d', (1440, 900))):
@@ -23,7 +23,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset#/csapatok'); pg.wait_for_timeout(2200)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset#/csapatok'); pg.wait_for_timeout(2200)
         widths = pg.eval_on_selector_all('.team-card', 'els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().width)))]')
         check(len(widths) == 1, f'{size}: team cards same width ({widths})')
         check('🥇' not in text(pg) and pg.query_selector('.team-card .trophy') is not None, f'{size}: trophy icons on teams')

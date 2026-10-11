@@ -142,7 +142,7 @@ export const en = {
   savedWithGaps: 'Saved. Still incomplete; fill the gaps before publishing.', correctionSaved: 'Correction saved; standings updated', draftSaved2: 'Draft saved', restoredLocal: 'We restored your unsaved changes from this device.',
   'audit_round.publish': 'published results for', 'audit_round.final': 'made final', 'audit_round.lobbies': 'published lobbies for', 'audit_round.lobbiesDraft': 'saved draft lobbies for',
   'audit_pq.save': 'entered PQ times for', 'audit_sheet.create': 'entered a results sheet for', 'audit_sheet.update': 'changed a results sheet for',
-  lobbyDraftShort: 'Draft', lobbyPublishShort: 'Publish',
+  lobbyDraftShort: 'Draft', lobbyPublishShort: 'Publish (final)',
 
   // ----- phase 4: protests & penalties, Spec picks -----
   protests: 'Protests', fileProtest: 'File a protest', judgeCase: "Judges' case", protestOpenUntil: 'Protests close {date} ({rel}).', protestOpensAt: 'Protests open {date}.', protestClosed: 'The protest window has closed.',
@@ -258,4 +258,6 @@ export const en = {
   installAnd1: 'Open the site in Chrome.', installAnd2: 'Tap the ⋮ menu at the top right.', installAnd3: 'Choose "Install app" or "Add to Home screen".',
   mrUnranked: 'Unranked', mrAbove: 'Above average', mrBelow: 'Below average', mrPar: 'On par', mrRoundsToRank: '{n}/{total} rounds to rank', mrHidden: 'after 5 rounds', mrPaceShort: 'Pace', mrRaceShort: 'Race', mrDisciplineShort: 'Discipline', mrRelSub: 'finished', mrDemo: 'SAMPLE',
   lobbiesRepublished: 'Lobbies updated (a notification only goes out on the first publish)',
+  publishFinal: 'Publish (final)', confirmPublishTitle: 'Publish now?', confirmPublishText: 'Everyone will be notified.', confirmPublishDraft: 'To save temporarily, use Draft instead.', confirmLobbies: "Round {n}'s lobbies go live and every driver is notified.", confirmResults: "Round {n}'s results go live as provisional and every driver is notified.", confirmResultsAgain: "Round {n}'s updated results go live.", confirmDecision: 'The decision goes live, any penalty is applied to the results, and those involved are notified.', confirmAnnounce: '{s} goes live and every driver is notified.',
+  cancel: 'Cancel',
 };

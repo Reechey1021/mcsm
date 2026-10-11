@@ -8,6 +8,7 @@ import { haptic, reduced } from '../core/motion.js';
 import { seg, busy, field, choice } from '../ui/controls.js';
 import { avatar, empty, backLink, formError, secHead, skelRows, pageTitle } from '../ui/parts.js';
 import { openSheet, toast } from '../ui/sheet.js';
+import { confirmPublish } from '../ui/confirm.js';
 import { t, fmtDate, relTime } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
 import { session, signedIn, isAdmin, roles } from '../services/session.js';
@@ -289,9 +290,11 @@ function chairTools(ctx, p, tl, judges, teamOf, reload) {
     const detail = h('div', { class: 'stack', style: 'gap:12px' });
     const drawDetail = () => { detail.replaceChildren(...[d.outcome !== 'none' ? h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('penalisedDriver')), targetChoice) : null, d.outcome === 'time' ? h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('seconds')), secChoice) : null, d.outcome === 'other' ? field(t('outcome_other'), otherIn).row : null].filter(Boolean)); drawFlags(); };
     const publish = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '', disabled: !tl.enough }, icon('flag'), t('publishDecision'));
-    publish.addEventListener('click', () => busy(publish, async () => {
+    publish.addEventListener('click', async () => {
       if (!d.text.trim()) { toast(t('decisionNeedsText'), 'alert'); return; }
       if (d.outcome !== 'none' && !d.target) { toast(t('pickPenalised'), 'alert'); return; }
+      if (!(await confirmPublish({ text: t('confirmDecision'), draftHint: false }))) return;
+      busy(publish, async () => {
       const decision = { outcome: d.outcome, target: d.outcome === 'none' ? null : d.target, seconds: d.outcome === 'time' ? d.seconds : null, other: d.outcome === 'other' ? d.other : null, text: d.text.trim() };
       try {
         if (['time', 'dsq', 'warning', 'other'].includes(d.outcome)) {
@@ -302,7 +305,8 @@ function chairTools(ctx, p, tl, judges, teamOf, reload) {
         notifyUsers([p.type === 'judge' ? null : p.by, ...(p.involved || [])], 'decision', { s: 'MCSM' + s.no, n: p.n, title: p.title }, `#/szezonok/${s.id}/fordulo/${p.n}`);
         invalidate('race:' + s.id); toast(t('decisionPublished')); haptic(15); reload();
       } catch (e) { toast(t(errorKey(e)), 'alert'); }
-    }));
+      });
+    });
     drawDetail();
     box.append(h('div', { class: 'label' }, t('finalDecision')),
       choice(OUTCOMES.map((o) => ({ value: o, label: t('outcome_' + o) })), d.outcome, (x) => { d.outcome = x; drawDetail(); }), detail, flagsBox,

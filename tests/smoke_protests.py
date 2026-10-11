@@ -16,7 +16,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def go(pg, route, who=None, wait=1700):
-    pg.goto(BASE + '?fakecloud' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
+    pg.goto(BASE + '?fakecloud&autoconfirm' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
 def sprint_row(pg, surname):
     rows = pg.query_selector_all('.rtable tbody tr')
     for r in rows:
@@ -29,7 +29,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset#/szezonok/mcsm31/ovasok'); pg.wait_for_timeout(2200)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset#/szezonok/mcsm31/ovasok'); pg.wait_for_timeout(2200)
         check('Kitolás a 4-es kanyarban' in text(pg) and '+5 mp' in text(pg), f'{size}: published decision visible')
         snap(pg, f'p4_decisions_{size}')
         go(pg, '/szezonok/mcsm31/fordulo/1')

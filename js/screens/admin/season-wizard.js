@@ -19,6 +19,7 @@ import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
 import { carField } from '../../ui/car-picker.js';
 import { uploadImage, dropZone } from '../../ui/upload.js';
+import { confirmPublish } from '../../ui/confirm.js';
 import { ROUND_SESSIONS, lobbyFor, pqLobbyFor } from '../../data/lobby-settings.js';
 import { lobbyEditor } from '../../ui/lobby-editor.js';
 import { lobbySizes } from '../../model/season.js';
@@ -266,7 +267,9 @@ function build(d, editing, all, us, gts) {
   next.addEventListener('click', () => goStep(step + 1));
 
   const err = h('div');
-  const save = async (btn, state) => busy(btn, async () => {
+  const save = async (btn, state) => {
+    if (state === 'announced' && d.state !== 'announced' && !Object.keys(validateSeason((normalize(), d), existingIds)).length && !(await confirmPublish({ text: t('confirmAnnounce', { s: 'MCSM' + d.no }) }))) return;
+    return busy(btn, async () => {
     err.replaceChildren(); normalize();
     const errs = validateSeason(d, existingIds);
     if (Object.keys(errs).length) { haptic(25); goStep(STEP_KEYS.length - 1); paint(0); return; }
@@ -277,7 +280,8 @@ function build(d, editing, all, us, gts) {
       if (state === 'announced' && d.state !== 'announced') notifyAll(data, 'seasonAnnounced', {}, '#/szezonok/' + data.id);
       invalidateSeason(data.id); toast(editing ? t('saved') : t('seasonCreated', { n: data.no })); go('/szezonok/' + data.id);
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
-  });
+    });
+  };
   const saveDraft = h('button', { class: 'btn', type: 'button' }, icon('check'), editing ? t('save') : t('saveDraft'));
   saveDraft.addEventListener('click', () => save(saveDraft, null));
   const announce = !editing || d.state === 'draft' ? h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('flag'), t('announce')) : null;

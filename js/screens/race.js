@@ -23,6 +23,7 @@ import { matchTrack } from '../data/track-match.js';
 import { tracks as loadTracks } from '../core/data.js';
 import { ROUND_SESSIONS, lobbyFor, pqLobbyFor } from '../data/lobby-settings.js';
 import { lobbyView } from '../ui/lobby-editor.js';
+import { confirmPublish } from '../ui/confirm.js';
 import { lobbySizes, lobbyHost } from '../model/season.js';
 import { notifyUsers } from '../services/notify.js';
 
@@ -203,7 +204,7 @@ function adminRoundCard(ctx, n, reload) {
   const roundSheets = ctx.sheets.filter((x) => x.n === n);
   const complete = lobbies.length && lobbies.every((L) => SESSIONS.every((S) => ctx.sheet(n, L, S)));
   const publish = isAdmin() && complete && doc.resultsState !== 'final' ? h('button', { class: 'btn primary small', type: 'button', 'data-haptic': '' }, icon('flag'), doc.resultsState === 'provisional' ? t('republish') : t('publishResults')) : null;
-  if (publish) publish.addEventListener('click', () => busy(publish, async () => {
+  if (publish) publish.addEventListener('click', async () => { if (!(await confirmPublish({ text: doc.resultsState === 'provisional' ? t('confirmResultsAgain', { n }) : t('confirmResults', { n }), draftHint: false }))) return; busy(publish, async () => {
     try {
       for (const x of roundSheets) if (x.state !== 'published') await backend.race.sheetSave(s.id, x.id, { state: 'published' });
       await backend.race.roundSave(s.id, n, { resultsState: 'provisional' });
@@ -211,7 +212,7 @@ function adminRoundCard(ctx, n, reload) {
       if (doc.resultsState !== 'provisional') notifySeason(s, 'resultsOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
       toast(t('resultsPublished')); haptic(15); reload();
     } catch (e) { toast(t(errorKey(e)), 'alert'); }
-  }));
+  }); });
   const finalize = isAdmin() && doc.resultsState === 'provisional' ? h('button', { class: 'btn small', type: 'button' }, icon('check'), t('finalize')) : null;
   if (finalize) finalize.addEventListener('click', () => busy(finalize, async () => { try { await backend.race.roundSave(s.id, n, { resultsState: 'final' }); if (isAdmin()) import('../services/mcsm-rating.js').then((m) => m.computeAndPublish()).catch(() => {}); await audit('round.final', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` }); toast(t('saved')); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   const reopen = isAdmin() && doc.resultsState === 'final' ? h('button', { class: 'btn small', type: 'button' }, icon('undo'), t('backToProvisional')) : null;
@@ -275,18 +276,20 @@ function lobbyEditor(ctx, n, reload) {
     toast(flags.size ? t('proposalFlags', { n: flags.size }) : t('proposalReady'), flags.size ? 'alert' : 'check');
     draw(true);
   });
-  const save = (publishIt) => async (btn) => busy(btn, async () => {
+  const save = (publishIt) => async (btn) => {
+    if (publishIt && !(await confirmPublish({ text: t('confirmLobbies', { n }) }))) return;
+    return busy(btn, async () => {
     try {
       await backend.race.roundSave(s.id, n, { lobbies, lobbiesPublished: publishIt || !!doc.lobbiesPublished, resultsState: doc.resultsState || 'none' });
       await audit(publishIt ? 'round.lobbies' : 'round.lobbiesDraft', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` });
-      const firstPublish = publishIt && !doc.lobbiesPublished;
-      if (firstPublish) {
+      if (publishIt) {
         notifySeason(s, 'lobbiesOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
         LOBBIES.forEach((L) => { const hu = lobbyHost(s, L); const hp = hu ? ctx.person(hu) : null; if (hp && lobbies[L].length) notifyUsers(lobbies[L].filter((u) => u !== hu), 'lobbyHost', { n, l: L, name: fullName(hp), psn: hp.psn || '' }, `#/szezonok/${s.id}/fordulo/${n}`); });
       }
-      toast(firstPublish ? t('lobbiesPublished') : publishIt ? t('lobbiesRepublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
+      toast(publishIt ? t('lobbiesPublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
-  });
+    });
+  };
   const saveBtn = h('button', { class: 'btn', type: 'button' }, icon('check'), t('lobbyDraftShort'));
   saveBtn.addEventListener('click', () => save(false)(saveBtn));
   const pubBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('flag'), t('lobbyPublishShort'));

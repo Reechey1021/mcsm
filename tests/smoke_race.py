@@ -16,7 +16,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def go(pg, route, who=None, wait=1500):
-    pg.goto(BASE + '?fakecloud' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
+    pg.goto(BASE + '?fakecloud&autoconfirm' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, vw in (('m', (390, 844)), ('d', (1440, 900))):
@@ -24,7 +24,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset#/'); pg.wait_for_timeout(2200)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset#/'); pg.wait_for_timeout(2200)
         check('Bajnoki állás' in text(pg), f'{size}: home shows standings')
         snap(pg, f'p3_home_{size}')
         # standings

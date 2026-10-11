@@ -16,7 +16,7 @@ def text(pg, sel='#view'):
     try: return pg.inner_text(sel)
     except Exception: return ''
 def go(pg, route, who=None, wait=1700):
-    pg.goto(BASE + '?fakecloud' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
+    pg.goto(BASE + '?fakecloud&autoconfirm' + (f'&fakeuser={who}' if who else '') + '#' + route); pg.wait_for_timeout(wait)
 
 D = '/tmp/mcsm-fake-export'; os.makedirs(D, exist_ok=True)
 profiles = [
@@ -44,7 +44,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-        pg.goto(BASE + '?fakecloud&fakereset&fakeuser=owner#/admin/import'); pg.wait_for_timeout(1800)
+        pg.goto(BASE + '?fakecloud&autoconfirm&fakereset&fakeuser=owner#/admin/import'); pg.wait_for_timeout(1800)
         pg.set_input_files('input[type=file]', [f'{D}/{n}.json' for n in ['profiles_with_emails', 'cups', 'races', 'race_results', 'cup_applications']]); pg.wait_for_timeout(800)
         v = text(pg)
         check('OLD_Racer → OLD_RACER' in v and 'Suzuka' in v, f'{size}: import preview ({v[:0]})')
@@ -76,8 +76,8 @@ with sync_playwright() as p:
         check(len(pg.query_selector_all('.round-item.trk')) >= 3 and len(pg.query_selector_all('.trk-map')) >= 3, f'{size}: round boxes show photo and map')
         snap(pg, f'v6_rounds_{size}')
         # activation of an imported account
-        pg.goto(BASE + '?fakecloud#/'); pg.wait_for_timeout(800)
-        pg.evaluate("sessionStorage.removeItem('mcsm:fakeuid')"); pg.goto(BASE + '?fakecloud&signedout=1#/belepes'); pg.wait_for_timeout(1600)
+        pg.goto(BASE + '?fakecloud&autoconfirm#/'); pg.wait_for_timeout(800)
+        pg.evaluate("sessionStorage.removeItem('mcsm:fakeuid')"); pg.goto(BASE + '?fakecloud&autoconfirm&signedout=1#/belepes'); pg.wait_for_timeout(1600)
         check('Régi MCSM-tag vagy' in text(pg), f'{size}: returning drivers callout')
         pg.click('a:has-text("Régi MCSM-tag vagy")'); pg.wait_for_timeout(900)
         pg.fill('input[type=email]', 'bela2@old.test'); pg.click('button[type=submit]'); pg.wait_for_timeout(1200)

@@ -207,7 +207,7 @@ export const hu = {
   carSearchPh: 'Kezdd el gépelni az autó nevét…', carPickerHint: 'Az autólistából ajánl (Admin → GT7 adatok), de bármit beírhatsz.', ratingsSynced: 'DR/SR frissítve', notSyncedYet: 'Kézzel megadva',
   'audit_content.rules': 'módosította a szabályzatot:', 'audit_gt7.cars': 'letöltötte az autólistát:', 'audit_gt7.ratings': 'frissítette a DR/SR értékeket:',
   carsImported: '{n} autó mentve, ebből {c} versenyosztállyal (Gr.1–Gr.4, Gr.B).', carsFetchFailed: 'Nem sikerült letölteni az autólistát a GT7 Info oldaláról. Próbáld újra később.',
-  drGaugeLabel: 'Driver Rating: {dr}, {pts} pont', drNoPoints: 'Pontos DR-érték a GridStats szinkron után.', drNext: 'Következő szint: {cls}, még {n} pont', drTop: 'Csúcskategória: A+', syncedAt: 'Frissítve: {date}', gt7Career: 'GT7 karrier', statRaces: 'futam', wins: 'győzelem', statClean: 'tiszta futam', rulesReadFailed: 'A mentett szabályzatot nem sikerült betölteni, ezért az alapértelmezett látszik. Valószínűleg frissíteni kell a Firestore szabályokat (firestore.rules).', permRulesHint: 'Nincs jogosultság: töltsd fel a legújabb firestore.rules fájlt a Firebase konzolban (Firestore → Rules → Publish).',
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} pont', drNoPoints: 'Pontos DR-érték a GridStats szinkron után.', drNext: 'Következő szint: {cls}, még {n} pont', drTop: 'Csúcskategória: A+', syncedAt: 'Frissítve: {date}', gt7Career: 'GT7 Sport Mode Stats', statRaces: 'futam', wins: 'győzelem', statClean: 'tiszta futam', rulesReadFailed: 'A mentett szabályzatot nem sikerült betölteni, ezért az alapértelmezett látszik. Valószínűleg frissíteni kell a Firestore szabályokat (firestore.rules).', permRulesHint: 'Nincs jogosultság: töltsd fel a legújabb firestore.rules fájlt a Firebase konzolban (Firestore → Rules → Publish).',
   drPointsCap: 'DR PONT',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
@@ -272,4 +272,6 @@ export const hu = {
   installTitle: 'Telepítsd az MCSM appot', installHint: 'Kezdőképernyőre, saját ikonnal', installIntro: 'Az MCSM telepíthető a telefonod kezdőképernyőjére: saját ikonnal, teljes képernyőn nyílik, mint egy app, és így működnek a telefonos értesítések is.', installNow: 'Telepítés most',
   installIos1: 'Nyisd meg az oldalt a Safariban.', installIos2: 'Koppints a Megosztás gombra (négyzet felfelé mutató nyíllal).', installIos3: 'Válaszd a „Főképernyőhöz adás” lehetőséget, majd koppints a Hozzáadásra.',
   installAnd1: 'Nyisd meg az oldalt a Chrome-ban.', installAnd2: 'Koppints a jobb felső ⋮ menüre.', installAnd3: 'Válaszd az „Alkalmazás telepítése” vagy „Hozzáadás a kezdőképernyőhöz” lehetőséget.',
+  mrUnranked: 'Besorolatlan', mrAbove: 'Átlag felett', mrBelow: 'Átlag alatt', mrPar: 'Átlagos', mrRoundsToRank: '{n}/{total} forduló a besorolásig', mrHidden: '5 forduló után', mrPaceShort: 'Tempó', mrRaceShort: 'Verseny', mrDisciplineShort: 'Fegyelem', mrRelSub: 'célba érés', mrDemo: 'MINTA',
+  lobbiesRepublished: 'Lobbik frissítve (értesítés csak az első közzétételkor megy ki)',
 };

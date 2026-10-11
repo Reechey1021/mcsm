@@ -67,7 +67,7 @@ export function openSheet({ title, body, onClose }) {
     if (!reduced()) sheet.animate([{ transform: cur }, { transform: 'translateY(0)' }], { duration: SPRING.sheet.duration, easing: SPRING.sheet.easing });
   };
   for (const el of [grab, head]) {
-    el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); startDrag(e); });
+    el.addEventListener('pointerdown', (e) => { if (e.target.closest('button, a, input, select, textarea, label')) return; el.setPointerCapture(e.pointerId); startDrag(e); });
     el.addEventListener('pointermove', moveDrag); el.addEventListener('pointerup', endDrag); el.addEventListener('pointercancel', endDrag);
   }
   const api = { close, el: sheet, body: bodyEl };

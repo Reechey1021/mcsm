@@ -53,7 +53,15 @@ export async function markAllRead() {
 // Senders. Failures never block the action that caused them.
 const fill = (s, v) => String(s || '').replace(/\{(\w+)\}/g, (m, k) => (k === 'al' && v.l ? (v.l === 'A' ? 'az ' : 'a ') + v.l : v[k] != null ? v[k] : m));
 export const pushText = (n) => ({ title: 'MCSM', body: fill(hu['nt_' + n.type], n.params || {}) + (n.params && n.params.title ? ` – ${n.params.title}` : '') });
-const send = (n) => backend.notify.add(n).then((id) => { deliver(id, n, pushText(n)); return id; }).catch((e) => console.warn('notify failed', e));
+const recent = new Map();
+const send = (n) => {
+  const key = JSON.stringify([n.type, n.kind, n.sid || null, n.params || {}, n.link || '', (n.uids || []).length]);
+  const now = Date.now();
+  if (recent.has(key) && now - recent.get(key) < 600000) return Promise.resolve(null);
+  recent.set(key, now);
+  return sendNow(n);
+};
+const sendNow = (n) => backend.notify.add(n).then((id) => { deliver(id, n, pushText(n)); return id; }).catch((e) => console.warn('notify failed', e));
 export const notifySeason = (season, type, params, link) => send({ kind: 'season', sid: season.id, type, params: { s: 'MCSM' + season.no, ...params }, link });
 export const notifyAll = (season, type, params, link) => send({ kind: 'all', sid: season.id, type, params: { s: 'MCSM' + season.no, ...params }, link });
 export function notifyUsers(uids, type, params, link) {

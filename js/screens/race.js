@@ -279,11 +279,12 @@ function lobbyEditor(ctx, n, reload) {
     try {
       await backend.race.roundSave(s.id, n, { lobbies, lobbiesPublished: publishIt || !!doc.lobbiesPublished, resultsState: doc.resultsState || 'none' });
       await audit(publishIt ? 'round.lobbies' : 'round.lobbiesDraft', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` });
-      if (publishIt) {
+      const firstPublish = publishIt && !doc.lobbiesPublished;
+      if (firstPublish) {
         notifySeason(s, 'lobbiesOut', { n }, `#/szezonok/${s.id}/fordulo/${n}`);
         LOBBIES.forEach((L) => { const hu = lobbyHost(s, L); const hp = hu ? ctx.person(hu) : null; if (hp && lobbies[L].length) notifyUsers(lobbies[L].filter((u) => u !== hu), 'lobbyHost', { n, l: L, name: fullName(hp), psn: hp.psn || '' }, `#/szezonok/${s.id}/fordulo/${n}`); });
       }
-      toast(publishIt ? t('lobbiesPublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
+      toast(firstPublish ? t('lobbiesPublished') : publishIt ? t('lobbiesRepublished') : t('saved')); location.hash = `#/szezonok/${s.id}/fordulo/${n}`;
     } catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   });
   const saveBtn = h('button', { class: 'btn', type: 'button' }, icon('check'), t('lobbyDraftShort'));

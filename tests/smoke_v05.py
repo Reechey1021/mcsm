@@ -72,7 +72,9 @@ with sync_playwright() as p:
         go(pg, '/szezonok/mcsm31/fordulo/3?szerk=lobbyk', 'owner', 2000)
         pg.click('.entry-bar .btn.primary'); pg.wait_for_timeout(2000)
         go(pg, '/', 'pilota', 2500)
-        check(pg.query_selector('.bell-btn .badge-dot').is_visible(), f'{size}: new notice after lobbies published')
+        # round 3's lobbies are already out in the test data: publishing them again must not notify again
+        vis = pg.query_selector('.bell-btn .badge-dot').is_visible()
+        check(not vis, f'{size}: re-publishing lobbies sends no duplicate notice (visible={vis})')
         ow = pg.evaluate('document.documentElement.scrollWidth - innerWidth')
         check(ow <= 0, f'{size}: no horizontal overflow ({ow})')
         ctx.close()

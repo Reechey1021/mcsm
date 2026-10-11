@@ -21,7 +21,8 @@ export const loadNews = () => cached('news', () => backend.content.get('news').t
 async function saveNews(items) { await backend.content.save('news', { items }); invalidate('news'); emit('news'); }
 
 const seenIds = () => new Set(store.get('newsDismissed', []));
-export const hasUnread = (items) => items.length && items[0].at > store.get('newsOpenedAt', 0);
+export const unreadCount = (items) => items.filter((a) => a.at > store.get('newsOpenedAt', 0)).length;
+export const hasUnread = (items) => unreadCount(items) > 0;
 
 function article(a, { full = true } = {}) {
   return h('article', { class: 'news-art' }, a.imageUrl ? h('div', { class: 'news-img', vars: { 'background-image': `url("${String(a.imageUrl).replace(/"/g, '')}")` } }) : null,
@@ -83,7 +84,7 @@ let shownThisVisit = false;
 export async function showWelcomeNews(force = false) {
   if (shownThisVisit && !force) return;
   try { if (sessionStorage.getItem('mcsm:newsShown') && !force) return; } catch { /* private mode */ }
-  const items = (await loadNews()).filter((a) => a.carousel && !seenIds().has(a.id + ':' + (a.carouselAt || a.at)));
+  const items = (await loadNews()).filter((a) => a.carousel && !seenIds().has(a.id + ':' + (a.carouselAt || a.at))).sort((a, b) => a.at - b.at);
   if (!items.length) return;
   shownThisVisit = true;
   try { sessionStorage.setItem('mcsm:newsShown', '1'); } catch { /* */ }
@@ -92,7 +93,7 @@ export async function showWelcomeNews(force = false) {
   track.addEventListener('scroll', () => { const i = Math.round(track.scrollLeft / track.clientWidth); [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i)); }, { passive: true });
   const step = (dir) => track.scrollBy({ left: dir * track.clientWidth, behavior: 'smooth' });
   const never = h('input', { type: 'checkbox', id: 'nc-never' });
-  const close = () => {
+  let close = () => {
     if (never.checked) store.set('newsDismissed', [...seenIds(), ...items.map((a) => a.id + ':' + (a.carouselAt || a.at))]);
     overlay.classList.add('out'); setTimeout(() => overlay.remove(), 220);
   };
@@ -103,6 +104,10 @@ export async function showWelcomeNews(force = false) {
       h('div', { class: 'nc-foot' }, items.length > 1 ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': '‹', onclick: () => step(-1) }, icon('chevL')) : null, dots, items.length > 1 ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': '›', onclick: () => step(1) }, icon('chevR')) : null),
       h('div', { class: 'nc-bottom' }, h('label', { class: 'nc-never' }, never, t('newsDontShow')), h('button', { class: 'btn primary', type: 'button', onclick: close }, t('close')))));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  const html = document.documentElement, prevOverflow = html.style.overflow;
+  html.style.overflow = 'hidden';
+  const origClose = close;
+  close = () => { html.style.overflow = prevOverflow; origClose(); };
   document.body.append(overlay);
 }
 

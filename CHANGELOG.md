@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.1 – Fixes and the new rating card
+- Fixed: the X on pop-ups didn't close them with a mouse (the header's drag-to-close captured
+  the click). Affected every pop-up, including news and the article editor.
+- Fixed: publishing lobbies notified every time "Közzététel" was pressed, so republishing after
+  an edit sent the same notice again (the 6× "megjelent az 1. forduló lobbybeosztása"). Now only
+  the first publish notifies; later publishes update silently. As a safety net, the same
+  notification isn't sent twice from one browser within 10 minutes.
+- MCSM Rating card redesigned: a dial with the league average (100,0) marked, the rating or
+  "Besorolatlan" in the middle, the standing (átlag felett / átlagos / átlag alatt), rings for
+  Pace, Race, Discipline and Reliability, highest / last round / rounds, and a "?" explainer.
+  Unranked drivers see no numbers or average marker. It sits under the SR card, above the GT7
+  stats (on phones and desktop). Sample view: add ?mrdemo to the address (?mrdemo=unranked for
+  the unranked look).
+- "GT7 karrier HU" is now "GT7 Sport Mode Stats".
+- Driver cards: no DR/SR badges; avatar, name, titles, number, PSN ID, team logo and name, with
+  more space after the logo.
+- News: the welcome carousel shows the oldest article first; the news button shows the number of
+  unread articles; on phones the carousel no longer scrolls into blank space.
+
 ## 0.9.0 – MCSM Rating, news, install guide
 - MCSM Rating v1 (engine/rating.js), following the handover spec: Pace 25% / Race 65% /
   Discipline 10%, Elo-style head-to-head against every driver in the lobby (×6 scale), lap-gap

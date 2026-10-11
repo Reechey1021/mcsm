@@ -59,7 +59,7 @@ function titlesBox(p) {
 export function profileKv(p, team, gtName, gt) {
   const row = (ic, k, v) => h('div', { class: 'info-row' }, icon(ic), h('span', { class: 'k' }, k), h('span', { class: 'v' }, v));
   const input = p.input === 'wheel' ? `${t('wheel')}${p.wheelBrand ? ' (' + (p.wheelBrand === 'other' ? p.wheelOther : p.wheelBrand) + ')' : ''}` : t('pad');
-  return frag(p.uid ? mcsmRatingBox(p.uid) : null, ratingPanel(p), titlesBox(p),
+  return frag(ratingPanel(p), titlesBox(p),
     h('section', { class: 'panel info-list' },
       row('flag', t('raceNumber'), h('b', { class: 'rnum', style: 'font-size:20px' }, '#' + (p.raceNumber ?? '–'))),
       row('users', t('mcsmTeam'), team ? h('a', { href: '#/csapatok/' + team.id, style: 'color:inherit;display:flex;gap:8px;align-items:center' }, teamBadge(team, 20), team.name) : t('noTeam')),

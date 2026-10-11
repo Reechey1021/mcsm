@@ -191,7 +191,7 @@ export const en = {
   carSearchPh: 'Start typing the car name…', carPickerHint: 'Suggests from the car list (Admin → GT7 data), but you can type anything.', ratingsSynced: 'DR/SR updated', notSyncedYet: 'Entered by hand',
   'audit_content.rules': 'edited the rules:', 'audit_gt7.cars': 'imported the car list:', 'audit_gt7.ratings': 'refreshed DR/SR:',
   carsImported: '{n} cars saved, {c} of them with a race class (Gr.1–Gr.4, Gr.B).', carsFetchFailed: "Couldn't download the car list from GT7 Info. Try again later.",
-  drGaugeLabel: 'Driver Rating: {dr}, {pts} points', drNoPoints: 'Exact DR points after the GridStats sync.', drNext: 'Next: {cls}, {n} points to go', drTop: 'Top class: A+', syncedAt: 'Updated {date}', gt7Career: 'GT7 career', statRaces: 'races', wins: 'wins', statClean: 'clean races', rulesReadFailed: "The saved rules couldn't be loaded, so the default text is showing. The Firestore rules (firestore.rules) probably need publishing again.", permRulesHint: 'No permission: publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).',
+  drGaugeLabel: 'Driver Rating: {dr}, {pts} points', drNoPoints: 'Exact DR points after the GridStats sync.', drNext: 'Next: {cls}, {n} points to go', drTop: 'Top class: A+', syncedAt: 'Updated {date}', gt7Career: 'GT7 Sport Mode Stats', statRaces: 'races', wins: 'wins', statClean: 'clean races', rulesReadFailed: "The saved rules couldn't be loaded, so the default text is showing. The Firestore rules (firestore.rules) probably need publishing again.", permRulesHint: 'No permission: publish the latest firestore.rules in the Firebase console (Firestore → Rules → Publish).',
   drPointsCap: 'DR POINTS',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
@@ -256,4 +256,6 @@ export const en = {
   installTitle: 'Install the MCSM app', installHint: 'On your home screen, with its own icon', installIntro: 'MCSM can be installed on your phone\'s home screen: it gets its own icon, opens full screen like an app, and phone notifications work this way too.', installNow: 'Install now',
   installIos1: 'Open the site in Safari.', installIos2: 'Tap the Share button (a square with an arrow pointing up).', installIos3: 'Choose "Add to Home Screen", then tap Add.',
   installAnd1: 'Open the site in Chrome.', installAnd2: 'Tap the ⋮ menu at the top right.', installAnd3: 'Choose "Install app" or "Add to Home screen".',
+  mrUnranked: 'Unranked', mrAbove: 'Above average', mrBelow: 'Below average', mrPar: 'On par', mrRoundsToRank: '{n}/{total} rounds to rank', mrHidden: 'after 5 rounds', mrPaceShort: 'Pace', mrRaceShort: 'Race', mrDisciplineShort: 'Discipline', mrRelSub: 'finished', mrDemo: 'SAMPLE',
+  lobbiesRepublished: 'Lobbies updated (a notification only goes out on the first publish)',
 };

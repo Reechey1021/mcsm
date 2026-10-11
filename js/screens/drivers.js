@@ -54,7 +54,7 @@ export function screenDrivers() {
     const m = medals[d.uid];
     const a = h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(d.psnLower), dataset: { key: d.uid } }, av,
       h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? trophyCount(m.medals[0], 0, 14) : null, mrOf(d) != null ? h('span', { class: 'mr-chip', title: 'MCSM Rating' }, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
-        tm ? h('span', { class: 'team-line' }, teamBadge(tm, 14), h('span', null, tm.name)) : null), ratingEl(d));
+        tm ? h('span', { class: 'team-line' }, teamBadge(tm, 16), h('span', null, tm.name)) : null));
     a.addEventListener('click', () => { av.style.viewTransitionName = 'drv-hero'; });
     if (vtBack === d.uid) { av.style.viewTransitionName = 'drv-hero'; vtBack = null; setTimeout(() => { av.style.viewTransitionName = ''; }, 700); }
     return a;

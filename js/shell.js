@@ -11,7 +11,7 @@ import { avatar } from './ui/parts.js';
 import { t, LANG, setLang } from './i18n/index.js';
 import { backend } from './services/backend.js';
 import { session, signedIn, isAdmin, isJudgeRole, canGrantRoles } from './services/session.js';
-import { openNewsFeed, loadNews, hasUnread, openInstall, isInstalled } from './ui/news.js';
+import { openNewsFeed, loadNews, unreadCount, openInstall, isInstalled } from './ui/news.js';
 import { fullName } from './model/profile.js';
 import { go, currentRoute } from './router.js';
 import { notes, refreshNotes, markAllRead } from './services/notify.js';
@@ -27,9 +27,9 @@ export function buildShell() {
   const meBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('openMenu'), onclick: openMenu });
   const badge = h('span', { class: 'badge-dot', style: 'display:none' });
   const bell = h('button', { class: 'icon-btn bell-btn', type: 'button', 'aria-label': t('notifications'), onclick: openNotes, style: 'display:none' }, icon('bell'), badge);
-  const newsDot = h('span', { class: 'news-dot', style: 'display:none' });
+  const newsDot = h('span', { class: 'badge-dot news-badge', style: 'display:none' });
   const newsBtn = h('button', { class: 'icon-btn news-btn', type: 'button', 'aria-label': t('news'), onclick: () => openNewsFeed() }, icon('news'), newsDot);
-  const paintNews = () => loadNews().then((items) => { newsDot.style.display = hasUnread(items) ? '' : 'none'; }).catch(() => {});
+  const paintNews = () => loadNews().then((items) => { const n = unreadCount(items); newsDot.textContent = n > 9 ? '9+' : String(n); newsDot.style.display = n ? '' : 'none'; }).catch(() => {});
   on('news', paintNews); paintNews();
   const mode = backend && backend.kind === 'fake' ? h('button', { class: 'mode-pill tap', type: 'button', onclick: openMenu }, t('testMode')) : null;
   const header = h('header', { class: 'app-header' }, h('div', { class: 'in' },

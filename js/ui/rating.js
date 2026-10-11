@@ -4,6 +4,7 @@
 import { h } from '../core/dom.js';
 import { reduced, countUp, fmtInt, SPRING } from '../core/motion.js';
 import { t, fmtDate } from '../i18n/index.js';
+import { mcsmRatingCard } from './mcsm-rating.js';
 
 // Community-documented DR class boundaries (E = provisional, first five races).
 export const DR_BOUNDS = [0, 4000, 10000, 30000, 50000, 100000];
@@ -82,6 +83,7 @@ export function ratingPanel(p) {
       h('div', { class: 'panel sr-card' }, h('span', { class: 'label' }, 'Sportsmanship Rating'),
         h('div', { class: 'sr-row' }, h('span', { class: 'sr-big display' }, p.sr || '–'),
           h('div', { class: 'sr-scale', role: 'img', 'aria-label': 'SR ' + (p.sr || '–') }, SR_SCALE.map((l) => h('span', { class: l === p.sr ? 'on' : SR_SCALE.indexOf(l) < SR_SCALE.indexOf(p.sr) ? 'past' : '' }, l))))),
-      gs ? h('div', { class: 'panel', style: 'overflow:hidden' }, h('div', { class: 'label', style: 'padding:14px 16px 0' }, t('gt7Career') + (gs.country ? '  ' + gs.country : '')),
+      p.uid ? mcsmRatingCard(p.uid) : null,
+      gs ? h('div', { class: 'panel', style: 'overflow:hidden' }, h('div', { class: 'label', style: 'padding:14px 16px 0' }, t('gt7Career')),
         h('div', { class: 'stat-row', style: 'border-top:0' }, stat(gs.races, t('statRaces')), stat(gs.wins, t('wins')), stat(gs.clean, t('statClean')))) : null));
 }

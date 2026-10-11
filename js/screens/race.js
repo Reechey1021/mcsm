@@ -213,7 +213,7 @@ function adminRoundCard(ctx, n, reload) {
     } catch (e) { toast(t(errorKey(e)), 'alert'); }
   }));
   const finalize = isAdmin() && doc.resultsState === 'provisional' ? h('button', { class: 'btn small', type: 'button' }, icon('check'), t('finalize')) : null;
-  if (finalize) finalize.addEventListener('click', () => busy(finalize, async () => { try { await backend.race.roundSave(s.id, n, { resultsState: 'final' }); await audit('round.final', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` }); toast(t('saved')); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
+  if (finalize) finalize.addEventListener('click', () => busy(finalize, async () => { try { await backend.race.roundSave(s.id, n, { resultsState: 'final' }); if (isAdmin()) import('../services/mcsm-rating.js').then((m) => m.computeAndPublish()).catch(() => {}); await audit('round.final', s, { targetName: `MCSM${s.no} ${t('roundN', { n })}` }); toast(t('saved')); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   const reopen = isAdmin() && doc.resultsState === 'final' ? h('button', { class: 'btn small', type: 'button' }, icon('undo'), t('backToProvisional')) : null;
   if (reopen) reopen.addEventListener('click', () => busy(reopen, async () => { try { await backend.race.roundSave(s.id, n, { resultsState: 'provisional' }); toast(t('saved')); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   return h('section', { class: 'panel pad', style: 'margin:4px 0 14px' },

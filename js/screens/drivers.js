@@ -12,6 +12,7 @@ import { teamBadge } from '../ui/parts.js';
 import { honours } from '../services/honours.js';
 import { medalsForUser } from '../model/honours.js';
 import { trophyCount } from '../ui/trophy.js';
+import { publicRatings } from '../services/mcsm-rating.js';
 import { seasons as loadSeasons } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
 import { roundTotals } from '../engine/scoring.js';
@@ -25,8 +26,9 @@ export function screenDrivers() {
   const count = h('span', { class: 'faint' });
   const input = h('input', { type: 'search', placeholder: t('searchDrivers'), value: ui.q, 'aria-label': t('searchDrivers'), autocomplete: 'off', enterkeyhint: 'search' });
   const chips = h('div', { class: 'chips', role: 'group', 'aria-label': t('filters') });
-  const sort = h('select', { class: 'select', 'aria-label': t('sortBy') }, [['dr', t('sortDr')], ['titles', t('sortTitles')], ['name', t('sortName')], ['no', t('sortNo')], ['new', t('sortNew')]].map(([v, l]) => h('option', { value: v, selected: ui.sort === v }, l)));
-  let data = null, tmap = {}, medals = {};
+  const sort = h('select', { class: 'select', 'aria-label': t('sortBy') }, [['dr', t('sortDr')], ['mcsm', t('sortMcsm')], ['titles', t('sortTitles')], ['name', t('sortName')], ['no', t('sortNo')], ['new', t('sortNew')]].map(([v, l]) => h('option', { value: v, selected: ui.sort === v }, l)));
+  let data = null, tmap = {}, medals = {}, mr = {};
+  const mrOf = (u) => { const x = mr[u.uid]; return x && x.e ? x.r : null; };
   const mk = (u) => { const m = medals[u.uid]; return m ? m.medals[0] * 10000 + m.medals[1] * 100 + m.medals[2] : 0; };
   const list = () => {
     const q = ui.q.trim().toLowerCase(), f = ui.filter;
@@ -43,6 +45,7 @@ export function screenDrivers() {
       no: (a, b) => (a.raceNumber || 0) - (b.raceNumber || 0),
       new: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
       titles: (a, b) => mk(b) - mk(a) || fullName(a).localeCompare(fullName(b), 'hu'),
+      mcsm: (a, b) => (mrOf(b) ?? -1) - (mrOf(a) ?? -1) || fullName(a).localeCompare(fullName(b), 'hu'),
     }[ui.sort]);
   };
   const card = (d) => {
@@ -50,7 +53,7 @@ export function screenDrivers() {
     const av = avatar(d, tm);
     const m = medals[d.uid];
     const a = h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(d.psnLower), dataset: { key: d.uid } }, av,
-      h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? trophyCount(m.medals[0], 0, 14) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
+      h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? trophyCount(m.medals[0], 0, 14) : null, mrOf(d) != null ? h('span', { class: 'mr-chip', title: 'MCSM Rating' }, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
         tm ? h('span', { class: 'team-line' }, teamBadge(tm, 14), h('span', null, tm.name)) : null), ratingEl(d));
     a.addEventListener('click', () => { av.style.viewTransitionName = 'drv-hero'; });
     if (vtBack === d.uid) { av.style.viewTransitionName = 'drv-hero'; vtBack = null; setTimeout(() => { av.style.viewTransitionName = ''; }, 700); }
@@ -64,7 +67,8 @@ export function screenDrivers() {
   };
   let qT; input.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => { ui.q = input.value; update(true); }, 90); });
   sort.addEventListener('change', () => { ui.sort = sort.value; update(true); });
-  Promise.all([users(), teamMap(), gtTeams(), honours().catch(() => null)]).then(([us, tm, gts, H]) => {
+  Promise.all([users(), teamMap(), gtTeams(), honours().catch(() => null), publicRatings()]).then(([us, tm, gts, H, P]) => {
+    mr = (P && P.drivers) || {};
     data = us.filter(isComplete); tmap = tm;
     if (H) data.forEach((u) => { const m = medalsForUser(H.people, u); if (m) medals[u.uid] = m; });
     const filters = [['all', t('all')], ['wheel', t('wheel')], ['pad', t('pad')], ...gts.map((g) => ['gt:' + g.id, g.tag])];

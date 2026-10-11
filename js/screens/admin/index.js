@@ -34,6 +34,7 @@ export function screenAdmin() {
       h('a', { class: 'round-item', href: '#/admin/szerepkorok' }, icon('shield', 'chev'), h('span', { class: 't' }, h('b', null, t('rolesTitle')), h('span', { class: 'sub' }, t('rolesSub'))), icon('chevR', 'chev')),
       isOwner() ? h('a', { class: 'round-item', href: '#/admin/import' }, icon('refresh', 'chev'), h('span', { class: 't' }, h('b', null, t('impTitle')), h('span', { class: 'sub' }, t('impAdminSub'))), icon('chevR', 'chev')) : null,
       h('a', { class: 'round-item', href: '#/admin/gt7' }, icon('car', 'chev'), h('span', { class: 't' }, h('b', null, t('gsTitle')), h('span', { class: 'sub' }, t('gsAdminSub'))), icon('chevR', 'chev')),
+        h('a', { class: 'round-item', href: '#/admin/mcsm-rating' }, icon('bolt', 'chev'), h('span', { class: 't' }, h('b', null, 'MCSM Rating'), h('span', { class: 'sub' }, t('mrAdminSub'))), icon('chevR', 'chev')),
         isOwner() ? h('a', { class: 'round-item', href: '#/admin/osszevonas' }, icon('users', 'chev'), h('span', { class: 't' }, h('b', null, t('mergeTitle')), h('span', { class: 'sub' }, t('mergeAdminSub'))), icon('chevR', 'chev')) : null,
         h('a', { class: 'round-item', href: '#/admin/beallitasok' }, icon('bell', 'chev'), h('span', { class: 't' }, h('b', null, t('settingsTitle')), h('span', { class: 'sub' }, t('settingsSub'))), icon('chevR', 'chev')))));
 }

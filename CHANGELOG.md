@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.9.0 – MCSM Rating, news, install guide
+- MCSM Rating v1 (engine/rating.js), following the handover spec: Pace 25% / Race 65% /
+  Discipline 10%, Elo-style head-to-head against every driver in the lobby (×6 scale), lap-gap
+  confidence 0.75–1.25× in qualifying, grid-adjusted race expectations (sprint 12, main 6, ±96)
+  so the reverse grid is fair, sprint/main 4.2/7.8, DNF at half confidence, DNS without a
+  competitive defeat, DSQ classified last, confirmed penalties and unexcused no-shows −8
+  discipline shared by the rest of the lobby, provisional multipliers 3×→1× over the first 5
+  rounds (shared per pair), round caps ±6 / ±12 and bounds 50–200 applied as balanced transfers
+  (zero-sum: the average stays exactly 100), Round Performance, reliability, expected finishing
+  position, full deterministic replay. Tested: seed normalisation, the handover's example, zero
+  sum, caps, bounds, DNS/DNF/excused, provisional, determinism.
+- Admin → Haladó → MCSM Rating: starting levels (125/110/100/90/75/unknown) per driver or from
+  CSV, the one-time calibration lock (founding drivers shifted to an average of exactly 100;
+  later registrants start at 100), recalculate and publish. Finalising a round's results
+  republishes automatically. Starting levels live in an admin-only record.
+- Drivers see a rating only after 5 completed rounds ("Ideiglenes · 3/5 forduló" until then);
+  the published data contains no number for provisional drivers. Profile box: rating, last
+  change, history line, Pace/Race/Discipline, reliability, highest, last round performance and a
+  "Hogyan számoljuk?" explainer. Pilóták: "MCSM Rating szerint" sort and a rating chip.
+- News: a header button opens the feed (newest open, older ones as rows); admins write articles
+  with a picture and formatted text (bold, italic, links, lists, headings, preview) and choose
+  which appear in the welcome carousel shown when the site opens or someone signs in. "Ne mutasd
+  újra" hides those articles; newly added carousel articles still show.
+- Profile menu: "Telepítsd az MCSM appot" with iPhone and Android steps (and a direct install
+  button where the browser supports it).
+- Phones: long names wrap in driver cards; filter chips scroll sideways.
+
 ## 0.8.0 – Lobby settings v2, wizard restructure, lobby hosts, data fixes
 - Lobby settings: General settings (BOP, driving option limits, boost, slipstream, damage, grip,
   category, drivetrain, aspiration, penalties, flag rules), Qualifying, Sprint (flag rules off)

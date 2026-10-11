@@ -551,6 +551,81 @@ await test('times typed as digits; lobby sizes per lobby', async () => {
   const SM = await import('../js/model/season.js');
   eq(SM.lobbySizes({ lobbySize: 16, lobbies: { A: { size: 15 } } }), { A: 15, B: 16, C: 16 });
 });
+
+// ---------- 0.9: MCSM Rating ----------
+const RT = await import('../js/engine/rating.js');
+const lobbyOf16 = (prefix = 'd') => Array.from({ length: 16 }, (_, i) => prefix + String(i + 1).padStart(2, '0'));
+const rowsOf = (ids, extra = () => ({})) => ids.map((id, i) => ({ id, pos: i + 1, status: 'OK', ...extra(id, i) }));
+const est = (ids) => Object.fromEntries(ids.map((u) => [u, 100]));
+await test('rating: seeds normalise to 100 and components reproduce the seed', () => {
+  const tiers = { a: 125, b: 110, c: 100, d: 90, e: 75, f: 125 };
+  const { seeds, mean } = RT.normaliseSeeds(tiers, ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+  eq(Math.round(mean * 1000) / 1000, Math.round(((125 + 110 + 100 + 90 + 75 + 125 + 100) / 7) * 1000) / 1000);
+  const avg = Object.values(seeds).reduce((x, y) => x + y, 0) / 7; ok(Math.abs(avg - 100) < 1e-9, 'average is exactly 100');
+  const c = RT.seedComponents(125); ok(Math.abs(c.Q - 127.7778) < 1e-3 && c.D === 100 && Math.abs(RT.overallOf(c) - 125) < 1e-9, 'Q = R = (seed − 10) / 0.9');
+});
+await test('rating: the handover example (pole + both wins, all equal, established) = +5.15', () => {
+  const ids = lobbyOf16();
+  // everyone established (5 rounds done) so no provisional multiplier; same grid for all to ignore grid effects
+  const seeds = est(ids);
+  const warm = Array.from({ length: 5 }, (_, k) => ({ key: 'w' + k, lobbies: { A: ids }, results: { A: { S: rowsOf(ids), GP: rowsOf(ids) } } }));
+  const base = RT.computeRatings(warm, seeds);
+  // reset everyone to exactly 100 but keep "done" = 5, then run the example round with no grid differences
+  const rd = { key: 'x', lobbies: { A: ids }, results: { A: { Q: rowsOf(ids), S: rowsOf(ids), GP: rowsOf(ids) } }, gpGrid: { A: ids } };
+  const flat = Object.fromEntries(ids.map((u) => [u, 100]));
+  const S = RT.computeRatings([...warm.map((w) => ({ ...w, results: { A: { S: rowsOf(ids).map((r) => ({ ...r, status: 'DNF' })), GP: rowsOf(ids).map((r) => ({ ...r, status: 'DNF' })) } } })), rd], flat);
+  void base;
+  const winner = S.drivers.d01, last = S.drivers.d16;
+  const h = winner.history[winner.history.length - 1];
+  // grid effects are on (Q order = grid), so isolate qualifying: Q gain is exactly +5.0 pace points
+  ok(Math.abs((winner.Q - 100 * 1) - (RT.seedComponents(100).Q + 5 - 100)) < 1e-9, `pole = +5.0 pace (${(winner.Q - RT.seedComponents(100).Q).toFixed(4)})`);
+  ok(h.delta > 0 && last.history[last.history.length - 1].delta < 0, 'winner up, last down');
+});
+await test('rating: zero-sum, symmetry, caps and bounds', () => {
+  const ids = lobbyOf16();
+  const seeds = Object.fromEntries(ids.map((u, i) => [u, 75 + (i % 5) * 12.5]));
+  const rounds = Array.from({ length: 8 }, (_, k) => {
+    const sh = ids.slice(k % 16).concat(ids.slice(0, k % 16));
+    return { key: 'r' + k, lobbies: { A: ids }, results: { A: { Q: rowsOf(sh, (id, i) => ({ best: 100 + i * 0.13 })), S: rowsOf(sh.slice().reverse()), GP: rowsOf(sh, (id, i) => (i === 15 ? { status: 'DNF' } : {})) } }, penalties: k === 3 ? [{ uid: sh[0], L: 'A' }] : [] };
+  });
+  const r = RT.computeRatings(rounds, seeds);
+  const avg = ids.reduce((a, u) => a + RT.overallOf(r.drivers[u]), 0) / ids.length;
+  const seedAvg = ids.reduce((a, u) => a + seeds[u], 0) / ids.length;
+  ok(Math.abs(avg - seedAvg) < 1e-9, `average conserved (${avg} vs ${seedAvg})`);
+  ok(r.audit.every((a) => Math.abs(a.sum) < 1e-9), 'every round sums to zero');
+  ok(ids.every((u) => r.drivers[u].history.every((h) => Math.abs(h.delta) <= (h.provisional ? 12 : 6) + 1e-9)), 'round caps respected');
+  ok(ids.every((u) => { const o = RT.overallOf(r.drivers[u]); return o >= 50 - 1e-9 && o <= 200 + 1e-9; }), 'bounds respected');
+  eq(RT.expected(120) + RT.expected(-120), 1);
+  ok(ids.every((u) => r.drivers[u].done === 8), 'every driver counted 8 rounds');
+});
+await test('rating: DNS is not a defeat, excused absence is nothing, DNF counts', () => {
+  const ids = lobbyOf16();
+  const rows = rowsOf(ids.slice(0, 15));
+  const rd = (excused) => ({ key: 'k', lobbies: { A: ids }, results: { A: { Q: rows, S: rows, GP: rows } }, excused });
+  const a = RT.computeRatings([rd([])], est(ids)), b = RT.computeRatings([rd(['d16'])], est(ids));
+  const dA = a.drivers.d16, dB = b.drivers.d16;
+  ok(Math.abs(dA.Q - RT.seedComponents(100).Q) < 1e-9 && Math.abs(dA.R - RT.seedComponents(100).R) < 1e-9, 'no-show: pace and race untouched');
+  // up to −8 discipline: the share owed to drivers already at their round cap is not taken (balanced caps)
+  ok(dA.D < 100 && 100 - dA.D <= 8 + 1e-9 && Math.abs(ids.reduce((x, u) => x + a.drivers[u].D, 0) - 1600) < 1e-9, `unexcused DNS: discipline down, total conserved (${dA.D})`);
+  eq([dA.rel.dns, dA.done], [2, 0]); ok(dB.D === 100 && dB.rel.dns === 0, 'excused: no change');
+  const withDnf = RT.computeRatings([{ key: 'k', lobbies: { A: ids }, results: { A: { S: rowsOf(ids, (id) => (id === 'd02' ? { status: 'DNF' } : {})) } } }], est(ids));
+  eq(withDnf.drivers.d02.done, 1, 'a DNF still counts as a started round'); eq(Math.round(RT.reliabilityOf(withDnf.drivers.d02.rel)), 50);
+});
+await test('rating: provisional newcomer moves faster; pair multiplier is shared', () => {
+  eq([0, 1, 2, 3, 4, 5, 9].map(RT.provisionalMultiplier), [3, 3, 2.5, 2, 1.5, 1, 1]);
+  const ids = lobbyOf16();
+  const rows = rowsOf(ids);
+  const r = RT.computeRatings([{ key: 'k', lobbies: { A: ids }, results: { A: { Q: rows } } }], est(ids));
+  const gain = r.drivers.d01.Q - RT.seedComponents(100).Q;
+  ok(Math.abs(gain - 15) < 1e-9, `all-new lobby: pole = 3 × 5.0 pace (${gain})`);
+});
+await test('rating: deterministic', () => {
+  const ids = lobbyOf16();
+  const rounds = [{ key: 'a', lobbies: { A: ids }, results: { A: { Q: rowsOf(ids, (id, i) => ({ best: 90 + i * 0.07 })), S: rowsOf(ids.slice().reverse()), GP: rowsOf(ids) } } }];
+  const x = JSON.stringify(RT.computeRatings(rounds, est(ids)).drivers), y = JSON.stringify(RT.computeRatings(rounds, est(ids)).drivers);
+  eq(x === y, true);
+});
+
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

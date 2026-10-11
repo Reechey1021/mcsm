@@ -11,6 +11,7 @@ import { avatar } from './ui/parts.js';
 import { t, LANG, setLang } from './i18n/index.js';
 import { backend } from './services/backend.js';
 import { session, signedIn, isAdmin, isJudgeRole, canGrantRoles } from './services/session.js';
+import { openNewsFeed, loadNews, hasUnread, openInstall, isInstalled } from './ui/news.js';
 import { fullName } from './model/profile.js';
 import { go, currentRoute } from './router.js';
 import { notes, refreshNotes, markAllRead } from './services/notify.js';
@@ -26,10 +27,14 @@ export function buildShell() {
   const meBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('openMenu'), onclick: openMenu });
   const badge = h('span', { class: 'badge-dot', style: 'display:none' });
   const bell = h('button', { class: 'icon-btn bell-btn', type: 'button', 'aria-label': t('notifications'), onclick: openNotes, style: 'display:none' }, icon('bell'), badge);
+  const newsDot = h('span', { class: 'news-dot', style: 'display:none' });
+  const newsBtn = h('button', { class: 'icon-btn news-btn', type: 'button', 'aria-label': t('news'), onclick: () => openNewsFeed() }, icon('news'), newsDot);
+  const paintNews = () => loadNews().then((items) => { newsDot.style.display = hasUnread(items) ? '' : 'none'; }).catch(() => {});
+  on('news', paintNews); paintNews();
   const mode = backend && backend.kind === 'fake' ? h('button', { class: 'mode-pill tap', type: 'button', onclick: openMenu }, t('testMode')) : null;
   const header = h('header', { class: 'app-header' }, h('div', { class: 'in' },
     h('a', { class: 'logo', href: '#/', 'aria-label': t('homeLabel') }, h('img', { src: 'assets/logo.webp', alt: 'MCSM', width: '91', height: '34' })),
-    topNav, h('div', { class: 'hdr-actions' }, mode, bell, meBtn)));
+    topNav, h('div', { class: 'hdr-actions' }, mode, newsBtn, bell, meBtn)));
   const tabInd = h('span', { class: 'ind' });
   const tabbar = h('nav', { class: 'tabbar', 'aria-label': t('mainNav') }, h('div', { class: 'in' }, tabInd,
     TABS.map(([href, k, ic, tab]) => h('a', { href: '#' + href, dataset: { tab } }, icon(ic), h('span', null, t(k))))));
@@ -105,7 +110,8 @@ export function openMenu() {
         h('button', { class: 'btn small', type: 'button', onclick: () => { backend.dev.reset(); try { sessionStorage.clear(); } catch { /* */ } location.reload(); } }, icon('refresh'), t('resetTest'))));
   }
   const signOut = signedIn() ? h('button', { class: 'menu-item', type: 'button', onclick: async () => { sh.close(true); await backend.auth.signOut(); toast(t('signedOut')); go('/'); } }, icon('logout'), t('signOut')) : null;
-  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg)) });
+  const install = isInstalled() ? null : h('button', { class: 'menu-item install-item', type: 'button', onclick: () => { sh.close(true); openInstall(); } }, icon('download'), h('span', null, t('installTitle'), h('small', null, t('installHint'))), icon('chevR', 'chev'));
+  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, install, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg)) });
 }
 
 export function initShell() {

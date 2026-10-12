@@ -1,5 +1,7 @@
 // screens/drivers.js
 // The public driver directory and driver profiles.
+import { normName } from '../model/name-match.js';
+import { openSheet } from '../ui/sheet.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { flip } from '../core/motion.js';
@@ -91,7 +93,8 @@ export function screenDriver({ psn }) {
     vtBack = p.uid;
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const res = h('div', null, skelRows(2, 60));
-    box.replaceChildren(profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res);
+    const cmp = h('button', { class: 'btn small', type: 'button', onclick: () => pickCompare(p, us) }, icon('users'), t('compare'));
+    box.replaceChildren(h('div', { style: 'display:flex;justify-content:flex-end;margin:-6px 0 10px' }, cmp), profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, oldResults(p));
     driverResults(p.uid).then((blocks) => res.replaceChildren(...(blocks.length ? blocks : [secHead(t('results')), empty(t('resultsLater'))]))).catch(() => res.replaceChildren());
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
   return frag(backLink(t('drivers'), '#/pilotak'), box);
@@ -113,4 +116,30 @@ async function driverResults(uid) {
       h('thead', null, h('tr', null, h('th', null, t('round')), h('th', null, t('lobby')), h('th', { class: 'r' }, t('qShort')), h('th', { class: 'r' }, 'Sprint'), h('th', { class: 'r' }, 'GP'), h('th', { class: 'r' }, t('pointsShort')))), h('tbody', null, rows))));
   }
   return out;
+}
+
+// Pick someone to compare with, then open the side-by-side page.
+function pickCompare(p, us) {
+  const q = h('input', { class: 'input', type: 'search', placeholder: t('searchPeople'), autocomplete: 'off' });
+  const list = h('div', { class: 'stack', style: 'gap:6px;max-height:360px;overflow-y:auto;margin-top:10px' });
+  const draw = () => { const s = q.value.trim().toLowerCase(); list.replaceChildren(...us.filter((u) => u.uid !== p.uid && isComplete(u) && (!s || `${fullName(u)} ${u.psn}`.toLowerCase().includes(s))).slice(0, 30).map((u) => h('button', { class: 'row-card', type: 'button', onclick: () => { sh.close(true); location.hash = `#/osszevetes/${encodeURIComponent(p.psnLower)}/${encodeURIComponent(u.psnLower)}`; } }, avatar(u, null), h('span', { class: 'nm' }, h('b', null, fullName(u)), h('span', null, u.psn))))); };
+  q.addEventListener('input', draw);
+  const sh = openSheet({ title: t('compareWith', { name: fullName(p) }), body: h('div', null, q, list) });
+  draw(); setTimeout(() => q.focus(), 300);
+}
+
+// MCSM25–30: finishing positions from before the site kept session results.
+function oldResults(p) {
+  const box = h('section');
+  import('../data/history-s25-30.js').then(({ HISTORY }) => {
+    const me = normName(p.psn);
+    const rows = HISTORY.filter((r) => normName(r[3]) === me).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+    if (!rows.length) { box.remove(); return; }
+    const pos = (v) => (v == null ? '–' : 'P' + v);
+    box.replaceChildren(secHead(t('oldResultsTitle')), h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' },
+      h('thead', null, h('tr', null, h('th', null, t('season')), h('th', null, t('lobby')), h('th', { class: 'r' }, 'Q'), h('th', { class: 'r' }, 'S'), h('th', { class: 'r' }, 'GP'))),
+      h('tbody', null, rows.map((r) => h('tr', null, h('td', null, `MCSM${r[0]} / ${r[1]}`, r[7] ? ' *' : ''), h('td', null, h('span', { class: 'lobby ' + r[2] }, r[2])), h('td', { class: 'r' }, pos(r[4])), h('td', { class: 'r' }, pos(r[5])), h('td', { class: 'r' }, pos(r[6]))))))),
+      rows.some((r) => r[7]) ? h('p', { class: 'note' }, t('oldResultsEstimated')) : null);
+  }).catch(() => box.remove());
+  return box;
 }

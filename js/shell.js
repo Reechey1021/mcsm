@@ -1,3 +1,4 @@
+import { APP_VERSION } from './version.js';
 // shell.js
 // Header, desktop nav, mobile tab bar and the main menu sheet.
 import { $, h, frag } from './core/dom.js';
@@ -111,7 +112,7 @@ export function openMenu() {
   }
   const signOut = signedIn() ? h('button', { class: 'menu-item', type: 'button', onclick: async () => { sh.close(true); await backend.auth.signOut(); toast(t('signedOut')); go('/'); } }, icon('logout'), t('signOut')) : null;
   const install = isInstalled() ? null : h('button', { class: 'menu-item install-item', type: 'button', onclick: () => { sh.close(true); openInstall(); } }, icon('download'), h('span', null, t('installTitle'), h('small', null, t('installHint'))), icon('chevR', 'chev'));
-  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, install, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg)) });
+  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, install, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg), h('p', { class: 'app-version' }, 'MCSM ' + APP_VERSION)) });
 }
 
 export function initShell() {

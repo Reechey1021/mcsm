@@ -156,7 +156,7 @@ function roundBody(ctx, n, L, S, built) {
   if (S === 'ROSTER') {
     const absent = new Set(ctx.entries.filter((e) => (e.absences || []).includes(n)).map((e) => e.uid));
     return h('div', { class: 'stack', style: 'gap:8px' }, ids.map((uid) => {
-      const p = ctx.snaps[uid] || {}, tm = ctx.tmap[p.teamId];
+      const p = ctx.person(uid), tm = ctx.tmap[p.teamId];
       return h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, avatar(p, tm),
         h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, h('span', { class: 'rnum' }, '#' + (p.raceNumber ?? '')), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, '  ', tm ? tm.name : t('noTeam'), absent.has(uid) ? '  ' + t('cantComeTag') : '')), ratingEl(p));
     }));
@@ -166,7 +166,8 @@ function roundBody(ctx, n, L, S, built) {
   if (S === 'GRID') {
     const g = gpGrid(res.Q);
     return frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, t('gridExplain')),
-      h('div', { class: 'grid-sheet' }, g.map((uid, i) => { const p = ctx.snaps[uid] || {}; return h('a', { class: 'grid-slot', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, h('span', { class: 'gp display' }, i + 1), h('span', null, h('b', null, (p.lastName || '').toLocaleUpperCase('hu')), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null))); })));
+      h('div', { class: 'grid-sheet' }, g.map((uid, i) => { const p = ctx.person(uid), tm = ctx.tmap[p.teamId]; return h('a', { class: 'grid-slot' + (i % 2 ? ' right' : ''), href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' },
+        h('span', { class: 'gp display' }, i + 1), avatar(p, tm), h('span', { class: 'gs-nm' }, h('b', null, (p.lastName || '').toLocaleUpperCase('hu'), ' ', h('span', { class: 'gs-first' }, p.firstName || '')), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null))); })));
   }
   return resultsTable(ctx, res[S] || [], L, S, me);
 }

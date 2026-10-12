@@ -9,7 +9,7 @@ import { avatar, pageTitle, skelRows, empty, backLink, formError } from '../../u
 import { openSheet, toast } from '../../ui/sheet.js';
 import { t, fmtDate } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
-import { session, isOwner, grantableRoles } from '../../services/session.js';
+import { session, isOwner, isAdmin, grantableRoles } from '../../services/session.js';
 import { users, teams, invalidate } from '../../core/data.js';
 import { fullName, isComplete, ROLE_KEYS, DR_OPTS, SR_OPTS, validate, psnKey } from '../../model/profile.js';
 import { emit } from '../../core/bus.js';
@@ -89,6 +89,8 @@ function editPerson(u, tms, reload) {
   note.addEventListener('input', () => { draft.suspendNote = note.value; });
   const reason = h('input', { class: 'input', maxlength: 200, placeholder: t('reasonPh') });
   const save = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('check'), t('save'));
+  const canDelete = isAdmin() && u.uid !== session.user.uid && !(u.roles && u.roles.owner === true);
+  const delBtn = h('button', { class: 'btn danger block', type: 'button' }, icon('trash'), t('userDelete'));
   const sh = openSheet({ title: fullName(u) || t('noName'), body: frag(
     h('p', { style: 'margin:0 0 12px;display:flex;gap:8px;align-items:center' }, icon('mail'), emailLine),
     err, reqBox,
@@ -98,7 +100,19 @@ function editPerson(u, tms, reload) {
       h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), teamSel)),
     h('h3', { class: 'display', style: 'font-size:22px;margin:22px 0 4px' }, t('rolesTitle')), roleRows, scopeRow,
     h('h3', { class: 'display', style: 'font-size:22px;margin:22px 0 8px' }, t('suspension')),
-    h('div', { class: 'form' }, field(t('suspendedUntil'), until).row, field(t('suspendNote'), note).row, field(t('reason'), reason, { hint: t('reasonHint') }).row, save)) });
+    h('div', { class: 'form' }, field(t('suspendedUntil'), until).row, field(t('suspendNote'), note).row, field(t('reason'), reason, { hint: t('reasonHint') }).row, save),
+    canDelete ? h('div', { class: 'danger-zone' }, h('h3', { class: 'display', style: 'font-size:22px;margin:0 0 6px' }, t('userDelete')), h('p', { class: 'note', style: 'margin:0 0 10px' }, t('userDeleteHint')), delBtn) : null) });
+  delBtn.addEventListener('click', () => {
+    const word = u.psn || u.uid;
+    const inp = h('input', { class: 'input', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: word });
+    const yes = h('button', { class: 'btn danger block', type: 'button', disabled: true }, icon('trash'), t('userDeleteConfirm'));
+    inp.addEventListener('input', () => { yes.disabled = inp.value.trim() !== word; });
+    const cs = openSheet({ title: t('userDeleteTitle', { psn: word }), body: h('div', { class: 'stack', style: 'gap:12px' }, h('div', { class: 'callout warn', style: 'display:block' }, t('userDeleteText')), h('label', { class: 'f-row' }, h('span', { class: 'f-label' }, t('userDeleteType', { psn: word })), inp), yes) });
+    yes.addEventListener('click', () => busy(yes, async () => {
+      try { await backend.users.removeFull(u.uid, u.psnLower); await backend.audit.add({ action: 'user.delete', target: u.uid, targetName: `${fullName(u)} (${word})`, before: { psn: word }, after: null, reason: null }); cs.close(true); sh.close(true); toast(t('deleted')); invalidate('users'); if (reload) reload(); }
+      catch (e) { toast(t(errorKey(e)), 'alert'); }
+    }));
+  });
   save.addEventListener('click', () => busy(save, async () => {
     err.replaceChildren();
     const bad = [['lastName', last], ['firstName', first], ['psn', psn]].find(([k]) => draft[k] && validate[k === 'psn' ? 'psn' : 'name'](draft[k]));

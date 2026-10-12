@@ -12,7 +12,7 @@ import { renderMarkdown } from './markdown.js';
 import { uploadImage, dropZone } from './upload.js';
 import { t, fmtDate } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
-import { isAdmin } from '../services/session.js';
+import { isAdmin, signedIn as isSignedIn } from '../services/session.js';
 import { cached, invalidate } from '../core/data.js';
 import { store } from '../core/storage.js';
 import { emit } from '../core/bus.js';
@@ -82,6 +82,7 @@ function editNews(a, items) {
 // Welcome carousel: once per visit, after opening the site or signing in.
 let shownThisVisit = false;
 export async function showWelcomeNews(force = false) {
+  if (!isSignedIn()) return;
   if (shownThisVisit && !force) return;
   try { if (sessionStorage.getItem('mcsm:newsShown') && !force) return; } catch { /* private mode */ }
   const items = (await loadNews()).filter((a) => a.carousel && !seenIds().has(a.id + ':' + (a.carouselAt || a.at))).sort((a, b) => a.at - b.at);

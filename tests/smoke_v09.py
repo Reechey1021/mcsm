@@ -59,33 +59,24 @@ with sync_playwright() as p:
         check('Második hír' in c and 'Megérkezett' not in c, f'{size}: only the new article shows after "don\'t show again"')
         check(pg.inner_text('.news-badge').strip() == '2', f'{size}: unread count on the news button ({pg.inner_text(".news-badge")!r})')
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
-        # MCSM Rating admin: set tiers by CSV, recalculate
-        fresh_visit(pg, '/admin/mcsm-rating', 'owner', 2200)
-        if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
-        pg.fill('textarea.script-box', 'IGTSH_Saby;125\nTeszt_Elek;90\nNincs_Ilyen;110')
-        pg.click('button:has-text("Alkalmazás")'); pg.wait_for_timeout(400)
-        check('2 sor alkalmazva, 1 nem párosítható' in text(pg), f'{size}: CSV tiers applied')
-        pg.click('button:has-text("Mentés")'); pg.wait_for_timeout(1000)
-        pg.click('button:has-text("Újraszámolás és közzététel")'); pg.wait_for_timeout(3500)
-        check('Utolsó számolás' in text(pg), f'{size}: recalculated ({text(pg)[:160]!r})')
-        snap(pg, f'v9_admin_{size}')
+        # (rating admin and import are covered by smoke_v095.py)
         # a driver with fewer than 5 rounds: no number anywhere
         fresh_visit(pg, '/pilotak/igtsh_saby', None, 2600)
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
         box = text(pg, '.mr-card')
         check('Besorolatlan' in box and 'FORDULÓ A BESOROLÁSIG' in box.upper() and pg.query_selector('.mr-big') is None and pg.query_selector('.mr-avg') is None, f'{size}: unranked, no number, no average marker ({box[:60]!r})')
         pg.click('.mr-card .mr-help'); pg.wait_for_timeout(600)
-        check('0,25 × Pace' in text(pg, '.sheet'), f'{size}: explanation popup')
+        check('0,20 × Kvalifikáció' in text(pg, '.sheet'), f'{size}: explanation popup')
         pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         # an established driver (published data injected) shows the full box and sorts first
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(300)
         pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const uid=Object.keys(db.users).find(k=>db.users[k].psnLower==='mgtk_dudu'); const u={ uid };
-          db.content = db.content || {}; db.content.ratings = { version: 1, computedAt: Date.now(), drivers: { [u.uid]: { e: 1, r: 131.46, q: 128.2, rr: 134.9, d: 101.3, n: 7, rel: 92.9, hi: 133.1, dl: 1.84, pf: 142.7, h: [['MCSM31 · 5.', 129.2, 140.1], ['MCSM31 · 6.', 129.62, 120.3], ['MCSM32 · 1.', 131.46, 142.7]] } } };
+          db.content = db.content || {}; db.content.ratings = { version: '3.2', computedAt: Date.now(), drivers: { [u.uid]: { e: 1, r: 131.46, q: 128.2, s: 134.9, g: 129.3, n: 7, hi: 133.1, dl: 1.84, h: [['MCSM25–30', 129.2, 126, 130, 128], ['MCSM31 / 1', 129.62, 127, 131, 128.5], ['MCSM31 / 2', 131.46, 128.2, 134.9, 129.3]] } } };
           localStorage.setItem(k, JSON.stringify(db)); }""")
         fresh_visit(pg, '/pilotak/mgtk_dudu', None, 2600)
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
         box = text(pg, '.mr-card')
-        check('131,5' in box and '+1,8' in box and 'TEMPÓ' in box.upper() and '93%' in box and '100,0' in box, f'{size}: ranked rating card ({box[:80]!r})')
+        check('131,5' in box and '+1,8' in box and 'KVALIFIKÁCIÓ' in box.upper() and 'GRAN' in box.upper() and '100,0' in box, f'{size}: ranked rating card ({box[:80]!r})')
         # the card sits between the SR card and the GT7 stats
         order = pg.evaluate("[...document.querySelectorAll('.rating-grid .stack > *')].map(e => e.className)")
         check(any('sr-card' in o for o in order[:1]) and 'mr-card' in order[1], f'{size}: card under SR ({order})')

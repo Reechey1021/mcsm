@@ -7,6 +7,7 @@ import { icon } from '../core/icons.js';
 import { seg, toggle, busy } from '../ui/controls.js';
 import { avatar, formError, empty } from '../ui/parts.js';
 import { openSheet, toast } from '../ui/sheet.js';
+import { invalidate } from '../core/data.js';
 import { t, fmtDate } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
 import { users as loadUsers, seasons as loadSeasons, invalidateSeason } from '../core/data.js';
@@ -92,6 +93,16 @@ export function adminEntrySheet(e, st, reload) {
     h('div', { class: 'toggle-row' }, h('span', null, t('seeded'), h('small', null, t('seededHint'))), toggle(!!e.seeded, (v) => save({ seeded: v }, 'entry.seeded').catch(() => {}), { label: t('seeded') })),
     e.type === 'reserve' ? h('div', { class: 'toggle-row' }, h('span', null, t('approved'), h('small', null, e.availability && e.availability.length ? t('availableRounds', { r: e.availability.join(', ') }) : '')), toggle(e.approved !== false, (v) => save({ approved: v }, 'entry.approve').catch(() => {}), { label: t('approved') })) : null,
     h('div', { class: 'f-row', style: 'margin:14px 0' }, h('span', { class: 'f-label' }, t('entryType')), typeSeg),
+    (() => {
+      const opts = Object.values(st.tmap).filter((x) => x.status !== 'retired').sort((a, b) => a.name.localeCompare(b.name, 'hu'));
+      const sel = h('select', { class: 'select', style: 'width:100%' }, h('option', { value: '' }, t('noTeam')), ...opts.map((x) => h('option', { value: x.id, selected: p.teamId === x.id }, x.name)));
+      sel.addEventListener('change', async () => {
+        const teamId = sel.value || null;
+        try { await backend.entries.save(s.id, e.uid, { snapshot: { ...p, teamId } }); await audit('entry.team', s, { targetName: `MCSM${s.no}: ${fullName(p)}`, before: { teamId: p.teamId || null }, after: { teamId } }); p.teamId = teamId; invalidate('race:' + s.id); toast(t('entryTeamSaved')); }
+        catch (x) { err.replaceChildren(formError(t(errorKey(x)))); }
+      });
+      return h('div', { class: 'f-row', style: 'margin:0 0 14px' }, h('span', { class: 'f-label' }, t('entryTeam')), sel, h('span', { class: 'hint' }, t('entryTeamHint')));
+    })(),
     e.type === 'driver' ? h('div', { style: 'display:flex;gap:8px;margin-bottom:12px' },
       h('button', { class: 'btn small', type: 'button', disabled: idx <= 0, onclick: move(-1) }, icon('up'), t('moveUp')),
       h('button', { class: 'btn small', type: 'button', disabled: idx < 0 || idx >= drivers.length - 1, onclick: move(1) }, icon('down'), t('moveDown'))) : null,

@@ -1,86 +1,66 @@
 // screens/admin/rating.js
-// MCSM Rating admin: starting tiers for the founding drivers (hidden from everyone else),
-// CSV import of tiers, the one-time calibration lock, and recompute + publish.
+// MCSM Rating v3.2 admin: import the historical bootstrap (the V3.2 latent JSON, once), check how its
+// PSN IDs match accounts (fix any by hand; unmatched ones are kept for when that driver signs up),
+// then recalculate and publish. The bootstrap stays in an admin-only record.
 import { h, frag } from '../../core/dom.js';
 import { icon } from '../../core/icons.js';
-import { busy, choice } from '../../ui/controls.js';
-import { pageTitle, backLink, skelRows, formError, empty } from '../../ui/parts.js';
-import { openSheet, toast } from '../../ui/sheet.js';
+import { busy } from '../../ui/controls.js';
+import { pageTitle, backLink, skelRows, formError } from '../../ui/parts.js';
+import { toast } from '../../ui/sheet.js';
 import { t, fmtDate } from '../../i18n/index.js';
-import { users as loadUsers, invalidate } from '../../core/data.js';
+import { users as loadUsers } from '../../core/data.js';
 import { fullName } from '../../model/profile.js';
-import { loadSeeds, saveSeeds, seedsFrom, computeAndPublish } from '../../services/mcsm-rating.js';
-import { TIERS } from '../../engine/rating.js';
+import { loadBootstrap, saveBootstrap, matchBootstrap, computeAndPublish } from '../../services/mcsm-rating.js';
 import { explainRating } from '../../ui/mcsm-rating.js';
 import { errorKey } from '../../services/backend.js';
 
-const f1 = (v) => (v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ','));
-
 export function screenRatingAdmin() {
   const root = h('div', null, skelRows(6, 60));
-  let doc = null, us = [], q = '';
+  let boot = null, us = [];
   const draw = () => {
-    const { mean } = seedsFrom(doc, us);
-    const counts = Object.fromEntries([...TIERS, 'u'].map((k) => [k, 0]));
-    us.forEach((u) => { const v = doc.tiers[u.uid]; counts[v || 'u']++; });
-    const status = h('section', { class: 'panel pad stack', style: 'gap:10px' },
+    const status = h('section', { class: 'panel pad stack', style: 'gap:8px' },
       h('div', { class: 'row-between' }, h('h2', { class: 'display', style: 'font-size:24px;margin:0' }, t('mrStatus')), h('button', { class: 'linkish', type: 'button', onclick: explainRating }, icon('info'), t('mrHow'))),
-      h('p', { class: 'muted', style: 'margin:0' }, doc.locked ? t('mrLocked', { n: (doc.founders || []).length, date: fmtDate(doc.lockedAt) }) : t('mrNotLocked')),
-      h('p', { class: 'note', style: 'margin:0' }, t('mrMean', { m: f1(mean) }) + '  ·  ' + [...TIERS].map((k) => `${k}: ${counts[k]}`).join(', ') + `, ${t('mrUnknown')}: ${counts.u}`),
-      doc.lastRun ? h('p', { class: 'note', style: 'margin:0' }, t('mrLastRun', { date: fmtDate(doc.lastRun.at, true), r: doc.lastRun.rounds, e: doc.lastRun.established, avg: f1(doc.lastRun.average) })) : null);
-    const run = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('refresh'), t('mrRun'));
+      h('p', { class: 'muted', style: 'margin:0' }, boot ? t('mrBootLoaded', { n: boot.entries.length, date: fmtDate(boot.importedAt) }) : t('mrBootMissing')),
+      boot && boot.lastRun ? h('p', { class: 'note', style: 'margin:0' }, t('mrLastRun3', { date: fmtDate(boot.lastRun.at, true), r: boot.lastRun.rounds, e: boot.lastRun.established })) : null);
+    const run = h('button', { class: 'btn primary', type: 'button', disabled: !boot, 'data-haptic': '' }, icon('refresh'), t('mrRun'));
     const runOut = h('div');
     run.addEventListener('click', () => busy(run, async () => {
-      try { const r = await computeAndPublish(); doc = await loadSeeds(); draw(); toast(t('mrRunDone', { r: r.rounds, e: r.established })); }
+      try { const r = await computeAndPublish(); boot = await loadBootstrap(); draw(); toast(t('mrRunDone', { r: r.rounds, e: r.established })); }
       catch (e) { runOut.replaceChildren(formError(t(errorKey(e)) + (e.message ? ` (${e.message})` : ''))); }
     }));
-    const lock = doc.locked ? null : h('button', { class: 'btn', type: 'button' }, icon('lock'), t('mrLock'));
-    if (lock) lock.addEventListener('click', () => {
-      const yes = h('button', { class: 'btn primary block', type: 'button' }, icon('lock'), t('mrLockConfirm'));
-      const sh = openSheet({ title: t('mrLock'), body: h('div', { class: 'stack', style: 'gap:12px' }, h('p', { class: 'muted', style: 'margin:0' }, t('mrLockText', { n: us.length, m: f1(mean) })), yes) });
-      yes.addEventListener('click', () => busy(yes, async () => { doc = { ...doc, locked: true, lockedAt: Date.now(), founders: us.map((u) => u.uid), mean }; await saveSeeds(doc); sh.close(true); toast(t('saved')); draw(); }));
+    // import
+    const input = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none' });
+    const pick = h('button', { class: 'btn', type: 'button', onclick: () => input.click() }, icon('plus'), t('mrBootPick'));
+    const preview = h('div');
+    input.addEventListener('change', async () => {
+      const f = input.files[0]; input.value = ''; if (!f) return;
+      try {
+        const j = JSON.parse(await f.text());
+        if (!Array.isArray(j.entries) || !j.entries[0] || j.entries[0].latent_q == null) throw new Error('format');
+        const entries = j.entries.map((e) => ({ psn: e.psn_id, rounds: e.historical_rounds, status: e.status, q: e.latent_q, s: e.latent_sprint, g: e.latent_gp, overall: e.public_overall }));
+        boot = { version: j.version || 'V3.2', entries, map: (boot && boot.map) || {}, importedAt: Date.now() };
+        draw(); toast(t('mrBootReady', { n: entries.length }), 'info');
+      } catch { preview.replaceChildren(formError(t('mrBootBad'))); }
     });
-    // tiers
-    const rows = h('div', { class: 'stack', style: 'gap:6px' });
-    const tierOpts = [{ value: '', label: '?' }, ...TIERS.slice().reverse().map((v) => ({ value: String(v), label: String(v) }))];
-    const drawRows = () => {
-      const s = q.trim().toLowerCase();
-      const list = us.filter((u) => !s || [fullName(u), u.psn].join(' ').toLowerCase().includes(s));
-      rows.replaceChildren(...(list.length ? list.map((u) => {
-        const founder = !doc.locked || (doc.founders || []).includes(u.uid);
-        return h('div', { class: 'row-card mr-row' }, h('span', { class: 'nm' }, h('b', null, fullName(u) || u.psn), h('span', null, u.psn || '')),
-          founder ? choice(tierOpts, doc.tiers[u.uid] ? String(doc.tiers[u.uid]) : '', (v) => { if (doc.locked) { toast(t('mrLockedEdit'), 'alert'); return; } if (v) doc.tiers[u.uid] = Number(v); else delete doc.tiers[u.uid]; dirty(); }) : h('span', { class: 'faint' }, t('mrNewcomer')));
-      }) : [empty(t('noMatches'))]));
-    };
-    const save = h('button', { class: 'btn primary', type: 'button', disabled: true }, icon('check'), t('save'));
-    const dirty = () => { save.disabled = false; };
-    save.addEventListener('click', () => busy(save, async () => { try { await saveSeeds(doc); save.disabled = true; toast(t('saved')); draw(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
-    const search = h('input', { class: 'input', type: 'search', placeholder: t('searchPeople'), value: q });
-    search.addEventListener('input', () => { q = search.value; drawRows(); });
-    // CSV
-    const csv = h('textarea', { class: 'input script-box', placeholder: 'IGTSH_Saby;125\nMGTK_Baboca96;125\nACTA_Szabi;100' });
-    const csvBtn = h('button', { class: 'btn small', type: 'button', disabled: !!doc.locked }, icon('list'), t('mrCsvApply'));
-    const csvOut = h('p', { class: 'note' });
-    csvBtn.addEventListener('click', () => {
-      const byPsn = Object.fromEntries(us.map((u) => [String(u.psn || '').toLowerCase(), u]));
-      let ok = 0; const miss = [];
-      csv.value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).forEach((line) => {
-        const [psn, tier] = line.split(/[;,\t]/).map((x) => x.trim());
-        const u = byPsn[(psn || '').toLowerCase()]; const v = Number(tier);
-        if (!u || !(TIERS.includes(v) || /^(\?|unknown|ismeretlen)?$/i.test(tier || ''))) { miss.push(psn); return; }
-        if (TIERS.includes(v)) doc.tiers[u.uid] = v; else delete doc.tiers[u.uid];
-        ok++;
+    // matching review
+    const matchBox = h('div');
+    if (boot) {
+      const rows = matchBootstrap(boot.entries, us, boot.map || {});
+      const matched = rows.filter((r) => r.uid).length;
+      const people = us.slice().sort((a, b) => fullName(a).localeCompare(fullName(b), 'hu'));
+      const list = rows.slice().sort((a, b) => (a.uid ? 1 : 0) - (b.uid ? 1 : 0) || b.overall - a.overall).map((r) => {
+        const sel = h('select', { class: 'select' }, h('option', { value: '' }, t('mrNoAccount')), ...people.map((u) => h('option', { value: u.uid, selected: r.uid === u.uid }, `${fullName(u)} (${u.psn})`)));
+        sel.addEventListener('change', () => { boot.map = { ...(boot.map || {}), [r.key]: sel.value || null }; save.disabled = false; });
+        return h('div', { class: 'ai-row ' + (r.uid ? 'ok' : 'check') }, h('b', { class: 'display num ai-pos', style: 'font-size:15px' }, (r.overall ?? 0).toFixed(1)),
+          h('div', { class: 'ai-read' }, h('span', { class: 'ai-name' }, r.psn), h('small', null, `${r.rounds} ${t('mrRoundsDone')} · ${r.status === 'established' ? t('mrEstablished') : t('mrUnranked')}`)), sel);
       });
-      csvOut.textContent = t('mrCsvResult', { n: ok, m: miss.length }) + (miss.length ? ' ' + miss.slice(0, 20).join(', ') : '');
-      drawRows(); if (ok) dirty();
-    });
-    drawRows();
-    root.replaceChildren(status, h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:12px 0' }, run, lock), runOut,
-      h('section', { class: 'panel pad stack', style: 'gap:10px;margin-top:6px' }, h('h2', { class: 'display', style: 'font-size:24px;margin:0' }, t('mrSeeds')), h('p', { class: 'note', style: 'margin:0' }, t('mrSeedsHint')),
-        search, rows, h('div', { style: 'position:sticky;bottom:calc(var(--tabbar-h, 0px) + 12px)' }, save)),
-      h('section', { class: 'panel pad stack', style: 'gap:10px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px;margin:0' }, t('mrCsv')), h('p', { class: 'note', style: 'margin:0' }, t('mrCsvHint')), csv, h('div', null, csvBtn), csvOut));
+      const save = h('button', { class: 'btn primary', type: 'button' }, icon('check'), t('mrBootSave'));
+      save.addEventListener('click', () => busy(save, async () => { try { await saveBootstrap(boot); toast(t('saved')); save.disabled = true; } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
+      matchBox.replaceChildren(h('p', { class: 'note' }, t('mrBootMatch', { m: matched, n: rows.length })), h('div', { class: 'ai-rows' }, list), h('div', { style: 'margin-top:10px;position:sticky;bottom:12px' }, save));
+    }
+    root.replaceChildren(status, h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:12px 0' }, run), runOut,
+      h('section', { class: 'panel pad stack', style: 'gap:10px' }, h('h2', { class: 'display', style: 'font-size:24px;margin:0' }, t('mrBootTitle')), h('p', { class: 'note', style: 'margin:0' }, t('mrBootHint')), h('div', null, pick, input), preview, matchBox));
   };
-  Promise.all([loadSeeds(), loadUsers()]).then(([d, u]) => { doc = { tiers: {}, conf: {}, ...d }; us = u.filter((x) => x.psn).sort((a, b) => fullName(a).localeCompare(fullName(b), 'hu')); draw(); }).catch((e) => root.replaceChildren(formError(t(errorKey(e)))));
-  void invalidate;
-  return frag(backLink(t('admin'), '#/admin'), pageTitle('MCSM Rating', t('mrAdminSub')), root);
+  Promise.all([loadBootstrap(), loadUsers()]).then(([b, u]) => { boot = b; us = u.filter((x) => x.psn); draw(); }).catch((e) => root.replaceChildren(formError(t(errorKey(e)))));
+  return frag(backLink(t('admin'), '#/admin'), pageTitle('MCSM Rating', t('mrAdminSub3')), root);
 }

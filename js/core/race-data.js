@@ -20,7 +20,7 @@ export async function loadRace(sid, { drafts = false } = {}) {
   const ids = [...new Set([...table.inList.map((e) => e.uid), ...table.reserves.map((e) => e.uid), ...built.flatMap((r) => Object.values(r.lobbies).flat())])];
   return {
     season, entries, table, roundDocs, sheets, pqDocs, tmap, gts, snaps, built, ids, penalties,
-    person: (uid) => snaps[uid] || userById[uid] || {},
+    person: (uid) => ({ ...(userById[uid] || {}), ...(snaps[uid] || {}) }),
     teams: seasonTeams(entries), points: tableOf(season),
     pqRank: pqRanking(table.inList, pqDocs),
     roundDoc: (n) => roundDocs.find((r) => r.n === n) || null,

@@ -271,6 +271,7 @@ export function createFakeBackend() {
       async getPrivate(uid) { await lag(); const a = me(); if (a.uid !== uid && !isAdminUid(a.uid)) fail('permission-denied'); return clone(db.priv[uid]) || {}; },
       async lockOwner(psnLower) { await lag(); return db.psnIds[psnLower] || null; },
       async remove(uid) { await lag(); const a = me(); if (!roleOf(a.uid).owner) fail('permission-denied'); delete db.users[uid]; persist(); },
+      async removeFull(uid, psnLower) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); delete db.users[uid]; delete db.priv[uid]; if (psnLower) delete db.psnIds[psnLower]; persist(); },
       async psnFree(psn, uid) { await sleep(150); const k = String(psn || '').trim().toLowerCase(); return !db.psnIds[k] || db.psnIds[k] === uid; },
       async teammates(teamId, uid) { await lag(); if (!teamId) return []; return Object.entries(db.users).filter(([id, p]) => p.teamId === teamId && id !== uid).map(([id, p]) => ({ uid: id, ...clone(p) })); },
       async save(uid, patch) {

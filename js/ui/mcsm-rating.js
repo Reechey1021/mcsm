@@ -3,6 +3,8 @@
 // and the "how is it calculated" explainer. Unranked drivers (fewer than 5 rounds) see no numbers.
 // Preview with sample numbers: add ?mrdemo to the address (or ?mrdemo=unranked).
 import { h } from '../core/dom.js';
+import { icon } from '../core/icons.js';
+import { seg } from './controls.js';
 import { openSheet } from './sheet.js';
 import { t } from '../i18n/index.js';
 import { publicRatings } from '../services/mcsm-rating.js';
@@ -10,7 +12,7 @@ import { RATING_CFG } from '../engine/rating.js';
 
 const f1 = (v) => (v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ','));
 const signed = (v) => (v > 0.05 ? '+' : v < -0.05 ? '−' : '±') + f1(Math.abs(v));
-const DEMO = { e: 1, r: 131.46, q: 128.2, rr: 134.9, d: 101.3, n: 7, rel: 92.9, hi: 133.1, dl: 1.84, pf: 142.7 };
+const DEMO = { e: 1, r: 131.46, q: 128.2, s: 134.9, g: 129.3, n: 23, hi: 133.1, dl: 1.84, h: [['MCSM25–30', 127.9, 125.1, 130.2, 126.9], ['MCSM31 / 1', 129.2, 126.4, 131.8, 128.0], ['MCSM31 / 2', 128.6, 127.9, 130.1, 127.5], ['MCSM31 / 3', 129.62, 127.2, 132.6, 128.2], ['MCSM32 / 2', 131.46, 128.2, 134.9, 129.3]] };
 const demoMode = () => { try { const q = new URLSearchParams(location.search); return q.has('mrdemo') ? (q.get('mrdemo') === 'unranked' ? 'unranked' : 'ranked') : null; } catch { return null; } };
 
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -18,7 +20,8 @@ const svgEl = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); 
 const SWEEP = 270, START = 225;
 const at = (cx, cy, r, tt) => { const a = ((START - SWEEP * tt) * Math.PI) / 180; return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
 const arcPath = (cx, cy, r, t0, t1) => { const [x0, y0] = at(cx, cy, r, t0), [x1, y1] = at(cx, cy, r, t1); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${(t1 - t0) * SWEEP > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
-const toT = (v, lo = RATING_CFG.min, hi = RATING_CFG.max) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+// dial range for display only (the rating itself has no upper cap)
+const toT = (v, lo = 50, hi = 200) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
 
 // One dial: track, value arc (animated), and the league-average marker at 100.
 function dial({ size, r, stroke, value, color, marker = true, lo, hi }) {
@@ -64,9 +67,9 @@ export function mcsmRatingCard(uid) {
         h('div', { class: 'mr-ptext' }, h('span', { class: 'mr-pname', style: `color:${color}` }, label), h('span', { class: 'mr-pstat ' + (s2 ? s2[0] : '') }, ranked ? (s2 ? `${s2[0] === 'up' ? '▲' : s2[0] === 'down' ? '▼' : '–'} ${s2[1]}` : opts.sub || '') : t('mrHidden'))));
     };
     const parts = h('div', { class: 'mr-parts' },
-      part(t('mrPaceShort'), x && x.q, '#38BDF8'), part(t('mrRaceShort'), x && x.rr, 'var(--accent)'), part(t('mrDisciplineShort'), x && x.d, '#A584FF'),
-      part(t('mrReliability'), x && x.rel, '#F2C14E', { noMarker: true, noStanding: true, lo: 0, hi: 100, fmt: (v) => (v == null ? '–' : Math.round(v) + '%'), sub: t('mrRelSub') }));
-    const facts = ranked ? h('div', { class: 'mr-facts2' }, h('span', null, t('mrHighest'), h('b', null, f1(x.hi))), h('span', null, t('mrLastPerf'), h('b', null, f1(x.pf))), h('span', null, t('mrRoundsDone'), h('b', null, x.n))) : null;
+      part(t('quali'), x && x.q, '#38BDF8'), part('Sprint', x && x.s, 'var(--accent)'), part("Gran'Prix", x && x.g, '#A584FF'));
+    const hist = ranked && (x.h || []).length > 1 ? h('button', { class: 'linkish', type: 'button', onclick: () => ratingHistory(x) }, icon('bolt'), t('mrHistory')) : null;
+    const facts = ranked ? h('div', { class: 'mr-facts2' }, h('span', null, t('mrHighest'), h('b', null, f1(x.hi))), h('span', null, t('mrRoundsDone'), h('b', null, x.n)), hist) : null;
     card.replaceChildren(head, h('div', { class: 'mr-body' }, main, parts), facts);
   }).catch(() => card.remove());
   return card;
@@ -76,13 +79,40 @@ export function explainRating() {
   const c = RATING_CFG;
   const p = (k, v) => h('p', null, t(k, v));
   openSheet({ title: t('mrHowTitle'), body: h('div', { class: 'md mr-explain' },
-    p('mrX1'), h('div', { class: 'mr-formula' }, 'MCSM Rating = 0,25 × Pace + 0,65 × Race + 0,10 × Discipline'),
-    h('h3', null, t('mrPace')), p('mrX2', { k: c.kQ }),
-    h('h3', null, t('mrRace')), p('mrX3', { s: Math.round(c.sprintShare * 100), m: Math.round(c.mainShare * 100) }),
-    h('h3', null, t('mrDiscipline')), p('mrX4', { p: c.penalty }),
-    h('h3', null, t('mrHowFair')), p('mrX5', { min: c.min, max: c.max, ce: c.capEstablished, cp: c.capProvisional }),
-    h('h3', null, t('mrUnranked')), p('mrX6', { n: c.provisionalRounds }),
-    h('h3', null, t('mrReliability')), p('mrX7')) });
+    p('mr3X1'), h('div', { class: 'mr-formula' }, "MCSM Rating = 0,20 × Kvalifikáció + 0,40 × Sprint + 0,40 × Gran'Prix"),
+    h('h3', null, t('mr3H2')), p('mr3X2'),
+    h('h3', null, t('mr3H3')), p('mr3X3'),
+    h('h3', null, t('mr3H4')), p('mr3X4'),
+    h('h3', null, t('mrUnranked')), p('mr3X5', { n: c.provisionalRounds }),
+    h('h3', null, t('mr3H6')), p('mr3X6')) });
+}
+
+// Rating history: one point per round raced as an established driver, newest last.
+export function ratingHistory(x) {
+  const all = x.h || [];
+  let range = all.length > 10 ? 10 : 0;
+  const box = h('div');
+  const draw = () => {
+    const pts = range ? all.slice(-range) : all;
+    const vals = pts.flatMap((r) => [r[1], r[2], r[3], r[4]]);
+    const lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2);
+    const W = 640, H = 260, L = 40, R = 12, T = 12, Bt = 54;
+    const X = (i) => L + (pts.length < 2 ? (W - L - R) / 2 : (i / (pts.length - 1)) * (W - L - R));
+    const Y = (v) => T + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - T - Bt);
+    const line = (k, color, width, dash = '') => `<polyline points="${pts.map((r, i) => `${X(i).toFixed(1)},${Y(r[k]).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+    const ticks = [lo, (lo + hi) / 2, hi].map((v) => `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" class="mh-tick">${Math.round(v)}</text><line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" class="mh-grid"/>`).join('');
+    const labels = pts.map((r, i) => `<text x="${X(i)}" y="${H - Bt + 16}" text-anchor="end" transform="rotate(-35 ${X(i)} ${H - Bt + 16})" class="mh-tick">${r[0]}</text>`).join('');
+    const dots = pts.map((r, i) => `<circle cx="${X(i)}" cy="${Y(r[1])}" r="3.5" fill="var(--accent)"><title>${r[0]}: ${f1(r[1])}</title></circle>`).join('');
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('class', 'mh-chart');
+    svg.innerHTML = ticks + line(2, '#38BDF8', 1.6, '4 4') + line(3, 'var(--accent)', 1.6, '4 4') + line(4, '#A584FF', 1.6, '4 4') + line(1, 'var(--ink)', 3) + dots + labels;
+    box.replaceChildren(svg, h('div', { class: 'mh-legend' }, h('span', null, h('i', { style: 'background:var(--ink)' }), 'MCSM Rating'), h('span', null, h('i', { style: 'background:#38BDF8' }), t('quali')), h('span', null, h('i', { style: 'background:var(--accent)' }), 'Sprint'), h('span', null, h('i', { style: 'background:#A584FF' }), "Gran'Prix")),
+      h('div', { class: 'mh-table' }, pts.slice().reverse().map((r, i, arr) => { const prev = arr[i + 1]; const d = prev ? r[1] - prev[1] : null; return h('div', null, h('span', null, r[0]), h('b', null, f1(r[1])), h('small', { class: d > 0 ? 'up' : d < 0 ? 'down' : '' }, d == null ? '' : signed(d))); })));
+  };
+  const opts = [5, 10, 15].filter((n) => n < all.length).map((n) => ({ value: n, label: t('mrLastN', { n }) }));
+  const ctrl = seg([...opts, { value: 0, label: t('mrAllTime') }], range, (v) => { range = v; draw(); }, { scroll: true });
+  draw();
+  openSheet({ title: t('mrHistory'), body: h('div', null, h('div', { style: 'margin-bottom:10px' }, ctrl), box) });
 }
 // kept for older imports
 export const mcsmRatingBox = mcsmRatingCard;

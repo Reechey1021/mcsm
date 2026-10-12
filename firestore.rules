@@ -80,11 +80,12 @@ service cloud.firestore {
           || (isAdmin() && request.resource.data.keys().hasOnly(adminKeys())
             && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk())
           || chairJudgeOnly());
-      allow delete: if isOwner();
+      allow delete: if isAdmin();
 
       match /private/{doc} {
         allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
         allow create, update: if signedIn() && (request.auth.uid == uid || isAdmin()) && request.resource.data.keys().hasOnly(['email']);
+        allow delete: if isAdmin();
         allow delete: if isOwner();
       }
     }

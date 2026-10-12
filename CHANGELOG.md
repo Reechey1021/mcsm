@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.5 – MCSM Rating V3.2 and more
+- MCSM Rating V3.2 (replaces v1): Overall = 0.20 Quali + 0.40 Sprint + 0.40 Gran'Prix from latent
+  skills via the fixed public scale (d(100)=100, floor 50, no cap, no forced mean); finishing
+  positions only (no gaps, no penalties, no reliability); grid-adjusted Sprint (Q order) and GP
+  (top 8 of Q reversed); established drivers: zero-sum Elo per session (K=10, DNF ×0.5);
+  provisional drivers (under 5 completed rounds): shadow placement against frozen opponents, never
+  moving established drivers, graduating after five rounds. Starts from the V3.2 historical
+  bootstrap (MCSM25–30): Admin → Haladó → MCSM Rating → upload the latent JSON, check the account
+  matching, recalculate. Live rounds from MCSM31, each counted when finalised.
+- Rating card: Kvalifikáció / Sprint / Gran'Prix; "MCSM Rating előzmények" chart (rounds raced only,
+  last 5 / 10 / 15 / all time) with a round-by-round list.
+- Profiles: MCSM25–30 finishing positions (matched by PSN ID; drivers without an account keep
+  theirs for later). Compare button → side-by-side page.
+- Finished seasons: a podium per lobby above everything else.
+- Admins: correct a driver's team for one season from their entry (team points follow); delete a
+  user from the user editor (type the PSN ID to confirm; not yourself or an owner).
+- News carousel only after signing in, never on the sign-in screen.
+- GP grid: staggered two columns with photos, names, numbers and PSN IDs; line-up shows photos.
+- Version number at the bottom of the profile menu.
+- Firestore rules: admins may delete user profiles and their private record (publish again).
+
 ## 0.9.3 – Results from screenshots, scroll fix
 - Results from screenshots: on every result entry page (qualifying, Sprint, Gran'Prix) and the
   PQ times page, "Beolvasás képernyőképből (AI)": pick the screenshots of one result (e.g. P1–8

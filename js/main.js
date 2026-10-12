@@ -49,7 +49,7 @@ async function boot() {
   on('pushed', () => refreshNotes().catch(() => {}));
   // News carousel: once per visit, after the first screen and again right after signing in.
   let wasIn = null;
-  on('session', () => { if (!session.ready) return; const nowIn = !!session.user; const force = wasIn === false && nowIn; wasIn = nowIn; setTimeout(() => import('./ui/news.js').then((m) => m.showWelcomeNews(force)), force ? 900 : 1600); });
+  on('session', () => { if (!session.ready) return; const nowIn = !!session.user; const force = wasIn === false && nowIn; wasIn = nowIn; if (!nowIn) return; setTimeout(() => import('./ui/news.js').then((m) => m.showWelcomeNews(force)), force ? 900 : 1600); });
   on('session', () => { if (session_ready()) listenForeground(); });
   // Once a day, the first admin to open the site refreshes DR/SR quietly in the background.
   let autoDone = false;

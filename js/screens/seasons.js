@@ -20,6 +20,7 @@ import { adminSeasonCard, adminEntrySheet, addDriverSheet, exportCsv } from './s
 import { go } from '../router.js';
 import { pqTab, roundLink, roundLinkDecorated } from './race.js';
 import { tracks as loadTracks } from '../core/data.js';
+import { seasonPodiums } from '../ui/podium.js';
 import { protestsTab } from './protests.js';
 import { specSection } from './spec.js';
 import { standingsBlock } from '../ui/tower.js';
@@ -101,6 +102,7 @@ const TAB_RENDER = {
     const pq = (s.pq || []).slice().sort((a, b) => a.date - b.date);
     const nr = nextRound(s);
     return frag(
+      ['finished', 'archived'].includes(s.state) ? seasonPodiums(s, st.tmap) : null,
       isAdmin() ? adminSeasonCard(st, reload) : null,
       registrationCard(st, reload),
       s.description ? h('p', { class: 'muted', style: 'margin:18px 0 0;white-space:pre-line' }, s.description) : null,

@@ -30,7 +30,7 @@ import { notifyUsers } from '../services/notify.js';
 
 const audit = (action, s, extra = {}) => backend.audit.add({ action, target: s.id, targetName: 'MCSM' + s.no, before: null, after: null, reason: null, ...extra });
 const lobbyBadge = (L) => h('span', { class: 'lobby ' + L }, L);
-const nameCell = (ctx, uid) => { const p = ctx.snaps[uid] || {}; return h('a', { href: '#/pilotak/' + encodeURIComponent(p.psnLower || '') }, h('span', { class: 'rnum faint', style: 'display:inline-block;min-width:26px' }, p.raceNumber ?? ''), h('b', null, (p.lastName || '').toLocaleUpperCase('hu')), ' ', h('span', { class: 'hide-sm' }, p.firstName || '')); };
+const nameCell = (ctx, uid) => { const p = ctx.snaps[uid] || {}; return h('a', { href: '#/pilotak/' + encodeURIComponent(p.psnLower || '') }, h('span', { class: 'rnum faint', style: 'display:inline-block;min-width:26px' }, p.raceNumber ?? ''), h('b', null, (p.lastName || '').toLocaleUpperCase('hu')), ' ', h('span', { class: 'hide-sm' }, p.firstName || ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null); };
 
 /* ---------- PQ tab (season page) ---------- */
 export function pqTab(st) {
@@ -53,7 +53,7 @@ export function pqTab(st) {
       const pqName = r.pq ? ((sessions.find((x) => x.id === r.pq) || {}).name || '') : '';
       items.push(h('li', { dataset: { key: r.uid } }, h('a', { class: 'trow' + (session.user && r.uid === session.user.uid ? ' me' : ''), href: '#/pilotak/' + encodeURIComponent(p.psnLower || '') },
         h('span', { class: 'pos' }, i + 1), h('span'),
-        h('span', { class: 'who' }, h('span', { class: 'stripe', vars: { '--t1': tm ? tm.c1 : 'var(--line-2)' } }), h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, r.seeded ? t('seededExempt') : r.missing ? t('noPqTime') : pqName))),
+        h('span', { class: 'who' }, h('span', { class: 'stripe', vars: { '--t1': tm ? tm.c1 : 'var(--line-2)' } }), h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, p.psn ? h('span', { class: 'psn-tag', style: 'margin:0 8px 0 0' }, p.psn) : null, r.seeded ? t('seededExempt') : r.missing ? t('noPqTime') : pqName))),
         h('span', { class: 'pts' }, L ? lobbyBadge(L) : null, h('b', { style: 'font-size:16px;min-width:78px' }, r.seeded ? '★' : r.t ? fmtLap(r.t) : '–')),
         h('span', { class: 'cols' }, h('span', { style: 'width:84px' }, r.t && fastest && r.t !== fastest ? '+' + (r.t - fastest).toFixed(3) : '')))));
     });
@@ -158,7 +158,7 @@ function roundBody(ctx, n, L, S, built) {
     return h('div', { class: 'stack', style: 'gap:8px' }, ids.map((uid) => {
       const p = ctx.snaps[uid] || {}, tm = ctx.tmap[p.teamId];
       return h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, avatar(p, tm),
-        h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, h('span', { class: 'rnum' }, '#' + (p.raceNumber ?? '')), '  ', tm ? tm.name : t('noTeam'), absent.has(uid) ? '  ' + t('cantComeTag') : '')), ratingEl(p));
+        h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, h('span', { class: 'rnum' }, '#' + (p.raceNumber ?? '')), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, '  ', tm ? tm.name : t('noTeam'), absent.has(uid) ? '  ' + t('cantComeTag') : '')), ratingEl(p));
     }));
   }
   const res = built && built.results[L];
@@ -166,7 +166,7 @@ function roundBody(ctx, n, L, S, built) {
   if (S === 'GRID') {
     const g = gpGrid(res.Q);
     return frag(h('p', { class: 'muted', style: 'margin:0 0 12px' }, t('gridExplain')),
-      h('div', { class: 'grid-sheet' }, g.map((uid, i) => { const p = ctx.snaps[uid] || {}; return h('a', { class: 'grid-slot', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, h('span', { class: 'gp display' }, i + 1), h('span', null, h('b', null, (p.lastName || '').toLocaleUpperCase('hu')), h('span', null, '#' + (p.raceNumber ?? '')))); })));
+      h('div', { class: 'grid-sheet' }, g.map((uid, i) => { const p = ctx.snaps[uid] || {}; return h('a', { class: 'grid-slot', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, h('span', { class: 'gp display' }, i + 1), h('span', null, h('b', null, (p.lastName || '').toLocaleUpperCase('hu')), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null))); })));
   }
   return resultsTable(ctx, res[S] || [], L, S, me);
 }
@@ -245,7 +245,7 @@ function lobbyEditor(ctx, n, reload) {
     const wasL = prev ? lobbyOf(prev.lobbies, uid) : null;
     const mv = wasL && wasL !== L ? (wasL > L ? 'up' : 'down') : null;
     return h('button', { class: 'row-card', type: 'button', dataset: { key: uid }, onclick: () => moveSheet(uid, L) }, avatar(p, tm),
-      h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, '#' + (p.raceNumber ?? '') + '  ' + (tm ? tm.name : ''), flags.has(uid) ? '  ' + t('noShowTag') : '')),
+      h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, tm ? '  · ' + tm.name : '', flags.has(uid) ? '  ' + t('noShowTag') : '')),
       pqOf[uid] ? h('span', { class: 'pq-chip' }, pqOf[uid].seeded ? '★' : pqOf[uid].t ? fmtLap(pqOf[uid].t) : '–', h('small', null, 'P' + pqOf[uid].pos)) : null,
       mv ? h('span', { class: 'delta ' + mv, style: 'font-size:12.5px' }, mv === 'up' ? '▲ ' + t('promoted') : '▼ ' + t('relegated')) : null);
   };

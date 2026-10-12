@@ -896,3 +896,7 @@ select.select{ box-sizing:border-box; max-width:100%; }
 .ai-row select.select{ width:100%; min-height:40px; }
 @media (max-width:560px){ .ai-row{ grid-template-columns:30px minmax(0,1fr); } .ai-row select.select{ grid-column:1 / -1; } }
 .dropzone{ box-sizing:border-box; max-width:100%; }
+
+/* PSN ID beside names in rankings and result entry (under the name on phones) */
+.psn-tag{ margin-left:8px; font-size:.78em; font-weight:550; color:var(--ink-3); letter-spacing:.01em; white-space:nowrap; }
+@media (max-width:560px){ .rtable .psn-tag, .order .psn-tag, .time-row .psn-tag{ display:block; margin-left:0; line-height:1.2; } }

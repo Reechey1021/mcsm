@@ -63,7 +63,7 @@ function build(ctx, n, L, S) {
       const snap = ctx.snaps[p.id] || {}, tm = ctx.tmap[snap.teamId];
       if (p.status === 'OK') okN++;
       return h('li', { dataset: { key: p.id } }, h('span', { class: 'p' }, p.status === 'OK' ? okN : '–'),
-        h('span', { style: 'display:flex;align-items:center;gap:10px;min-width:0' }, h('span', { class: 'rnum', style: `font-size:18px;min-width:30px;border-bottom:3px solid ${tm ? tm.c1 : 'transparent'}` }, snap.raceNumber ?? ''), h('b', { style: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, (snap.lastName || '').toLocaleUpperCase('hu'), h('span', { class: 'faint', style: 'font-weight:500' }, ' ' + (snap.firstName || '')))),
+        h('span', { style: 'display:flex;align-items:center;gap:10px;min-width:0' }, h('span', { class: 'rnum', style: `font-size:18px;min-width:30px;border-bottom:3px solid ${tm ? tm.c1 : 'transparent'}` }, snap.raceNumber ?? ''), h('b', { style: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, (snap.lastName || '').toLocaleUpperCase('hu'), h('span', { class: 'faint', style: 'font-weight:500' }, ' ' + (snap.firstName || '')), snap.psn ? h('span', { class: 'psn-tag' }, snap.psn) : null)),
         h('span', { class: 'acts' },
           h('button', { type: 'button', 'aria-label': t('moveUp'), disabled: i === 0, onclick: () => { snapshot(); [placed[i - 1], placed[i]] = [placed[i], placed[i - 1]]; commit(); } }, icon('up')),
           h('button', { type: 'button', 'aria-label': t('rowActions', { name: name(p.id) }), onclick: () => rowMenu(p) }, p.status === 'OK' ? icon('dots') : h('span', { class: 'st ' + p.status.toLowerCase() }, p.status))));
@@ -71,17 +71,17 @@ function build(ctx, n, L, S) {
     poolEl.replaceChildren(...(free.length ? free.map((uid) => {
       const snap = ctx.snaps[uid] || {}, tm = ctx.tmap[snap.teamId];
       return h('button', { class: 'pchip', type: 'button', dataset: { key: uid }, onclick: () => { snapshot(); placed.push({ id: uid, status: 'OK' }); commit(); } },
-        h('span', { class: 'rn', vars: { '--t1': tm ? tm.c1 : 'transparent' } }, snap.raceNumber ?? '?'), (snap.lastName || '').toLocaleUpperCase('hu'));
+        h('span', { class: 'rn', vars: { '--t1': tm ? tm.c1 : 'transparent' } }, snap.raceNumber ?? '?'), (snap.lastName || '').toLocaleUpperCase('hu'), snap.psn ? h('span', { class: 'psn-tag' }, snap.psn) : null);
     }) : [h('span', { class: 'faint', style: 'padding:6px' }, t('allPlaced'))]));
   };
 
   const timeInput = (p, key, parse, fmt, ph, label) => {
-    const v = key === 'gap' ? (p.laps ? '+' + p.laps + ' ' + t('lapUnit') : p.gap != null ? fmtLap(p.gap) : '') : (p[key] != null ? fmt(p[key]) : '');
+    const v = key === 'gap' ? (p.laps ? '+' + p.laps + ' ' + t('lapUnit') : p.gap != null ? '+' + fmtLap(p.gap) : '') : (p[key] != null ? fmt(p[key]) : '');
     const inp = h('input', { class: 'input', inputmode: 'decimal', value: v, placeholder: ph, 'aria-label': label, style: 'min-height:42px;font-variant-numeric:tabular-nums;padding:0 10px' });
     inp.addEventListener('change', () => {
       const raw = inp.value.trim();
       if (!raw) { if (key === 'gap') { p.gap = null; p.laps = null; } else p[key] = null; inp.removeAttribute('aria-invalid'); backup(); return; }
-      if (key === 'gap') { const g = parseGap(raw); if (!g) { inp.setAttribute('aria-invalid', 'true'); return; } p.gap = g.gap ?? null; p.laps = g.laps ?? null; inp.value = g.laps ? '+' + g.laps + ' ' + t('lapUnit') : fmtLap(g.gap); }
+      if (key === 'gap') { const g = parseGap(raw); if (!g) { inp.setAttribute('aria-invalid', 'true'); return; } p.gap = g.gap ?? null; p.laps = g.laps ?? null; inp.value = g.laps ? '+' + g.laps + ' ' + t('lapUnit') : '+' + fmtLap(g.gap); }
       else { const x = parse(raw); if (x == null) { inp.setAttribute('aria-invalid', 'true'); return; } p[key] = x; inp.value = fmt(x); }
       inp.removeAttribute('aria-invalid'); backup(); updateProg();
     });
@@ -97,7 +97,7 @@ function build(ctx, n, L, S) {
         ? [timeInput(p, 'best', parseLap, fmtLap, '1:57.234', t('bestLap'))]
         : [first ? timeInput(p, 'time', parseRaceTime, fmtRace, '20:13.400', t('totalTime')) : ok ? timeInput(p, 'gap', null, null, '+3.456', t('gap')) : h('span', { class: 'st ' + p.status.toLowerCase(), style: 'justify-self:start' }, p.status),
           timeInput(p, 'best', parseLap, fmtLap, t('bestLapPh'), t('bestLap'))];
-      return h('div', { class: 'time-row' + (S === 'Q' ? ' q' : '') }, h('span', { class: 'p display' }, ok ? okN : '–'), h('b', { class: 'nm' }, (snap.lastName || '').toLocaleUpperCase('hu')), ...inputs);
+      return h('div', { class: 'time-row' + (S === 'Q' ? ' q' : '') }, h('span', { class: 'p display' }, ok ? okN : '–'), h('b', { class: 'nm' }, (snap.lastName || '').toLocaleUpperCase('hu'), snap.psn ? h('span', { class: 'psn-tag' }, snap.psn) : null), ...inputs);
     }) : [empty(t('orderFirst'))]));
   };
   const updateProg = () => {

@@ -36,7 +36,7 @@ function row(ctx, r, upTo, prevPos, oldTotal) {
     const tm = ctx.tmap[r.p.teamId];
     const last = ctx.built[upTo - 1];
     lobby = last ? lobbyOf(last.lobbies, r.id) : null;
-    who = h('span', { class: 'who' }, h('span', { class: 'stripe', vars: { '--t1': tm ? tm.c1 : 'var(--line-2)' } }), h('span', { class: 'nm' }, h('b', null, fullName(r.p)), h('span', null, h('span', { class: 'rnum' }, '#' + (r.p.raceNumber ?? '–')), '  ', tm ? tm.name : r.p.psn || '')));
+    who = h('span', { class: 'who' }, h('span', { class: 'stripe', vars: { '--t1': tm ? tm.c1 : 'var(--line-2)' } }), h('span', { class: 'nm' }, h('b', null, fullName(r.p)), h('span', null, h('span', { class: 'rnum' }, '#' + (r.p.raceNumber ?? '–')), r.p.psn ? h('span', { class: 'psn-tag' }, r.p.psn) : null, tm ? '  · ' + tm.name : '')));
     href = '#/pilotak/' + encodeURIComponent(r.p.psnLower || ''); me = session.user && r.id === session.user.uid;
   }
   return h('li', { dataset: { key: r.id } }, h('a', { class: 'trow' + (me ? ' me' : ''), href }, h('span', { class: posCls }, r.pos), delta(prevPos != null ? prevPos - r.pos : null), who,

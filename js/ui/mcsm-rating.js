@@ -89,7 +89,7 @@ export function explainRating() {
 
 // Rating history: one point per round raced as an established driver, newest last.
 export function ratingHistory(x) {
-  const all = x.h || [];
+  const all = (x.h || []).map((e) => (Array.isArray(e) ? e : [e.l, e.r, e.q, e.s, e.g]));
   let range = all.length > 10 ? 10 : 0;
   const box = h('div');
   const draw = () => {

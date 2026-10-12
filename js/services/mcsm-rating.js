@@ -68,12 +68,12 @@ export async function computeAndPublish() {
     if (st.established) {
       established++;
       const last = st.history[st.history.length - 1];
-      const base = start[uid] && start[uid].established ? [['MCSM25–30', f3(overallOf(st.prior)), f3(publicOf(st.prior.q)), f3(publicOf(st.prior.s)), f3(publicOf(st.prior.g))]] : [];
+      const base = start[uid] && start[uid].established ? [{ l: 'MCSM25–30', r: f3(overallOf(st.prior)), q: f3(publicOf(st.prior.q)), s: f3(publicOf(st.prior.s)), g: f3(publicOf(st.prior.g)) }] : [];
       drivers[uid] = {
         e: 1, r: overallOf(st.lat), q: publicOf(st.lat.q), s: publicOf(st.lat.s), g: publicOf(st.lat.g), n: st.n, hi: st.highest,
         dl: last ? last.delta : 0,
         // only rounds raced as an established driver (no provisional numbers are published)
-        h: [...base, ...st.history.filter((x) => !x.provisional).map((x) => [x.label, f3(x.after), f3(x.q), f3(x.s), f3(x.g)])],
+        h: [...base, ...st.history.filter((x) => !x.provisional).map((x) => ({ l: x.label, r: f3(x.after), q: f3(x.q), s: f3(x.s), g: f3(x.g) }))],
       };
     } else drivers[uid] = { e: 0, n: st.n };
   }

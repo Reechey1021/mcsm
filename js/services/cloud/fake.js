@@ -178,6 +178,8 @@ function seedProtests(db) {
   };
 }
 
+// Firestore refuses arrays directly inside arrays; the test backend does too, so it's caught early.
+const hasNestedArray = (v, inArr = false) => (Array.isArray(v) ? (inArr || v.some((x) => hasNestedArray(x, true))) : v && typeof v === 'object' ? Object.values(v).some((x) => hasNestedArray(x, false)) : false);
 export function createFakeBackend() {
   try { if (new URLSearchParams(location.search).has('fakereset')) localStorage.removeItem(KEY); } catch { /* */ }
   let db;
@@ -436,7 +438,7 @@ export function createFakeBackend() {
     },
     content: {
       async get(id) { await lag(); return clone((db.content || {})[id]) || null; },
-      async save(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); db.content = db.content || {}; db.content[id] = { ...clone(data), updatedAt: Date.now(), by: a.uid }; persist(); },
+      async save(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); if (hasNestedArray(data)) fail('invalid-argument'); db.content = db.content || {}; db.content[id] = { ...clone(data), updatedAt: Date.now(), by: a.uid }; persist(); },
     },
     config: {
       async get(id) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); return clone((db.config || {})[id]) || null; },

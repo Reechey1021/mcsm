@@ -40,6 +40,26 @@ Cloud console → **Edit source** (or "Edit & deploy new revision" → inline ed
 6. In MCSM: Admin → Importálás → paste the URL into "A felhőfüggvény címe" → Mentés →
    Kapcsolat tesztelése. You should see "A felhőfüggvény működik".
 
+## Results from screenshots (Gemini, free)
+
+The function reads GT7 result screenshots with Google's Gemini and returns the rows; the admin
+checks them before anything is saved. To keep it free, the Gemini key comes from a **separate
+Google project with no billing** (the MCSM project is on Blaze, so a key there would be billed).
+
+1. Open https://aistudio.google.com and sign in with any Google account.
+2. **Get API key** → **Create API key** → choose to create it in a **new project**. Don't add a
+   billing account to that project; without billing it stays on the free tier.
+3. Copy the key.
+4. Cloud console → Cloud Run → `mcsm-admin` → **Edit & deploy new revision**:
+   - Source / inline editor: replace `index.js` with the new `functions/index.js`.
+   - **Variables & Secrets** → **Add variable**: name `GEMINI_API_KEY`, value = the key.
+   - **Deploy**.
+5. In MCSM, open a round's result entry page → "Beolvasás képernyőképből (AI)".
+
+The model defaults to `gemini-flash-lite-latest`. If Google renames models and reading fails
+with "model not found", set the current Flash-Lite model name in Admin → Haladó → Kapcsolatok.
+Free-tier requests may be used by Google to improve its products; these are public race results.
+
 ## Phone notifications
 
 1. Firebase console → Project settings → **Cloud Messaging** → Web Push certificates →

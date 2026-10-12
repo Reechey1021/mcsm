@@ -11,6 +11,7 @@ import { store } from '../core/storage.js';
 import { seg, busy } from '../ui/controls.js';
 import { empty, backLink, formError, skelRows } from '../ui/parts.js';
 import { openSheet, toast } from '../ui/sheet.js';
+import { aiImportPanel } from '../ui/ai-import.js';
 import { t } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
 import { isAdmin } from '../services/session.js';
@@ -177,9 +178,24 @@ function build(ctx, n, L, S) {
     h('p', { class: 'note' }, t('entryHelp')));
   const layout = () => { wrap.replaceChildren(...(mode === 'order' ? [orderPane, poolPane] : [h('div', { style: 'grid-column:1 / -1' }, h('p', { class: 'note', style: 'margin:0 0 10px' }, S === 'Q' ? t('lapsHelp') : t('timesHelp')), timesEl)])); };
   const sesName = { Q: t('quali'), S: 'Sprint', GP: "Gran'Prix" }[S];
+  const people = roster.map((uid) => { const p = ctx.person ? ctx.person(uid) : ctx.snaps[uid] || {}; return { uid, psn: p.psn || '', firstName: p.firstName || '', lastName: p.lastName || '' }; });
+  const ai = aiImportPanel({ session: S, people, onApply: (rows) => {
+    snapshot();
+    let leaderTime = null;
+    placed = rows.map((r, i) => {
+      const status = { finished: 'OK', dnf: 'DNF', dsq: 'DSQ', dns: 'DNS' }[r.status] || 'OK';
+      const row = { id: r.uid, status, best: parseLap(r.bestLap) };
+      if (S !== 'Q' && status === 'OK') {
+        if (i === 0 || (!leaderTime && r.totalTime)) { row.time = parseRaceTime(r.totalTime); leaderTime = row.time; }
+        else { const g = parseGap(r.gap || ''); if (g) { row.gap = g.gap ?? null; row.laps = g.laps ?? null; } }
+      }
+      return row;
+    });
+    mode = S === 'Q' ? 'times' : 'times'; layout(); commit();
+  } });
   layout(); render();
   return frag(h('h1', { class: 'display page-title' }, t('resultsEntry')),
     h('p', { class: 'page-sub', style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' }, h('span', { class: 'lobby ' + L }, L), t('entrySub', { n, l: L, s: sesName }), existing ? h('span', { class: 'status' }, t('sheet_' + existing.state)) : null),
     restored ? h('div', { class: 'callout', style: 'margin-bottom:12px' }, icon('info'), h('span', null, t('restoredLocal'))) : null,
-    h('div', { style: 'margin-bottom:14px' }, modeSeg), err, wrap, h('div', { class: 'entry-bar' }, prog, undoBtn, saveBtn));
+    ai, h('div', { style: 'margin:14px 0' }, modeSeg), err, wrap, h('div', { class: 'entry-bar' }, prog, undoBtn, saveBtn));
 }

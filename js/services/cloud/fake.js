@@ -494,6 +494,20 @@ export function createFakeBackend() {
           persist(); return { successCount: created, failureCount: errors.length, errors };
         }
         if (action === 'ping') return { ok: true, project: 'fake' };
+        if (action === 'readResults') {
+          const names = (payload.hint || []).slice(0, 16);
+          const isQ = payload.session === 'Q' || payload.session === 'PQ';
+          const results = names.map((p, i) => ({
+            position: i + 1,
+            displayName: i % 4 === 1 ? `${p.firstName[0]}. ${p.lastName}` : p.psn,
+            bestLap: `1:5${1 + Math.floor(i / 6)}.${String(814 + i * 37).slice(-3)}`,
+            totalTime: !isQ && i === 0 ? '20:13.400' : null, gap: !isQ && i > 0 ? `+${(i * 1.234).toFixed(3)}` : isQ && i > 0 ? `+0${(i * 0.123).toFixed(3)}` : null,
+            status: !isQ && i === names.length - 1 ? 'dnf' : 'finished',
+            confidence: i === 2 ? 0.55 : 0.97, warnings: i === 2 ? ['Egy számjegy bizonytalan'] : [],
+          }));
+          await lag();
+          return { ok: true, model: 'fake-gemini', title: 'MCSM : TESZT', results };
+        }
         if (action === 'importData') { await this.writeMany(payload.ops || []); return { ok: true, written: (payload.ops || []).length }; }
         fail('fn-unknown');
       },

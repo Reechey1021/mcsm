@@ -874,3 +874,25 @@ select.select{ box-sizing:border-box; max-width:100%; }
 .nc-track{ overscroll-behavior-x:contain; touch-action:pan-x pan-y; }
 .nc-overlay{ overflow:hidden; overscroll-behavior:contain; touch-action:none; }
 .nc-card{ touch-action:pan-x pan-y; }
+
+/* ===== 0.9.3: read results from screenshots ===== */
+.ai-panel > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-weight:800; }
+.ai-panel > summary::-webkit-details-marker{ display:none; }
+.ai-panel > summary svg{ width:20px; height:20px; color:var(--accent-text); }
+.ai-zone{ min-height:110px; }
+.ai-thumbs{ display:flex; gap:8px; flex-wrap:wrap; }
+.ai-thumb{ position:relative; width:120px; height:68px; border-radius:10px; background:var(--bg-3) center/cover no-repeat; border:1px solid var(--line); }
+.ai-thumb span{ position:absolute; left:6px; top:6px; font-weight:900; font-size:12px; background:rgba(0,0,0,.6); color:#fff; border-radius:6px; padding:1px 6px; }
+.ai-thumb .icon-btn{ position:absolute; right:2px; top:2px; width:28px; height:28px; background:rgba(0,0,0,.55); color:#fff; border-radius:8px; }
+.ai-rows{ display:grid; gap:6px; margin-top:8px; }
+.ai-row{ display:grid; grid-template-columns:34px minmax(0,1fr) minmax(0,1.1fr); gap:10px; align-items:center; padding:8px 10px; border-radius:12px; background:var(--bg-3); border:1px solid transparent; }
+.ai-row.check{ border-color:#F2C14E; background:rgba(242,193,78,.08); }
+.ai-row.bad{ border-color:var(--red); background:rgba(239,68,68,.08); }
+.ai-pos{ font-size:20px; text-align:center; }
+.ai-read{ display:grid; min-width:0; }
+.ai-name{ font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ai-read small{ color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.ai-warn{ color:#F2C14E !important; }
+.ai-row select.select{ width:100%; min-height:40px; }
+@media (max-width:560px){ .ai-row{ grid-template-columns:30px minmax(0,1fr); } .ai-row select.select{ grid-column:1 / -1; } }
+.dropzone{ box-sizing:border-box; max-width:100%; }

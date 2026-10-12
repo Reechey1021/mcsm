@@ -24,6 +24,7 @@ import { tracks as loadTracks } from '../core/data.js';
 import { ROUND_SESSIONS, lobbyFor, pqLobbyFor } from '../data/lobby-settings.js';
 import { lobbyView } from '../ui/lobby-editor.js';
 import { confirmPublish } from '../ui/confirm.js';
+import { aiImportPanel } from '../ui/ai-import.js';
 import { lobbySizes, lobbyHost } from '../model/season.js';
 import { notifyUsers } from '../services/notify.js';
 
@@ -313,8 +314,10 @@ export function screenPqEntry({ sid, pq }) {
     const candidates = ctx.table.inList.filter((e) => !e.seeded);
     const list = h('div', { class: 'stack', style: 'gap:6px' });
     const err = h('div');
+    const countEl = h('b', null, '0');
     const draw = (animate) => {
       const rows = Object.entries(times).sort((a, b) => a[1] - b[1]);
+      countEl.textContent = String(rows.length);
       const build = () => list.replaceChildren(...(rows.length ? rows.map(([uid, tm], i) => { const p = ctx.snaps[uid] || {}; return h('div', { class: 'row-card', dataset: { key: uid } }, h('span', { class: 'display num', style: 'width:28px;font-size:20px;color:var(--ink-3)' }, i + 1), h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, p.psn)), h('b', { class: 'num', style: 'font-size:16px' }, fmtLap(tm)), h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--ink-3)', 'aria-label': t('delete'), onclick: () => { delete times[uid]; fillSel(); draw(true); } }, icon('close'))); }) : [empty(t('noTimesYet'))]));
       animate ? flip(list, build) : build();
     };
@@ -338,6 +341,12 @@ export function screenPqEntry({ sid, pq }) {
       paste.value = miss.join('\n'); fillSel(); draw(true);
       toast(miss.length ? t('pasteMissed', { n: miss.length }) : t('pasteOk'), miss.length ? 'alert' : 'check');
     });
+    const pqPeople = candidates.map((e) => ({ uid: e.uid, psn: e.snapshot.psn || '', firstName: e.snapshot.firstName || '', lastName: e.snapshot.lastName || '' }));
+    const ai = aiImportPanel({ session: 'PQ', people: pqPeople, onApply: (rows) => {
+      let n = 0;
+      rows.forEach((r) => { const v = parseLap(r.bestLap); if (v != null && !other[r.uid]) { times[r.uid] = v; n++; } });
+      fillSel(); draw(true); void n;
+    } });
     const save = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('check'), t('save'));
     save.addEventListener('click', () => busy(save, async () => {
       try { await backend.race.pqSave(sid, pq, times); await audit('pq.save', ctx.season, { targetName: `MCSM${ctx.season.no} ${sess.name}` }); toast(t('saved')); history.back(); }
@@ -345,9 +354,9 @@ export function screenPqEntry({ sid, pq }) {
     }));
     draw(false);
     root.replaceChildren(pageTitle(t('pqTimesTitle', { pq: sess.name }), `MCSM${ctx.season.no}, ${fmtDate(sess.date, true)}`)[0], h('p', { class: 'page-sub' }, `MCSM${ctx.season.no}, ${fmtDate(sess.date, true)}`),
-      err, h('div', { class: 'panel pad stack', style: 'gap:10px;margin-bottom:16px' }, field(t('driver'), sel).row, field(t('bestLap'), lapIn, { hint: t('lapHint') }).row, add),
+      err, h('div', { style: 'margin-bottom:16px' }, ai), h('div', { class: 'panel pad stack', style: 'gap:10px;margin-bottom:16px' }, field(t('driver'), sel).row, field(t('bestLap'), lapIn, { hint: t('lapHint') }).row, add),
       list, h('details', { class: 'panel', style: 'padding:0;margin-top:16px' }, h('summary', { style: 'padding:14px 16px;font-weight:700;cursor:pointer' }, t('pasteFromSheet')), h('div', { class: 'stack', style: 'gap:8px;padding:0 16px 16px' }, h('p', { class: 'note', style: 'margin:0' }, t('pqPasteHelp')), paste, pasteBtn)),
-      h('div', { class: 'entry-bar' }, h('span', { class: 'prog' }, h('b', null, Object.keys(times).length), ' ', t('timesLabel')), save));
+      h('div', { class: 'entry-bar' }, h('span', { class: 'prog' }, countEl, ' ', t('timesLabel')), save));
   }).catch(() => root.replaceChildren(empty(t('loadFailed'))));
   return frag(backLink(t('backToSeason'), `#/szezonok/${sid}/pq`), root);
 }

@@ -16,6 +16,10 @@
 //   unregisterPush { token }  forget it.
 //   push           { id, title, body, base }  deliver a notification the caller just created
 //                  (the recipients come from the stored notification, never from the request).
+// Results editors, admins and owners:
+//   readResults    { session: 'Q'|'S'|'GP'|'PQ', images: [{ mime, data(base64) }] }  read GT7
+//                  result screenshots with Gemini and return the rows as JSON (nothing is saved).
+//                  Needs the GEMINI_API_KEY environment variable (free key, see README).
 const functions = require('@google-cloud/functions-framework');
 const admin = require('firebase-admin');
 
@@ -85,6 +89,48 @@ functions.http('mcsmAdmin', async (req, res) => {
 
     const me = await db.doc(`users/${decoded.uid}`).get();
     const roles = (me.exists && me.data().roles) || {};
+
+    if (body.action === 'readResults') {
+      if (!(roles.owner === true || roles.admin === true || roles.resultsEditor === true)) return res.status(403).json({ code: 'fn-forbidden', error: 'Results editors only' });
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) return res.status(400).json({ code: 'ai-missing', error: 'GEMINI_API_KEY is not set on the function' });
+      const images = (Array.isArray(body.images) ? body.images : []).slice(0, 6).filter((i) => i && /^image\/(jpeg|png|webp)$/.test(i.mime) && typeof i.data === 'string' && i.data.length < 6e6);
+      if (!images.length) return res.status(400).json({ code: 'fn-error', error: 'No images' });
+      const cfg = (await db.doc('config/ai').get()).data() || {};
+      const model = String(cfg.model || process.env.GEMINI_MODEL || 'gemini-flash-lite-latest').replace(/[^a-zA-Z0-9.\-_]/g, '');
+      const kind = { Q: 'QUALIFYING (best lap times)', S: 'SPRINT RACE', GP: 'MAIN RACE', PQ: 'PRE-QUALIFYING (best lap times)' }[body.session] || 'RACE';
+      const prompt = [
+        `You read result screenshots from Gran Turismo 7. Session type: ${kind}.`,
+        'The images are consecutive parts of ONE result table (for example positions 1-8 and 9-16). Treat them as one table; if a row appears in two images, include it once.',
+        'Return ONLY JSON matching the schema. Rules:',
+        '- One entry per driver row, in order of position.',
+        '- displayName: copy the name exactly as shown (keep accents, underscores, dots, symbols and capitalisation). Never correct, complete or guess a name.',
+        '- bestLap / totalTime / gap: copy exactly as shown (e.g. "1:51.814", "+00.447", "+1 Lap"). Use null if the column is not shown or unreadable. Never invent values.',
+        '- totalTime: only the leader\'s total race time if shown. gap: the gap text shown for other drivers.',
+        '- status: "finished", or "dnf" (DNF/retired), "dsq" (disqualified), "dns" (did not start), "unknown" if unclear.',
+        '- confidence: 0 to 1 for how sure you are about the whole row. warnings: short notes for anything uncertain (obscured name, unclear digit).',
+        '- title: the table title text if visible, else null.',
+      ].join('\n');
+      const schema = { type: 'OBJECT', properties: {
+        title: { type: 'STRING', nullable: true },
+        results: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+          position: { type: 'INTEGER' }, displayName: { type: 'STRING' }, bestLap: { type: 'STRING', nullable: true }, totalTime: { type: 'STRING', nullable: true },
+          gap: { type: 'STRING', nullable: true }, laps: { type: 'INTEGER', nullable: true }, status: { type: 'STRING', enum: ['finished', 'dnf', 'dsq', 'dns', 'unknown'] },
+          confidence: { type: 'NUMBER' }, warnings: { type: 'ARRAY', items: { type: 'STRING' } },
+        }, required: ['position', 'displayName', 'status', 'confidence'] } },
+      }, required: ['results'] };
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }, ...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } }))] }],
+          generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: schema } }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return res.status(r.status === 429 ? 429 : 502).json({ code: r.status === 429 ? 'ai-quota' : 'ai-error', error: (j.error && j.error.message) || ('Gemini HTTP ' + r.status) });
+      const text = (((j.candidates || [])[0] || {}).content || { parts: [] }).parts.map((p) => p.text || '').join('');
+      let out; try { out = JSON.parse(text); } catch { return res.status(502).json({ code: 'ai-error', error: 'The model did not return JSON' }); }
+      return res.json({ ok: true, model, ...out, usage: j.usageMetadata || null });
+    }
+
     if (roles.owner !== true) return res.status(403).json({ code: 'fn-forbidden', error: 'Owners only' });
     // Large imports arrive as JSON; Cloud Run accepts up to 32 MB per request.
 

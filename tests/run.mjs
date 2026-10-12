@@ -626,6 +626,25 @@ await test('rating: deterministic', () => {
   eq(x === y, true);
 });
 
+
+await test('screenshot import: names as GT7 shows them match the lobby', async () => {
+  const NM = await import('../js/model/name-match.js');
+  const people = [
+    { uid: 'a', psn: 'MGTK_HOPPÁ', firstName: 'Attila', lastName: 'Pál' }, { uid: 'b', psn: 'Multi21_Rene', firstName: 'Renátó', lastName: 'Borbély' },
+    { uid: 'c', psn: 'GTHL_SlowDaddy', firstName: 'Gábor', lastName: 'Kiss' }, { uid: 'd', psn: 'PapayaKD', firstName: 'Dávid', lastName: 'Kovács' },
+    { uid: 'e', psn: 'Vajk_Z', firstName: 'Zoltán', lastName: 'Vajk' }, { uid: 'f', psn: 'GTHL_sCratmokus', firstName: 'Bence', lastName: 'Tóth' },
+  ];
+  const m = (x) => NM.matchName(x, people);
+  eq([m('MGTK_Hoppá').uid, m('MGTK_Hoppá').how], ['a', 'psn'], 'case and accents');
+  eq([m('R. Borbély').uid, m('R. Borbely').uid, m('Borbély Renátó').uid], ['b', 'b', 'b']);
+  eq([m('D. Kovács').uid, m('Z. Vajk').uid], ['d', 'e']);
+  eq([m('GTHL_sCratmokus^').uid, m('GTHL_sCratmokus^').sure], ['f', true], 'symbols ignored');
+  eq([m('GTHL_SlowDady').uid, m('GTHL_SlowDady').sure], ['c', false], 'near miss is offered but flagged');
+  eq(m('Babletyo').uid, null, 'unknown name: never guessed');
+  const rows = NM.matchRows([{ displayName: 'MGTK_Hoppá', confidence: 0.98 }, { displayName: 'mgtk_hoppa', confidence: 0.98 }, { displayName: 'R. Borbély', confidence: 0.5 }], people);
+  eq(rows.map((r) => [r.uid, r.sure]), [['a', true], [null, false], ['b', false]], 'duplicate and low confidence flagged');
+});
+
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

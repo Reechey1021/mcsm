@@ -93,7 +93,9 @@ export async function showWelcomeNews(force = false) {
   track.addEventListener('scroll', () => { const i = Math.round(track.scrollLeft / track.clientWidth); [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i)); }, { passive: true });
   const step = (dir) => track.scrollBy({ left: dir * track.clientWidth, behavior: 'smooth' });
   const never = h('input', { type: 'checkbox', id: 'nc-never' });
-  let close = () => {
+  const html = document.documentElement, prevOverflow = html.style.overflow;
+  const close = () => {
+    html.style.overflow = prevOverflow;
     if (never.checked) store.set('newsDismissed', [...seenIds(), ...items.map((a) => a.id + ':' + (a.carouselAt || a.at))]);
     overlay.classList.add('out'); setTimeout(() => overlay.remove(), 220);
   };
@@ -104,10 +106,7 @@ export async function showWelcomeNews(force = false) {
       h('div', { class: 'nc-foot' }, items.length > 1 ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': '‹', onclick: () => step(-1) }, icon('chevL')) : null, dots, items.length > 1 ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': '›', onclick: () => step(1) }, icon('chevR')) : null),
       h('div', { class: 'nc-bottom' }, h('label', { class: 'nc-never' }, never, t('newsDontShow')), h('button', { class: 'btn primary', type: 'button', onclick: close }, t('close')))));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  const html = document.documentElement, prevOverflow = html.style.overflow;
   html.style.overflow = 'hidden';
-  const origClose = close;
-  close = () => { html.style.overflow = prevOverflow; origClose(); };
   document.body.append(overlay);
 }
 

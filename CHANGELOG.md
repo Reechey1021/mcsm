@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.3 – Results from screenshots, scroll fix
+- Results from screenshots: on every result entry page (qualifying, Sprint, Gran'Prix) and the
+  PQ times page, "Beolvasás képernyőképből (AI)": pick the screenshots of one result (e.g. P1–8
+  and P9–16, up to 6), the cloud function asks Gemini (one request for all of them) to read the
+  table as strict JSON (names and times copied exactly, nothing invented, a confidence and
+  warnings per row), each row is matched to the lobby's drivers (PSN, full name, "R. Borbély",
+  surname, PSN without team prefix; near misses only offered, never guessed), and a review list
+  shows every row with its driver picker: yellow = check it, red = not matched, plus the lobby
+  drivers missing from the screenshots. "Betöltés a szerkesztőbe" only fills the normal editor;
+  nothing is saved until Mentés, and results still go out through the usual publish step.
+  Manual entry is unchanged. Results editors, admins and owners only (checked by the function).
+- Gemini via a free key from a separate project without billing, stored on the cloud function
+  (never in the website). Model configurable in Admin → Haladó → Kapcsolatok.
+- Fixed: closing the news carousel with the X or "Bezárás" left the page unable to scroll on
+  phones (those buttons used an older close function that didn't unlock the page).
+- Fixed: the PQ page's time count didn't update as times were added.
+
 ## 0.9.2 – Publish confirmation
 - Reverted 0.9.1's "only the first lobby publish notifies" and the 10-minute duplicate guard.
 - Every publish that sends notifications now asks first ("Biztosan közzéteszed? Mindenki

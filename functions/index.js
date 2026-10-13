@@ -27,6 +27,35 @@ admin.initializeApp();
 
 const ALLOWED_ORIGINS = ['https://reechey1021.github.io', 'https://mcsm.hu', 'https://www.mcsm.hu', 'http://localhost:8765'];
 const TOPIC = 'mcsm-all';
+// Phone notification categories (keep in step with js/data/push-categories.js).
+const PUSH_CATS = { season: ['seasonAnnounced', 'regOpen', 'promoted'], lobbies: ['lobbiesOut', 'lobbyHost', 'raceToday'], results: ['resultsOut'], protests: ['protestAgainst', 'protestNew', 'decision'], account: ['reservePending', 'teamApproved', 'teamDeclined', 'claimDispute', 'roleGranted'], live: ['live'] };
+const PUSH_DEFAULT_OFF = new Set(['live']);
+const catOf = (type) => Object.keys(PUSH_CATS).find((c) => PUSH_CATS[c].includes(type)) || 'account';
+const allowed = (prefs, cat) => (prefs && typeof prefs[cat] === 'boolean' ? prefs[cat] : !PUSH_DEFAULT_OFF.has(cat));
+// Tokens of the people (all members if uids is null) who want this category on their phone.
+async function tokensFor(uids, cat, exceptUid) {
+  const db = admin.firestore();
+  const toks = [];
+  if (uids) { for (let i = 0; i < uids.length; i += 30) (await db.collection('pushTokens').where('uid', 'in', uids.slice(i, i + 30)).get()).forEach((d) => toks.push(d.data())); }
+  else (await db.collection('pushTokens').get()).forEach((d) => toks.push(d.data()));
+  const people = [...new Set(toks.map((x) => x.uid))].filter((u) => u && u !== exceptUid);
+  const prefs = {};
+  for (let i = 0; i < people.length; i += 100) {
+    const snaps = await db.getAll(...people.slice(i, i + 100).map((u) => db.doc(`users/${u}`)));
+    snaps.forEach((s) => { prefs[s.id] = (s.exists && s.data().pushPrefs) || null; });
+  }
+  return toks.filter((x) => x.uid !== exceptUid && x.uid in prefs && allowed(prefs[x.uid], cat)).map((x) => x.token);
+}
+async function sendTo(tokens, message) {
+  let sent = 0;
+  for (let i = 0; i < tokens.length; i += 500) {
+    const part = tokens.slice(i, i + 500);
+    const r = await admin.messaging().sendEachForMulticast({ ...message, tokens: part });
+    sent += r.successCount;
+    r.responses.forEach((x, j) => { if (!x.success && /registration-token-not-registered|invalid-argument/.test((x.error && x.error.code) || '')) admin.firestore().doc(`pushTokens/${part[j].replace(/\//g, '_')}`).delete().catch(() => {}); });
+  }
+  return sent;
+}
 let twitchToken = null;
 async function twitchAppToken() {
   if (twitchToken && twitchToken.exp > Date.now() + 60000) return twitchToken.value;
@@ -63,7 +92,17 @@ async function twitchLive() {
   }
   streams.sort((a, b) => b.viewers - a.viewers);
   const at = Date.now();
-  await ref.set({ at, streams }, { merge: true });
+  const wasLive = new Set((cur.streams || []).map((s) => String(s.login).toLowerCase()));
+  const notified = cur.notified || {};
+  const fresh = streams.filter((s) => !wasLive.has(String(s.login).toLowerCase()) && !(notified[s.login] && at - notified[s.login] < 2 * 3600000));
+  for (const s of fresh) {
+    notified[s.login] = at;
+    const who = s.uid ? ((await db.doc(`users/${s.uid}`).get()).data() || {}) : {};
+    const name = who.lastName ? `${String(who.lastName).toLocaleUpperCase('hu')} ${who.firstName || ''}`.trim() : s.name;
+    const tokens = await tokensFor(null, 'live', s.uid).catch(() => []);
+    if (tokens.length) await sendTo(tokens, { notification: { title: `${name} élőben van`, body: s.title || 'Twitch' }, webpush: { fcmOptions: { link: 'https://twitch.tv/' + s.login } } }).catch(() => 0);
+  }
+  await ref.set({ at, streams, notified }, { merge: true });
   return { at, streams };
 }
 
@@ -109,22 +148,10 @@ functions.http('mcsmAdmin', async (req, res) => {
       const base = String(body.base || '').startsWith('https://') ? String(body.base) : ALLOWED_ORIGINS[0] + '/mcsm/';
       const link = base.replace(/#.*$/, '') + (n.link || '#/');
       const message = { notification: { title: String(body.title || 'MCSM').slice(0, 80), body: String(body.body || '').slice(0, 240) }, webpush: { fcmOptions: { link }, notification: { icon: base.replace(/#.*$/, '') + 'assets/icon-192.png' } } };
-      let sent = 0;
-      if (n.kind === 'users') {
-        const uids = (n.uids || []).slice(0, 200);
-        const tokens = [];
-        for (let i = 0; i < uids.length; i += 30) {
-          const qs = await db.collection('pushTokens').where('uid', 'in', uids.slice(i, i + 30)).get();
-          qs.forEach((d) => tokens.push(d.data().token));
-        }
-        for (let i = 0; i < tokens.length; i += 500) {
-          const r = await admin.messaging().sendEachForMulticast({ ...message, tokens: tokens.slice(i, i + 500) });
-          sent += r.successCount;
-          r.responses.forEach((x, j) => { if (!x.success && /registration-token-not-registered|invalid-argument/.test((x.error && x.error.code) || '')) db.doc(`pushTokens/${tokens[i + j].replace(/\//g, '_')}`).delete().catch(() => {}); });
-        }
-      } else {
-        await admin.messaging().send({ ...message, topic: TOPIC }); sent = -1;
-      }
+      // only to people who want this category on their phone
+      const cat = catOf(n.type);
+      const tokens = await tokensFor(n.kind === 'users' ? (n.uids || []).slice(0, 200) : null, cat, null);
+      const sent = await sendTo(tokens, message);
       await snap.ref.update({ pushedAt: Date.now() });
       return res.json({ ok: true, sent });
     }

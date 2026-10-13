@@ -1,5 +1,6 @@
 // screens/me.js
 // "Saját": your profile at a glance, account details, password, sign out.
+import { PUSH_CATS, pushAllowed } from '../data/push-categories.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { field, passwordInput, busy } from '../ui/controls.js';
@@ -136,11 +137,26 @@ function photoSheet(p) {
 function pushRow() {
   const st = pushState();
   const note = h('small', null, t('pushState_' + st));
-  const sw = toggle(st === 'on', async (v) => {
-    sw.disabled = true;
-    try { const r = v ? await enablePush() : await disablePush(); note.textContent = t('pushState_' + r); toast(v ? t('pushOnToast') : t('pushOffToast')); }
-    catch (e) { sw.setAttribute('aria-checked', 'false'); note.textContent = t({ 'push-denied': 'pushDenied', 'push-nokey': 'pushNoKey', 'push-ios-home': 'pushState_ios-home', 'push-unsupported': 'pushState_unsupported' }[e.code] || errorKey(e)); }
-    finally { sw.disabled = st === 'unsupported' || st === 'ios-home' || st === 'blocked'; }
-  }, { label: t('pushTitle'), disabled: st === 'unsupported' || st === 'ios-home' || st === 'blocked' });
-  return h('div', { class: 'toggle-row', style: 'border-bottom:1px solid var(--line)' }, h('span', { style: 'display:flex;gap:12px;align-items:center' }, icon('bell'), h('span', null, t('pushTitle'), note)), sw);
+  const btn = h('button', { class: 'btn small', type: 'button', onclick: () => pushSettings(() => { note.textContent = t('pushState_' + pushState()); }) }, icon('cog'), t('pushConfigure'));
+  return h('div', { class: 'toggle-row', style: 'border-bottom:1px solid var(--line)' }, h('span', { style: 'display:flex;gap:12px;align-items:center' }, icon('bell'), h('span', null, t('pushTitle'), note)), btn);
+}
+
+// Phone notifications: switch this device on/off, and pick which kinds are sent to the phone.
+function pushSettings(onDone) {
+  const st = pushState();
+  const prefs = { ...((session.profile && session.profile.pushPrefs) || {}) };
+  const devNote = h('small', null, t('pushState_' + st));
+  const dev = toggle(st === 'on', async (v) => {
+    dev.disabled = true;
+    try { const r = v ? await enablePush() : await disablePush(); devNote.textContent = t('pushState_' + r); toast(v ? t('pushOnToast') : t('pushOffToast')); }
+    catch (e) { dev.setAttribute('aria-checked', 'false'); devNote.textContent = t({ 'push-denied': 'pushDenied', 'push-nokey': 'pushNoKey', 'push-ios-home': 'pushState_ios-home', 'push-unsupported': 'pushState_unsupported' }[e.code] || errorKey(e)); }
+    finally { dev.disabled = st === 'unsupported' || st === 'ios-home' || st === 'blocked'; }
+  }, { label: t('pushThisDevice'), disabled: st === 'unsupported' || st === 'ios-home' || st === 'blocked' });
+  const save = async () => { try { await backend.users.save(session.user.uid, { pushPrefs: prefs }); } catch (e) { toast(t(errorKey(e)), 'alert'); } };
+  const rows = PUSH_CATS.map((c) => h('div', { class: 'toggle-row' }, h('span', null, t('pushCat_' + c.id), h('small', null, t('pushCatHint_' + c.id))),
+    toggle(pushAllowed(prefs, c.id), (v) => { prefs[c.id] = v; save(); }, { label: t('pushCat_' + c.id) })));
+  openSheet({ title: t('pushTitle'), onClose: onDone, body: h('div', { class: 'stack', style: 'gap:4px' },
+    h('div', { class: 'toggle-row' }, h('span', null, t('pushThisDevice'), devNote), dev),
+    h('div', { class: 'label', style: 'margin:14px 0 4px' }, t('pushWhat')), ...rows,
+    h('p', { class: 'note', style: 'margin:10px 0 0' }, t('pushScopeNote'))) });
 }

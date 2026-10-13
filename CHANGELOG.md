@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.7 – Protests, notification settings, stars
+- Protests: admins can log an eligible judge's vote on their behalf (the judge joins the panel;
+  the vote is marked "rögzítette: admin"); published decisions show who voted what. Only the
+  season's entrants (plus judges and admins) see protests. Drivers can only protest in their own
+  lobby as an affected party; official cases for any lobby/drivers are admin-only. "Kanyar /
+  Időpont" (Pl. T4 / Hajtű / 12:36.000). Once a round starts (or its protest window is open), the
+  round page's button becomes a red "Óvás indítása" for its drivers and admins; the buttons in the
+  round's protest list are gone. The stewards' area has a back button. Round title and status sit
+  together.
+- Phone notifications: "Telefonos értesítések → Beállítás": this device on/off, and six
+  categories (seasons, lobbies and race day, results, protests, team and account, live streams).
+  Live streams is push-only and off by default: members are told when someone goes live on Twitch
+  (at most once per 2 hours per channel), never in the app.
+- MCSM Rating: stars (5 for the top 11.1%, half a star less per 11.1%, never below 1) for the
+  rating and each part, instead of labels.
+- Weather cards: an ordered sequence (tap to add, the same card can repeat, reorder, remove).
+- Twitch channel field on the Felszerelés step, with a clearer hint and error.
+- Notifications panel: "Összes olvasottnak" pinned at the top.
+- DR gauge: no subtext. Long dropdowns stay inside their cards (lobby hosts, Advanced).
+- Firestore rules: admins log votes for judges; official cases admin-only; protests readable by
+  entrants, judges and admins; pushPrefs (publish again).
+
 ## 0.9.6 – Live streams, rules doc, compare and rating polish
 - MCSM Rating standings by percentile among ranked drivers: Top N% (best 10%), Kiemelkedő
   (10–25%), Átlag feletti (25–45%), Átlag alatti (45–55%), Fejlődő (55%+), for the rating and each

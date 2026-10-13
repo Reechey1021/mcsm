@@ -78,7 +78,7 @@ export function ratingPanel(p) {
   const stat = (v, k) => h('div', null, h('div', { class: 'v display num' }, v == null ? '–' : fmtInt(v)), h('div', { class: 'k' }, k));
   return h('section', { class: 'rating-grid' },
     h('div', { class: 'panel gauge-card' }, h('div', { class: 'row-between' }, h('span', { class: 'label' }, 'Driver Rating'), h('span', { class: 'faint', style: 'font-size:12.5px' }, p.ratingsSyncedAt ? t('syncedAt', { date: fmtDate(p.ratingsSyncedAt) }) : t('notSyncedYet'))),
-      drGauge(p), h('p', { class: 'gauge-note' }, note)),
+      drGauge(p)),
     h('div', { class: 'stack', style: 'gap:12px' },
       h('div', { class: 'panel sr-card' }, h('span', { class: 'label' }, 'Sportsmanship Rating'),
         h('div', { class: 'sr-row' }, h('span', { class: 'sr-big display' }, p.sr || '–'),

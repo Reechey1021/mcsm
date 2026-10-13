@@ -100,13 +100,16 @@ function build(teams, gts, query) {
       const chooseRow = (key, label, el) => { const r = h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, label), el, h('div', { class: 'err', role: 'alert' })); setters[key] = (m) => { r.querySelector('.err').textContent = m || ''; }; return r; };
       const num = h('input', { class: 'input big', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 3, value: draft.raceNumber ?? '', 'aria-label': t('raceNumber') });
       num.addEventListener('input', () => { num.value = num.value.replace(/\D/g, '').slice(0, 3); draft.raceNumber = num.value === '' ? '' : Number(num.value); setters.raceNumber(''); });
+      const stream = h('input', { class: 'input', type: 'text', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false', value: draft.streamUrl || '', placeholder: 'twitch.tv/csatornaneved' });
+      stream.addEventListener('input', () => { const v = stream.value.trim(); const login = twitchLogin(v); draft.streamUrl = login ? 'https://twitch.tv/' + login : v; setters.streamUrl(''); });
       return frag(
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('inputLabel')), inputSeg), brandBox,
         chooseRow('view', t('viewLabel'), choice(VIEWS.map((v) => ({ value: v, label: t('view_' + v) })), draft.view, (v) => { draft.view = v; setters.view(''); })),
         row('raceNumber', t('raceNumber'), num, t('raceNumberHint')),
         chooseRow('dr', t('drLabel'), choice(DR_OPTS.map((v) => ({ value: v, label: v })), draft.dr, (v) => { draft.dr = v; setters.dr(''); })),
         chooseRow('sr', t('srLabel'), choice(SR_OPTS.map((v) => ({ value: v, label: v })), draft.sr, (v) => { draft.sr = v; setters.sr(''); })),
-        h('p', { class: 'note', style: 'margin:-4px 0 0' }, t('ratingsLater')));
+        h('p', { class: 'note', style: 'margin:-4px 0 0' }, t('ratingsLater')),
+        row('streamUrl', t('streamLink'), stream, t('streamHint')));
     },
     () => {
       const gtChoice = choice([{ value: null, label: t('none') }, ...gts.map((g) => ({ value: g.id, label: g.tag }))], draft.gtTeamId ?? null, (v) => { draft.gtTeamId = v; });
@@ -126,11 +129,8 @@ function build(teams, gts, query) {
         return b;
       });
       list.append(...btns);
-      const stream = h('input', { class: 'input', type: 'text', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false', value: draft.streamUrl || '', placeholder: 'twitch.tv/csatornaneved' });
-      stream.addEventListener('input', () => { const v = stream.value.trim(); const login = twitchLogin(v); draft.streamUrl = login ? 'https://twitch.tv/' + login : v; setters.streamUrl(''); });
       return frag(h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('gtTeam')), gtChoice, h('span', { class: 'hint' }, t('gtTeamHint'))),
-        h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), list, note),
-        row('streamUrl', t('streamLink'), stream, t('streamHint')));
+        h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), list, note));
     },
   ];
 

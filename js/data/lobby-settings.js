@@ -95,7 +95,7 @@ export const pqLobbyFor = (season) => fill('pq', (season && season.pqLobby) || (
 export function valueText(field, v) {
   if (field.type === 'mult') return multLabel(v);
   if (field.type === 'num') return field.fmt ? field.fmt(v) : String(v);
-  if (field.type === 'multi') return (v || []).map((w) => w.split(' | ')[0]).join(', ') || '–';
+  if (field.type === 'multi') return (v || []).map((w) => w.split(' | ')[0]).join(' → ') || '–';
   return String(v);
 }
 export const lobbyLine = (field, value) => `${field.icon} ${field.label ? field.label + ' • ' : ''}${valueText(field, value)}`;

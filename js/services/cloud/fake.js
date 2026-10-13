@@ -409,6 +409,10 @@ export function createFakeBackend() {
         await lag(); const a = me(); if (!isJudgeUid(a.uid)) fail('permission-denied');
         const b = bucket(sid); b.votes[pid] = b.votes[pid] || {}; b.votes[pid][a.uid] = { ...clone(vote), uid: a.uid, at: Date.now() }; persist();
       },
+      async saveFor(sid, pid, judgeUid, vote) {
+        await lag(); const a = me(); const r = roleOf(a.uid); if (!(r.admin || r.owner)) fail('permission-denied');
+        const b = bucket(sid); b.votes[pid] = b.votes[pid] || {}; b.votes[pid][judgeUid] = { ...clone(vote), uid: judgeUid, at: Date.now() }; persist();
+      },
     },
     notes: {
       async list(sid, pid) { await lag(); const a = me(); if (!isJudgeUid(a.uid)) fail('permission-denied'); return clone(bucket(sid).notes[pid] || []); },

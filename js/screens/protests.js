@@ -2,6 +2,7 @@
 // Protests from both sides: drivers file and follow their cases, everyone reads published
 // decisions, and the Versenybíróság works its cases (panel, votes, notes, decision,
 // publishing the penalty, which then reorders the results by itself).
+import { toggle } from '../ui/controls.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { haptic, reduced } from '../core/motion.js';
@@ -26,6 +27,9 @@ export const isJudge = () => { const r = roles(); return !!(r.judge || r.judgeCh
 export const isChair = () => { const r = roles(); return !!(r.judgeChair || r.admin || r.owner); };
 const sesName = (S) => ({ Q: t('quali'), S: 'Sprint', GP: "Gran'Prix" }[S] || S);
 const listOpts = () => ({ judge: isJudge(), uid: session.user ? session.user.uid : null });
+const isAdminRole = () => { const r = roles(); return !!(r.admin || r.owner); };
+const entrantOf = (ctx) => !!(session.user && ctx.entries.some((e) => e.uid === session.user.uid && e.status !== 'withdrawn'));
+const mayView = (ctx) => isJudge() || entrantOf(ctx);
 const nameOf = (ctx, uid) => fullName(ctx.snaps[uid] || {}) || uid;
 
 export function outcomeText(d, ctx) {
@@ -48,6 +52,7 @@ function decisionCard(ctx, p, opts = {}) {
     h('div', { style: 'font-size:14px' }, t('caseParties', { by: p.type === 'judge' ? t('judgesCase') : nameOf(ctx, p.by), vs: (p.involved || []).map((u) => nameOf(ctx, u)).join(', ') || '–' })),
     pub && p.decision ? h('div', { class: 'callout', style: 'display:block' }, h('b', { style: 'display:block;margin-bottom:4px' }, outcomeText(p.decision, ctx)), h('span', { style: 'white-space:pre-line' }, p.decision.text)) : null,
     p.status === 'notInvestigated' && p.decision ? h('div', { class: 'callout warn', style: 'display:block' }, h('b', null, t('pst_notInvestigated')), h('div', null, p.decision.text || '')) : null,
+    pub && p.voteSummary && p.voteSummary.length ? h('div', { class: 'vote-sum' }, h('div', { class: 'label' }, t('votes')), p.voteSummary.map((v) => h('div', null, h('b', null, v.name), ': ', outcomeText(v, ctx), v.loggedBy ? h('small', { class: 'faint' }, ' · ' + t('loggedByAdmin', { name: v.loggedByName || '' })) : null))) : null,
     showVideo ? h('a', { href: p.video, target: '_blank', rel: 'noopener', style: 'color:var(--accent-text);font-weight:650;font-size:14px' }, icon('link'), ' ', t('watchVideo')) : null,
     opts.link ? h('a', { class: 'btn small', href: `#/birosag/${ctx.season.id}/${p.id}`, style: 'justify-self:start' }, t('openCase')) : null,
     opts.withdraw && p.status === 'filed' && session.user && p.by === session.user.uid ? withdrawBtn(ctx, p, opts.reload) : null);
@@ -66,9 +71,9 @@ export function roundProtests(ctx, n, reload) {
   const ws = windowState(round, doc);
   const w = protestWindow(round, doc);
   const mineEntry = signedIn() && ctx.entries.find((e) => e.uid === session.user.uid && e.status !== 'withdrawn' && e.approved !== false);
-  const actions = h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px' },
-    ws === 'open' && mineEntry ? h('a', { class: 'btn primary', href: `#/szezonok/${ctx.season.id}/fordulo/${n}/ovas`, 'data-haptic': '' }, icon('flag'), t('fileProtest')) : null,
-    isJudge() ? h('a', { class: 'btn', href: `#/szezonok/${ctx.season.id}/fordulo/${n}/ovas?biroi=1` }, icon('shield'), t('judgeCase')) : null);
+  void mineEntry;
+  if (!mayView(ctx)) { box.append(h('p', { class: 'note' }, t('protestsEntrantsOnly'))); return box; }
+  const actions = h('div');
   const note = h('p', { class: 'note', style: 'margin:0 0 12px' }, ws === 'open' ? t('protestOpenUntil', { date: fmtDate(w.closesAt, true), rel: relTime(w.closesAt) }) : ws === 'soon' ? t('protestOpensAt', { date: fmtDate(w.opensAt, true) }) : t('protestClosed'));
   const list = h('div', { class: 'stack', style: 'gap:10px' }, skelRows(2, 90));
   box.append(note, actions, list);
@@ -83,7 +88,7 @@ export function roundProtests(ctx, n, reload) {
 /* ---------- season tab ---------- */
 export function protestsTab(st) {
   const box = h('div', { class: 'stack', style: 'gap:10px;margin-top:6px' }, skelRows(3, 90));
-  Promise.all([loadRace(st.season.id), backend.protests.list(st.season.id, listOpts())]).then(([ctx, ps]) => {
+  loadRace(st.season.id).then((ctx) => { if (!mayView(ctx)) { box.replaceChildren(h('p', { class: 'note' }, t('protestsEntrantsOnly'))); return null; } return backend.protests.list(st.season.id, listOpts()).then((ps) => [ctx, ps]); }).then((r) => { if (!r) return; const [ctx, ps] = r;
     const pub = ps.filter((p) => p.status === 'published' || p.status === 'notInvestigated').sort((a, b) => b.n - a.n || (b.publishedAt || 0) - (a.publishedAt || 0));
     const mine = session.user ? ps.filter((p) => p.by === session.user.uid && !['published', 'notInvestigated'].includes(p.status)) : [];
     box.replaceChildren(
@@ -98,14 +103,15 @@ export function protestsTab(st) {
 /* ---------- filing form ---------- */
 export function screenProtestForm({ id, n }, query) {
   n = Number(n);
-  const judgeMode = query.get('biroi') === '1' && isJudge();
+  let judgeMode = query.get('biroi') === '1' && isAdminRole();
   const root = h('div', { class: 'narrow' }, skelRows(5, 70));
   loadRace(id).then((ctx) => {
     if (!ctx) { root.replaceChildren(empty(t('notFound'))); return; }
     const round = ctx.season.rounds.find((r) => r.n === n), doc = ctx.roundDoc(n) || {};
     const myL = session.user ? lobbyOf(doc.lobbies, session.user.uid) : null;
     const d = { n, L: myL || 'A', S: 'GP', lap: '', corner: '', involved: [], title: '', description: '', video: '' };
-    if (!judgeMode && windowState(round, doc) !== 'open') { root.replaceChildren(empty(t('protestClosed'))); return; }
+    if (!isAdminRole() && (!entrantOf(ctx) || !myL)) { root.replaceChildren(empty(t('protestOnlyAffected'))); return; }
+    if (!isAdminRole() && windowState(round, doc) !== 'open') { root.replaceChildren(empty(t('protestClosed'))); return; }
     const err = h('div');
     const invBox = h('div');
     const drawInv = () => {
@@ -118,11 +124,11 @@ export function screenProtestForm({ id, n }, query) {
       })));
     };
     drawInv();
-    const lobbies = ['A', 'B', 'C'].filter((L) => ((doc.lobbies || {})[L] || []).length);
+    const lobbies = ['A', 'B', 'C'].filter((L) => ((doc.lobbies || {})[L] || []).length && (isAdminRole() || L === myL));
     const inp = (key, props) => { const el = h(props.area ? 'textarea' : 'input', { class: 'input', ...props, area: null }); el.addEventListener('input', () => { d[key] = el.value; }); return el; };
     const title = field(t('protestTitle'), inp('title', { maxlength: 80, placeholder: t('protestTitlePh') }));
     const lap = field(t('lap'), inp('lap', { inputmode: 'numeric', maxlength: 3 }));
-    const corner = field(t('corner'), inp('corner', { maxlength: 20, placeholder: t('cornerPh') }));
+    const corner = field(t('cornerOrTime'), inp('corner', { maxlength: 24, placeholder: t('cornerTimePh') }));
     const desc = field(t('description'), inp('description', { area: true, maxlength: 1500, placeholder: t('protestDescPh') }));
     const video = field(t('videoLink'), inp('video', { type: 'url', inputmode: 'url', placeholder: 'https://youtu.be/…' }), { hint: t('videoHint') });
     const submit = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('flag'), judgeMode ? t('openJudgeCase') : t('fileProtest'));
@@ -147,6 +153,7 @@ export function screenProtestForm({ id, n }, query) {
     root.replaceChildren(h('h1', { class: 'display page-title' }, judgeMode ? t('judgeCaseTitle') : t('protestTitleH')),
       h('p', { class: 'page-sub' }, `MCSM${ctx.season.no}, ${t('roundN', { n })}: ${roundTitle(round)}`),
       judgeMode ? null : h('div', { class: 'callout', style: 'margin-bottom:16px' }, icon('info'), h('span', null, t('protestRules'))),
+      isAdminRole() ? h('div', { class: 'toggle-row', style: 'margin-bottom:12px' }, h('span', null, t('openJudgeCase'), h('small', null, t('judgeCaseHint'))), toggle(judgeMode, (v) => { judgeMode = v; drawInv(); submit.lastChild.textContent = v ? t('openJudgeCase') : t('fileProtest'); }, { label: t('openJudgeCase') })) : null,
       h('div', { class: 'form' },
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('lobby')), seg(lobbies.map((L) => ({ value: L, label: t('lobbyX', { l: L }) })), d.L, (v) => { d.L = v; drawInv(); })),
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('session')), seg(SESSIONS.map((S) => ({ value: S, label: sesName(S) })), d.S, (v) => { d.S = v; })),
@@ -182,7 +189,8 @@ export function screenJudges() {
     rows.sort((a, b) => (b.p.createdAt || 0) - (a.p.createdAt || 0));
     draw();
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
-  return frag(pageTitle(t('judgesArea'), t('judgesSub')), h('div', { style: 'margin-bottom:14px' }, filterSeg), box);
+  const back = h('button', { class: 'back', type: 'button', onclick: () => (history.length > 1 ? history.back() : go('/')) }, icon('chevL'), t('back'));
+  return frag(back, pageTitle(t('judgesArea'), t('judgesSub')), h('div', { style: 'margin-bottom:14px' }, filterSeg), box);
 }
 
 export function screenCase({ sid, pid }) {
@@ -230,11 +238,22 @@ function caseView(ctx, p, votes, notes, us, reload) {
   noteBtn.addEventListener('click', () => busy(noteBtn, async () => { if (!noteIn.value.trim()) return; try { await backend.notes.add(s.id, p.id, noteIn.value.trim()); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   sections.push(secHead(t('discussion')), h('div', { class: 'stack', style: 'gap:6px' }, notes.map((nn) => h('div', { class: 'audit-row' }, h('time', null, fmtDate(nn.at, true)), h('b', null, userName(nn.by)), h('div', { style: 'white-space:pre-line' }, nn.text))), notes.length ? null : h('p', { class: 'note', style: 'margin:0' }, t('noNotes'))),
     h('div', { class: 'stack', style: 'gap:8px;margin-top:10px' }, noteIn, noteBtn));
+  if (isAdminRole() && ['filed', 'review'].includes(p.status)) {
+    const eligible = elig.filter((e) => e.eligible).map((e) => e.uid);
+    let who = eligible[0] || null;
+    const holder = h('div');
+    const drawFor = () => { const existing = votes.find((v) => v.uid === who); holder.replaceChildren(who ? voteForm(ctx, p, existing, reload, { forUid: who, panel }) : empty(t('noEligibleJudges'))); };
+    const pick = h('select', { class: 'select', style: 'width:100%' }, eligible.map((uid) => h('option', { value: uid }, userName(uid) + (votes.some((v) => v.uid === uid) ? ' ✓' : ''))));
+    pick.addEventListener('change', () => { who = pick.value; drawFor(); });
+    drawFor();
+    sections.push(h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:16px' }, h('h2', { class: 'display', style: 'font-size:22px;margin:0' }, t('logOnBehalf')), h('p', { class: 'note', style: 'margin:0' }, t('logOnBehalfHint')),
+      h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('judge')), pick), holder));
+  }
   if (isChair()) sections.push(chairTools(ctx, p, tl, judges, teamOf, reload));
   return frag(...sections);
 }
 
-function voteForm(ctx, p, mine, reload) {
+function voteForm(ctx, p, mine, reload, opts = {}) {
   const v = { outcome: mine ? mine.outcome : 'none', target: mine ? mine.target : (p.involved || [])[0] || null, seconds: mine ? mine.seconds : 5, other: mine ? mine.other || '' : '', reason: mine ? mine.reason || '' : '' };
   const detail = h('div', { class: 'stack', style: 'gap:12px' });
   const drawDetail = () => {
@@ -249,7 +268,15 @@ function voteForm(ctx, p, mine, reload) {
   const save = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('check'), mine ? t('updateVote') : t('castVote'));
   save.addEventListener('click', () => busy(save, async () => {
     if (v.outcome !== 'none' && !v.target) { toast(t('pickPenalised'), 'alert'); return; }
-    try { await backend.votes.save(ctx.season.id, p.id, { ...v, outcome: v.outcome, seconds: v.outcome === 'time' ? v.seconds : null }); toast(t('voteSaved')); haptic(12); reload(); } catch (e) { toast(t(errorKey(e)), 'alert'); }
+    try {
+      const data = { ...v, outcome: v.outcome, seconds: v.outcome === 'time' ? v.seconds : null };
+      if (opts.forUid) {
+        // on a judge's behalf: recorded as theirs, with who logged it; they join the panel
+        await backend.votes.saveFor(ctx.season.id, p.id, opts.forUid, { ...data, loggedBy: session.user.uid });
+        if (!(opts.panel || []).includes(opts.forUid)) await backend.protests.save(ctx.season.id, p.id, { panel: [...(opts.panel || []), opts.forUid], status: 'review' });
+      } else await backend.votes.save(ctx.season.id, p.id, data);
+      toast(t('voteSaved')); haptic(12); reload();
+    } catch (e) { toast(t(errorKey(e)), 'alert'); }
   }));
   drawDetail();
   return h('div', { class: 'panel pad stack', style: 'gap:12px' },
@@ -300,7 +327,10 @@ function chairTools(ctx, p, tl, judges, teamOf, reload) {
         if (['time', 'dsq', 'warning', 'other'].includes(d.outcome)) {
           await backend.penalties.save(s.id, { protestId: p.id, n: p.n, L: lobbyOf((ctx.roundDoc(p.n) || {}).lobbies, d.target) || p.L, S: p.S, uid: d.target, kind: d.outcome, seconds: decision.seconds, note: decision.other });
         }
-        await backend.protests.save(s.id, p.id, { status: 'published', decision, decidedAt: Date.now(), publishedAt: Date.now() });
+        const people = await loadUsers().catch(() => []);
+        const nm = (uid) => { const u = people.find((x) => x.uid === uid); return u ? fullName(u) : uid; };
+        const voteSummary = (await backend.votes.list(s.id, p.id).catch(() => [])).filter((v) => (p.panel || []).includes(v.uid)).map((v) => ({ uid: v.uid, name: nm(v.uid), outcome: v.outcome, target: v.target || null, seconds: v.seconds || null, other: v.other || null, loggedBy: v.loggedBy || null, loggedByName: v.loggedBy ? nm(v.loggedBy) : null }));
+        await backend.protests.save(s.id, p.id, { status: 'published', decision, voteSummary, decidedAt: Date.now(), publishedAt: Date.now() });
         await audit('protest.publish', { after: decision });
         notifyUsers([p.type === 'judge' ? null : p.by, ...(p.involved || [])], 'decision', { s: 'MCSM' + s.no, n: p.n, title: p.title }, `#/szezonok/${s.id}/fordulo/${p.n}`);
         invalidate('race:' + s.id); toast(t('decisionPublished')); haptic(15); reload();

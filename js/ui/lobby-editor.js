@@ -17,6 +17,22 @@ function ticker(fd, value, onChange) {
     h('button', { class: 'icon-btn', type: 'button', 'aria-label': '+', onclick: () => set(v + 1) }, icon('plus'))), range);
 }
 
+function sequence(fd, value, onChange) {
+  let seq = Array.isArray(value) ? value.slice() : [];
+  const list = h('ol', { class: 'wx-seq' });
+  const code = (o) => o.split(' | ')[0];
+  const draw = () => {
+    list.replaceChildren(...(seq.length ? seq.map((o, i) => h('li', { title: o },
+      h('b', null, i + 1), h('span', { class: 'wx-code' }, code(o)), h('span', { class: 'wx-name' }, o.split(' | ')[1] || ''),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': '▲', disabled: i === 0, onclick: () => { [seq[i - 1], seq[i]] = [seq[i], seq[i - 1]]; draw(); onChange(seq.slice()); } }, icon('up')),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': '▼', disabled: i === seq.length - 1, onclick: () => { [seq[i + 1], seq[i]] = [seq[i], seq[i + 1]]; draw(); onChange(seq.slice()); } }, icon('down')),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': '×', onclick: () => { seq.splice(i, 1); draw(); onChange(seq.slice()); } }, icon('close')))) : [h('li', { class: 'wx-empty' }, t('wxEmpty'))]));
+  };
+  const palette = h('div', { class: 'choice multi lobby-chips' }, fd.options.map((o) => h('button', { class: 'chip', type: 'button', title: o, onclick: () => { seq.push(o); draw(); onChange(seq.slice()); } }, code(o))));
+  draw();
+  return h('div', { class: 'stack', style: 'gap:8px' }, list, h('span', { class: 'hint' }, t('wxHint')), palette);
+}
+
 function multi(fd, value, onChange) {
   const picked = new Set(value || []);
   return h('div', { class: 'choice multi lobby-chips' }, fd.options.map((o) => {
@@ -36,7 +52,7 @@ export function lobbyEditor(values, sessions, { open = 0 } = {}) {
       const cur = values[sk][fd.k];
       const lbl = h('span', null, `${fd.icon} ${fd.label || t('weatherPreset')}`);
       if (fd.type === 'mult' || fd.type === 'num') return h('div', { class: 'lobby-field' }, lbl, ticker(fd, cur, (v) => { values[sk][fd.k] = v; }));
-      if (fd.type === 'multi') return h('div', { class: 'lobby-field' }, lbl, multi(fd, cur, (v) => { values[sk][fd.k] = v; }), h('span', { class: 'hint' }, t('cardsHint')));
+      if (fd.type === 'multi') return h('div', { class: 'lobby-field' }, lbl, sequence(fd, cur, (v) => { values[sk][fd.k] = v; }));
       const sel = h('select', { class: 'select' }, fd.options.map((o) => h('option', { value: o, selected: cur === o }, o)));
       if (!fd.options.includes(cur)) sel.prepend(h('option', { value: cur, selected: true }, cur));
       sel.addEventListener('change', () => { values[sk][fd.k] = sel.value; if (LOBBY_FIELDS[sk].some((x) => x.showIf)) draw(); });

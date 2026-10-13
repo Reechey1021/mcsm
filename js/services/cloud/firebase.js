@@ -198,6 +198,7 @@ export async function createFirebaseBackend(config) {
     votes: {
       async list(sid, pid) { return wrap(async () => (await F.getDocs(F.collection(db, 'seasons', sid, 'protests', pid, 'votes'))).docs.map((d) => ({ uid: d.id, ...d.data() }))); },
       async save(sid, pid, vote) { return wrap(() => F.setDoc(F.doc(db, 'seasons', sid, 'protests', pid, 'votes', auth.currentUser.uid), { ...vote, at: Date.now() })); },
+      async saveFor(sid, pid, judgeUid, vote) { return wrap(() => F.setDoc(F.doc(db, 'seasons', sid, 'protests', pid, 'votes', judgeUid), { ...vote, at: Date.now() })); },
     },
     notes: {
       async list(sid, pid) { return wrap(async () => (await F.getDocs(F.query(F.collection(db, 'seasons', sid, 'protests', pid, 'notes'), F.orderBy('at')))).docs.map((d) => ({ id: d.id, ...d.data() }))); },

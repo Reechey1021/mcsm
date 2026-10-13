@@ -21,7 +21,7 @@ service cloud.firestore {
     function selfKeys() {
       return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
-              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn'];
+              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn', 'pushPrefs'];
     }
     function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy', 'gt7Guid', 'gt7Nick', 'gt7Avatar', 'gt7Cover', 'psnSynced']); }
 
@@ -163,11 +163,11 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/seasons/$(sid)/entries/$(request.auth.uid)).data.get('approved', true) != false;
       }
       match /protests/{pid} {
-        allow read: if resource.data.status == 'published' || isJudge()
+        allow read: if (resource.data.status in ['published', 'notInvestigated'] && enteredHere()) || isJudge()
           || (signedIn() && (resource.data.by == request.auth.uid || request.auth.uid in resource.data.get('involved', [])));
         allow create: if signedIn() && request.resource.data.by == request.auth.uid
           && ((request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n))
-              || (request.resource.data.type == 'judge' && isJudge()));
+              || (request.resource.data.type == 'judge' && isAdmin()));
         // The filer may withdraw while nobody has picked the case up; everything else is the chair's.
         allow update: if isChair()
           || (signedIn() && resource.data.by == request.auth.uid && resource.data.status == 'filed'
@@ -176,7 +176,7 @@ service cloud.firestore {
         allow delete: if isAdmin();
         match /votes/{judgeUid} {
           allow read: if isJudge();
-          allow write: if isJudge() && judgeUid == request.auth.uid;
+          allow write: if isJudge() && (judgeUid == request.auth.uid || isAdmin());
         }
         match /notes/{noteId} {
           allow read: if isJudge();

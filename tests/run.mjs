@@ -616,6 +616,14 @@ await test('screenshot import: names as GT7 shows them match the lobby', async (
   eq(rows.map((r) => [r.uid, r.sure]), [['a', true], [null, false], ['b', false]], 'duplicate and low confidence flagged');
 });
 
+await test('stars: 5 for the top 11.1%, half a star less per 11.1%, never below 1', async () => {
+  globalThis.document = globalThis.document || { createElementNS() { return {}; }, createElement() { return {}; } };
+  const { starsFor } = await import('../js/ui/stars.js');
+  eq([0, 11, 11.2, 22.3, 33.4, 44.5, 50, 55.6, 66.7, 77.8, 88.9, 100].map(starsFor), [5, 5, 4.5, 4, 3.5, 3, 3, 2.5, 2, 1.5, 1, 1]);
+  const { PUSH_CATS, pushAllowed } = await import('../js/data/push-categories.js');
+  eq([pushAllowed(null, 'live'), pushAllowed(null, 'results'), pushAllowed({ live: true }, 'live'), pushAllowed({ results: false }, 'results')], [false, true, true, false], 'live streams off by default');
+  eq(PUSH_CATS.flatMap((c) => c.types).length, new Set(PUSH_CATS.flatMap((c) => c.types)).size, 'each type in one category');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

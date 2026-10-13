@@ -5,6 +5,7 @@
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { seg } from './controls.js';
+import { starsFor, starRow } from './stars.js';
 import { openSheet } from './sheet.js';
 import { t } from '../i18n/index.js';
 import { publicRatings } from '../services/mcsm-rating.js';
@@ -42,7 +43,7 @@ function dial({ size, r, stroke, value, color, marker = true, lo, hi }) {
 // Standing = where the value sits among every ranked driver (same component), as a percentile.
 // share of ranked drivers who are better (the best driver is at 0, shown as "Top 1%")
 export function percentileOf(all, v) { if (v == null || !all.length) return null; const better = all.filter((x) => x > v + 1e-9).length; return (better / all.length) * 100; }
-export function standingFor(pct) {
+export function standingFor_old(pct) {
   if (pct == null) return null;
   if (pct < 10) return ['up', t('mrTopPct', { n: Math.max(1, Math.ceil(pct)) })];
   if (pct <= 25) return ['up', t('mrBand25')];
@@ -60,7 +61,7 @@ export function mcsmRatingCard(uid) {
     const x = (P.drivers || {})[uid];
     const ranked = !!(x && x.e);
     const pool = Object.values(P.drivers || {}).filter((d) => d.e);
-    const standing = (k, v) => standingFor(percentileOf(pool.map((d) => d[k]), v));
+    const standing = (k, v) => starsFor(percentileOf(pool.map((d) => d[k]), v));
     const head = h('div', { class: 'mr-head' }, h('span', { class: 'label' }, 'MCSM Rating'), demo ? h('span', { class: 'mr-demo' }, t('mrDemo')) : null, help);
     // main dial
     const st = ranked ? standing('r', x.r) : null;
@@ -70,13 +71,13 @@ export function mcsmRatingCard(uid) {
         ranked ? h('b', { class: 'display mr-big' }, f1(x.r)) : h('b', { class: 'display mr-unranked' }, t('mrUnranked')),
         ranked && x.dl ? h('span', { class: 'mr-delta ' + (x.dl > 0 ? 'up' : 'down') }, signed(x.dl)) : null),
       );
-    const status = h('div', { class: 'mr-status ' + (st ? st[0] : 'par') }, ranked ? st[1] : t('mrRoundsToRank', { n: x ? x.n : 0, total: RATING_CFG.provisionalRounds }));
+    const status = h('div', { class: 'mr-status' }, ranked ? starRow(st, 'lg') : t('mrRoundsToRank', { n: x ? x.n : 0, total: RATING_CFG.provisionalRounds }));
     // the parts
     const part = (label, v, color, opts = {}) => {
       const s2 = opts.noStanding ? null : ranked ? standing(opts.k, v) : null;
       return h('div', { class: 'mr-part' },
         h('div', { class: 'mr-ring' }, dial({ size: 64, r: 26, stroke: 5, value: ranked ? v : null, color, marker: false, lo: opts.lo, hi: opts.hi }), h('b', null, ranked ? (opts.fmt || f1)(v) : '–')),
-        h('span', { class: 'mr-pname', style: `color:${color}` }, label), h('span', { class: 'mr-pstat ' + (s2 ? s2[0] : '') }, ranked ? (s2 ? s2[1] : opts.sub || '') : t('mrHidden')));
+        h('span', { class: 'mr-pname', style: `color:${color}` }, label), ranked && s2 ? starRow(s2, 'sm') : h('span', { class: 'mr-pstat' }, t('mrHidden')));
     };
     const parts = h('div', { class: 'mr-parts' },
       part(t('quali'), x && x.q, '#38BDF8', { k: 'q' }), part('Sprint', x && x.s, 'var(--accent)', { k: 's' }), part("Gran'Prix", x && x.g, '#A584FF', { k: 'g' }));

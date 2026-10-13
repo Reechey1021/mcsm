@@ -2,6 +2,7 @@
 // Race screens: the season's PQ tab, the round page (results, grid, line-ups),
 // the lobby editor (PQ proposal for round 1, promotion/relegation after that),
 // round publishing, and PQ time entry.
+import { windowState } from '../model/protest.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { flip, reduced, haptic } from '../core/motion.js';
@@ -123,7 +124,7 @@ function roundView(ctx, n, reload) {
   const lobbies = LOBBIES.filter((L) => ((doc.lobbies || {})[L] || []).length);
   const statusTxt = doc.resultsState === 'final' ? t('stFinal') : doc.resultsState === 'provisional' ? t('stProvisional') : doc.lobbiesPublished ? t('lobbiesOut') : t('stNext');
   const head = roundBanner(info, [
-    h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('h1', { class: 'display page-title' }, t('roundN', { n })), h('span', { class: 'status' + (doc.resultsState === 'provisional' ? ' live' : '') }, statusTxt)),
+    h('div', { class: 'round-head-row' }, h('h1', { class: 'display page-title' }, t('roundN', { n })), h('span', { class: 'status' + (doc.resultsState === 'provisional' ? ' live' : '') }, statusTxt)),
     h('div', { style: 'display:flex;gap:8px;align-items:center;font-weight:650;font-size:16px' }, info.cc ? h('span', { class: 'cc' }, info.cc) : null, roundTitle(info)),
     h('p', { class: 'page-sub', style: 'margin-top:4px' }, fmtDate(info.date, true), info.car ? ' · ' + info.car : '')]);
   const body = h('div');
@@ -137,8 +138,11 @@ function roundView(ctx, n, reload) {
     seg(lobbies.map((L) => ({ value: L, label: t('lobbyX', { l: L }) + (L === myL ? ' •' : '') })), rui.L, (v) => { rui.L = v; draw(true); }, { label: t('lobby') }),
     seg(sessions.map(([value, label]) => ({ value, label })), rui.S, (v) => { rui.S = v; draw(true); }, { scroll: true, label: t('session') })) : null;
   if (lobbies.length) draw(); else body.replaceChildren(empty(t('noLobbiesYet')));
-  const practice = h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '' }, icon('flag'), t('practiceRoom'));
-  practice.addEventListener('click', () => practiceSheet(info, ctx.season));
+  const started = (info.date && Date.now() >= info.date) || windowState(info, doc) === 'open';
+  const racing = session.user && ctx.entries.some((e) => e.uid === session.user.uid && e.status !== 'withdrawn');
+  const practice = started && (racing || isAdmin())
+    ? h('a', { class: 'btn block practice-btn protest-btn', href: `#/szezonok/${ctx.season.id}/fordulo/${n}/ovas`, 'data-haptic': '' }, icon('flag'), t('startProtest'))
+    : h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '', onclick: () => practiceSheet(info, ctx.season) }, icon('flag'), t('practiceRoom'));
   const myLobby = session.user && doc.lobbiesPublished ? lobbyOf(doc.lobbies || {}, session.user.uid) : null;
   const hostUid = myLobby ? lobbyHost(ctx.season, myLobby) : null;
   const hostP = hostUid ? ctx.person(hostUid) : null;

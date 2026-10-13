@@ -70,9 +70,9 @@ function openNotes() {
     h('span', null, h('b', null, t('nt_' + n.type, n.params || {})), n.params && n.params.title ? h('span', null, n.params.title) : null, h('time', null, n.synthetic ? t('today') : relTime(n.at)))))
     : [h('div', { class: 'empty' }, t('noNotifications'))]));
   draw();
-  const markBtn = h('button', { class: 'btn small block', type: 'button', style: 'margin-top:14px' }, t('markAllRead'));
+  const markBtn = h('button', { class: 'btn small block', type: 'button' }, icon('check'), t('markAllRead'));
   markBtn.addEventListener('click', async () => { await markAllRead(); draw(); });
-  const sh = openSheet({ title: t('notifications'), body: frag(list, markBtn) });
+  const sh = openSheet({ title: t('notifications'), body: frag(h('div', { class: 'notif-top' }, markBtn), list) });
   refreshNotes().then(draw).catch(() => {});
 }
 

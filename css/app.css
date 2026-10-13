@@ -1023,3 +1023,32 @@ select.select{ box-sizing:border-box; max-width:100%; }
 .live-nm{ display:grid; min-width:0; }
 .live-nm b{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .live-nm small{ font-size:12px; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ===== 0.9.7 ===== */
+:root{ --star:#F2C14E; --star-empty:rgba(255,255,255,.12); }
+:root[data-theme="light"]{ --star-empty:rgba(14,20,39,.12); }
+.stars{ display:inline-flex; gap:3px; align-items:center; }
+.stars .star{ width:16px; height:15px; }
+.stars-lg .star{ width:26px; height:25px; }
+.stars-sm .star{ width:13px; height:12px; }
+.mr-status .stars{ justify-content:center; }
+.notif-top{ position:sticky; top:-1px; z-index:2; background:var(--bg-2); padding:0 0 10px; margin-bottom:6px; }
+.wx-seq{ list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+.wx-seq li{ display:grid; grid-template-columns:22px 42px minmax(0, 1fr) repeat(3, 34px); align-items:center; gap:6px; padding:4px 6px; border-radius:10px; background:var(--bg-3); font-size:13px; }
+.wx-seq li b{ text-align:center; color:var(--ink-3); }
+.wx-code{ font-weight:850; }
+.wx-name{ color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wx-seq .icon-btn{ width:32px; height:32px; }
+.wx-seq .icon-btn[disabled]{ opacity:.3; }
+.wx-seq .wx-empty{ display:block; color:var(--ink-3); background:none; padding:4px 0; }
+/* round header: status right after the title */
+.round-head-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+/* long dropdowns stay inside their cards */
+.round-edit select.select, .round-edit .f-row, .round-edit .inline > *{ min-width:0; max-width:100%; }
+.round-edit .inline{ flex-wrap:wrap; }
+details.adv select.select, .panel select.select{ max-width:100%; min-width:0; }
+.protest-btn{ background:#E5484D; color:#fff; border-color:transparent; }
+.protest-btn:hover{ background:#d93b40; }
+.vote-sum{ display:grid; gap:2px; font-size:13.5px; padding-top:4px; border-top:1px solid var(--line); }
+.vote-sum .label{ margin-bottom:2px; }
+details.adv .round-item, .stack > .round-item{ box-sizing:border-box; max-width:100%; min-width:0; }

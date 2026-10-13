@@ -49,7 +49,7 @@ export function screenCompare({ a, b }) {
         row(h('span', { class: 'cmp-tk' }, trophy(1, 14), t('medalSilver')), med(A).medals[1], med(B).medals[1]),
         row(h('span', { class: 'cmp-tk' }, trophy(2, 14), t('medalBronze')), med(A).medals[2], med(B).medals[2])),
       h('section', { class: 'panel cmp-table' }, h('div', { class: 'cmp-sec' }, 'GT7'),
-        row(t('cmpDrPoints'), dra, drb, { fmt: fmtInt }),
+        (() => { const val = (u, v) => (u.dr === 'S' ? 1e9 : v); const r = row(t('cmpDrPoints'), val(A, dra), val(B, drb), { fmt: fmtInt }); if (A.dr === 'S') r.children[0].querySelector('b').textContent = t('drStar'); if (B.dr === 'S') r.children[2].querySelector('b').textContent = t('drStar'); return r; })(),
         (() => { const sa = SR_RANK[A.sr] || null, sb = SR_RANK[B.sr] || null; const r = row('SR', sa, sb); r.children[0].querySelector('b').textContent = A.sr || '–'; r.children[2].querySelector('b').textContent = B.sr || '–'; return r; })(),
         row(t('cmpGtRaces'), A.gtStats ? A.gtStats.races : null, B.gtStats ? B.gtStats.races : null),
         row(t('cmpGtWins'), A.gtStats ? A.gtStats.wins : null, B.gtStats ? B.gtStats.wins : null)));

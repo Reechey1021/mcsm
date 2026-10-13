@@ -1052,3 +1052,7 @@ details.adv select.select, .panel select.select{ max-width:100%; min-width:0; }
 .vote-sum{ display:grid; gap:2px; font-size:13.5px; padding-top:4px; border-top:1px solid var(--line); }
 .vote-sum .label{ margin-bottom:2px; }
 details.adv .round-item, .stack > .round-item{ box-sizing:border-box; max-width:100%; min-width:0; }
+
+/* 0.9.8 */
+.stars-lg .star{ width:19px; height:18px; }
+.mr-status{ margin:-4% 0 14px; }

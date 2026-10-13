@@ -110,7 +110,7 @@ export function screenProtestForm({ id, n }, query) {
     const round = ctx.season.rounds.find((r) => r.n === n), doc = ctx.roundDoc(n) || {};
     const myL = session.user ? lobbyOf(doc.lobbies, session.user.uid) : null;
     const d = { n, L: myL || 'A', S: 'GP', lap: '', corner: '', involved: [], title: '', description: '', video: '' };
-    if (!isAdminRole() && (!entrantOf(ctx) || !myL)) { root.replaceChildren(empty(t('protestOnlyAffected'))); return; }
+    if (!isAdminRole() && !entrantOf(ctx)) { root.replaceChildren(empty(t('protestOnlyAffected'))); return; }
     if (!isAdminRole() && windowState(round, doc) !== 'open') { root.replaceChildren(empty(t('protestClosed'))); return; }
     const err = h('div');
     const invBox = h('div');
@@ -124,7 +124,8 @@ export function screenProtestForm({ id, n }, query) {
       })));
     };
     drawInv();
-    const lobbies = ['A', 'B', 'C'].filter((L) => ((doc.lobbies || {})[L] || []).length && (isAdminRole() || L === myL));
+    const lobbies = ['A', 'B', 'C'].filter((L) => ((doc.lobbies || {})[L] || []).length);
+    if (!lobbies.includes(d.L) && lobbies.length) d.L = lobbies[0];
     const inp = (key, props) => { const el = h(props.area ? 'textarea' : 'input', { class: 'input', ...props, area: null }); el.addEventListener('input', () => { d[key] = el.value; }); return el; };
     const title = field(t('protestTitle'), inp('title', { maxlength: 80, placeholder: t('protestTitlePh') }));
     const lap = field(t('lap'), inp('lap', { inputmode: 'numeric', maxlength: 3 }));

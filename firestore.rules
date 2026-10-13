@@ -166,8 +166,8 @@ service cloud.firestore {
         allow read: if (resource.data.status in ['published', 'notInvestigated'] && enteredHere()) || isJudge()
           || (signedIn() && (resource.data.by == request.auth.uid || request.auth.uid in resource.data.get('involved', [])));
         allow create: if signedIn() && request.resource.data.by == request.auth.uid
-          && ((request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n))
-              || (request.resource.data.type == 'judge' && isAdmin()));
+          && (isAdmin()
+              || (request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n)));
         // The filer may withdraw while nobody has picked the case up; everything else is the chair's.
         allow update: if isChair()
           || (signedIn() && resource.data.by == request.auth.uid && resource.data.status == 'filed'

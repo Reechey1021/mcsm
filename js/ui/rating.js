@@ -56,15 +56,16 @@ export function drGauge(p) {
   const needle = svg('g', { class: 'g-needle' }, svg('line', { x1: CX, y1: CY, x2: nx, y2: ny, stroke: 'var(--red)', 'stroke-width': '4', 'stroke-linecap': 'round' }), svg('circle', { cx: CX, cy: CY, r: '10', fill: 'var(--bg-2)', stroke: 'var(--red)', 'stroke-width': '3' }));
   root.append(needle);
   const big = svg('text', { x: CX, y: CY - 32, 'text-anchor': 'middle', class: 'g-letter' }, p.dr || 'E');
-  const ptsText = svg('text', { x: CX, y: CY + 38, 'text-anchor': 'middle', class: 'g-pts' }, p.drPoints != null ? '0' : '–');
-  const ptsCap = svg('text', { x: CX, y: CY + 54, 'text-anchor': 'middle', class: 'g-tick' }, p.drPoints != null ? t('drPointsCap') : '');
+  const star = p.dr === 'S';
+  const ptsText = svg('text', { x: CX, y: CY + 38, 'text-anchor': 'middle', class: 'g-pts' }, star ? t('drStar') : p.drPoints != null ? '0' : '–');
+  const ptsCap = svg('text', { x: CX, y: CY + 54, 'text-anchor': 'middle', class: 'g-tick' }, p.drPoints != null && !star ? t('drPointsCap') : '');
   root.append(big, ptsText, ptsCap);
   const finalDeg = SWEEP * pos;
   const run = () => {
-    if (reduced()) { needle.setAttribute('transform', `rotate(${finalDeg} ${CX} ${CY})`); if (p.drPoints != null) ptsText.textContent = fmtInt(p.drPoints); return; }
+    if (reduced()) { needle.setAttribute('transform', `rotate(${finalDeg} ${CX} ${CY})`); if (p.drPoints != null && !star) ptsText.textContent = fmtInt(p.drPoints); return; }
     needle.animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${Math.min(SWEEP, finalDeg + 14)}deg)`, offset: 0.62 }, { transform: `rotate(${finalDeg}deg)` }], { duration: 1300, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
     fills.forEach(({ el, f, i }) => { el.setAttribute('stroke-dashoffset', '100'); el.animate([{ strokeDashoffset: 100 }, { strokeDashoffset: 100 - f * 100 }], { duration: 300, delay: 80 + i * 170, easing: 'linear', fill: 'forwards' }); });
-    if (p.drPoints != null) { const tmp = { set textContent(v) { ptsText.textContent = v; } }; countUp(tmp, 0, p.drPoints, 1100); }
+    if (p.drPoints != null && !star) { const tmp = { set textContent(v) { ptsText.textContent = v; } }; countUp(tmp, 0, p.drPoints, 1100); }
   };
   needle.style.transformOrigin = `${CX}px ${CY}px`; needle.style.transformBox = 'view-box';
   requestAnimationFrame(() => requestAnimationFrame(run));

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.8 – Fixes
+- Fixed: owners/admins got a permission error filing a protest (rules now always allow admins).
+- Any season entrant may file a protest about any drivers, in any lobby.
+- Smaller stars under the main MCSM Rating, clear of the dial.
+- DR S drivers show "Sztárpilóta" instead of GT7's fixed 150K, come first in the DR sort
+  (alphabetical among themselves), and in Compare.
+- Firestore rules changed (publish again).
+
 ## 0.9.7 – Protests, notification settings, stars
 - Protests: admins can log an eligible judge's vote on their behalf (the judge joins the panel;
   the vote is marked "rögzítette: admin"); published decisions show who voted what. Only the

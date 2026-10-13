@@ -34,6 +34,7 @@ export function screenDrivers() {
   let data = null, tmap = {}, medals = {}, mr = {};
   // the figure the current sort is about: DR points, MCSM Rating, titles; nothing for the rest
   const sortFigure = (d, m) => {
+    if (ui.sort === 'dr' && d.dr === 'S') return h('span', { class: 'sort-fig' }, h('b', null, '★'), h('small', null, t('drStarShort')));
     if (ui.sort === 'dr') return d.drPoints != null ? h('span', { class: 'sort-fig' }, h('b', null, fmtInt(d.drPoints)), h('small', null, 'DR')) : d.dr ? h('span', { class: 'sort-fig' }, h('b', null, d.dr), h('small', null, 'DR')) : null;
     if (ui.sort === 'mcsm') return mrOf(d) != null ? h('span', { class: 'sort-fig' }, h('b', null, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')), h('small', null, 'MCSM')) : h('span', { class: 'sort-fig dim' }, h('small', null, t('mrUnranked')));
     if (ui.sort === 'titles') return m && m.medals[0] ? h('span', { class: 'sort-fig' }, trophyCount(m.medals[0], 0, 16)) : null;
@@ -51,7 +52,8 @@ export function screenDrivers() {
       const tm = tmap[d.teamId];
       return [fullName(d), d.psn, tm ? tm.name : '', d.raceNumber, d.gtTeamId || ''].join(' ').toLowerCase().includes(q);
     }).sort({
-      dr: (a, b) => (DR_RANK[b.dr] || 0) - (DR_RANK[a.dr] || 0) || (b.drPoints || 0) - (a.drPoints || 0) || fullName(a).localeCompare(fullName(b), 'hu'),
+      // S drivers first, alphabetically among themselves (their points are a fixed 150K, not real)
+      dr: (a, b) => (DR_RANK[b.dr] || 0) - (DR_RANK[a.dr] || 0) || (a.dr === 'S' && b.dr === 'S' ? 0 : (b.drPoints || 0) - (a.drPoints || 0)) || fullName(a).localeCompare(fullName(b), 'hu'),
       name: (a, b) => fullName(a).localeCompare(fullName(b), 'hu'),
       no: (a, b) => (a.raceNumber || 0) - (b.raceNumber || 0),
       new: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),

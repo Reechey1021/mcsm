@@ -35,7 +35,7 @@ export const hu = {
   drLabel: 'Driver Rating (DR)', srLabel: 'Sportmanship Rating (SR)', ratingsLater: 'Később ezek automatikusan frissülnek a PSN ID alapján.',
   gtTeam: 'GT csapat', gtTeamHint: 'A GT7-ben használt csapatod (pl. IGTSH, MGTK).', mcsmTeam: 'MCSM csapat', noTeam: 'Nincs csapat', none: 'Nincs',
   teamPerm: 'Engedélyköteles', teamFree: 'Szabad', teamRequestNote: 'A(z) {team} engedélyköteles: mentéskor kérelmet küldünk a ligavezetésnek.', teamRequestPending: 'Csatlakozási kérelem folyamatban: {team}',
-  streamLink: 'Stream link (nem kötelező)', streamHint: 'Twitch vagy YouTube csatornád.',
+  streamLink: 'Twitch csatorna (nem kötelező)', streamHint: 'A csatornád neve vagy linkje. Ha élőben vagy, a főoldalon megjelensz az élő streamek között.',
   // validation & errors
   errRequired: 'Kötelező mező.', errChoose: 'Válassz egyet.', errName: 'Csak betűk, szóköz és kötőjel, legfeljebb 40 karakter.', errPsn: '3–16 karakter, betűvel kezdődik; betűk, számok, - és _.',
   errPsnTaken: 'Ez a PSN ID már egy másik fiókhoz tartozik. Ha a régi oldalon is versenyeztél, a Belépés oldalon a „Régi MCSM-tag vagy?” gombbal aktiváld a régi fiókodat; ha mégsem megy, egy tulajdonos összevonja a fiókokat.', errWheelOther: 'Írd be a márkát.', errNumber: 'Egész szám 1 és 999 között.', errNumberOne: 'Az 1-es rajtszám a regnáló bajnoké.',
@@ -211,7 +211,7 @@ export const hu = {
   drPointsCap: 'DR PONT',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
-  view_monitor: 'Monitor', view_vr: 'VR (PSVR2)', viewLabel: 'Megjelenítés',
+  view_monitor: 'Monitor', view_vr: 'VR (PSVR2)', viewLabel: 'Nézet',
   tracksTitle: 'Pályák (fotó és térkép)', tracksNone: 'Még nincs letöltve pályalista.', tracksHave: '{n} pálya, frissítve: {date}', tracksImport: 'Pályalista frissítése', tracksDone: '{n} pálya mentve', tracksHelp: 'A GT GridStats pályafotói és pályatérképei a fordulók dobozaiban és a forduló oldalán jelennek meg. Néhány kérés a napi keretből.',
   cornersN: '{n} kanyar', legacyRoundNote: 'Ez a forduló a régi oldalról jött át: ott csak a forduló összpontszáma és helyezése volt rögzítve, futamonkénti bontás nélkül.',
   impTitle: 'Importálás a régi oldalról', impSub: 'Pilóták, csapatok, szezonok, nevezések és eredmények a régi mcsm.hu-ról.', impAdminSub: 'A régi oldal adatainak áthozása (csak tulajdonos).',
@@ -288,4 +288,6 @@ export const hu = {
   userDelete: 'Felhasználó törlése', userDeleteHint: 'Törli a profilt, a PSN ID foglalását és az e-mail-címet. A korábbi nevezések és eredmények a szezonokban megmaradnak.', userDeleteTitle: '{psn} törlése', userDeleteText: 'A profil végleg törlődik. A bejelentkezési fiók a Firebase konzolban (Authentication) törölhető, ha kell.', userDeleteType: 'A megerősítéshez írd be a PSN ID-t: {psn}', userDeleteConfirm: 'Végleges törlés',
   entryTeam: 'Csapat ebben a szezonban', entryTeamHint: 'Csak erre a szezonra; a csapatpontok automatikusan ehhez a csapathoz számítanak.', entryTeamSaved: 'Csapat módosítva, a csapattabella frissül',
   podiumTitle: '{s} dobogósai', compare: 'Összevetés', compareTitle: 'Összevetés', compareWith: 'Kivel veted össze: {name}?', cmpGtRaces: 'GT7 futamok', cmpGtWins: 'GT7 győzelmek', oldResultsTitle: 'MCSM25–30 eredmények', oldResultsEstimated: '* az összesített tabellából becsült helyezések',
+  mrTopPct: 'Top {n}%', mrBand25: 'Kiemelkedő', mrBand45: 'Átlag feletti', mrBand55: 'Átlag alatti', mrBand100: 'Fejlődő', cmpTitles: 'Bajnoki címek', cmpDrPoints: 'DR pont',
+  liveStreams: 'Élő streamek ({n})', liveNow: 'ÉLŐ', rulesOpenDoc: 'Megnyitás külön', rulesDocNote: 'A szabályzat a liga Google-dokumentumából jön; ott módosítva pár percen belül itt is frissül.',
 };

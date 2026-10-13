@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.6 – Live streams, rules doc, compare and rating polish
+- MCSM Rating standings by percentile among ranked drivers: Top N% (best 10%), Kiemelkedő
+  (10–25%), Átlag feletti (25–45%), Átlag alatti (45–55%), Fejlődő (55%+), for the rating and each
+  part. Card: big centred dial, standing below, Kvalifikáció / Sprint / Gran'Prix in three columns,
+  no 100 marker.
+- Compare: equal columns, MCSM Rating with all four values and the gap (▼ −x) under the lower one,
+  better values in the accent colour (no boxes), DR points, titles with trophies. Picker:
+  alphabetical, you first.
+- Drivers list: basics only (photo, name, number, PSN, team) plus the figure the sort is about
+  (DR points, MCSM Rating, titles).
+- Live streams on the home page ("Élő streamek (n)"): members live on Twitch, thumbnail, viewers,
+  photo, name, PSN; opens Twitch; hidden when nobody is live. ?livedemo for a preview. The profile
+  field is now "Twitch csatorna" (name or link). Needs the Twitch app keys on the function.
+- Rules: the league's published Google Doc is shown on the Szabályzat page; the on-site editor is
+  gone.
+- Profile photos: GT7 pictures only (own uploads removed); one neutral avatar colour for everyone,
+  the team colour only in the bar underneath.
+- Profile: Compare sits on the back-button line; title cards one per row on phones; "Nézet".
+
 ## 0.9.5 – MCSM Rating V3.2 and more
 - MCSM Rating V3.2 (replaces v1): Overall = 0.20 Quali + 0.40 Sprint + 0.40 Gran'Prix from latent
   skills via the fixed public scale (d(100)=100, floor 50, no cap, no forced mean); finishing

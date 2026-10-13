@@ -21,6 +21,7 @@ import { onLeave } from '../router.js';
 import { loadRace } from '../core/race-data.js';
 import { tracks as loadTracks } from '../core/data.js';
 import { matchTrack } from '../data/track-match.js';
+import { liveStreams } from '../ui/live-streams.js';
 import { towerEl } from '../ui/tower.js';
 
 export function screenHome() {
@@ -62,7 +63,7 @@ export function screenHome() {
   }).catch(() => latest.replaceChildren(h('div', { class: 'empty' }, t('loadFailed'))));
   const links = h('div', { class: 'tiles', style: 'margin-top:4px' },
     [['flag', 'navSeasons', '#/szezonok'], ['users', 'navDrivers', '#/pilotak'], ['grid', 'teams', '#/csapatok'], ['book', 'rules', '#/szabalyzat']].map(([ic, k, href]) => h('a', { class: 'tile', href }, icon(ic), h('b', null, t(k)))));
-  return frag(top, strip, results, nums, h('div', { class: 'grid-2' }, h('section', null, secHead(t('newestDrivers'), t('allDrivers'), '#/pilotak'), latest), h('section', null, secHead(t('explore')), links)));
+  return frag(liveStreams(), top, strip, results, nums, h('div', { class: 'grid-2' }, h('section', null, secHead(t('newestDrivers'), t('allDrivers'), '#/pilotak'), latest), h('section', null, secHead(t('explore')), links)));
 }
 
 function welcomeHero() {

@@ -41,19 +41,14 @@ Egy fordulóban legfeljebb két pilóta indulhat egy csapatért, egy szezonban l
 - Időbüntetések: 1, 3, 5, 7, 10, 15, 20, 25, 30 mp. Egy fordulón belül három időbüntetés automatikus kizárást jelent.`,
 };
 
+// The rules live in the league's Google Doc; editing the doc updates this page (Google refreshes the
+// published copy within a few minutes). No editing on the site.
+const RULES_DOC = 'https://docs.google.com/document/d/e/2PACX-1vQ4dK-R2CbkJr8AKd3Tiq4xQeIXKk3JPovF1CzMZ_-EhzLflE8RXxWjy1OZEV4Z7AfMHFRS2AvElcQl/pub';
 export function screenRules() {
-  const box = h('div', null, skelRows(5, 60));
-  backend.content.get('rules').then((doc) => {
-    const src = (doc && (doc[LANG] || doc.hu)) || DEFAULT_RULES.hu;
-    box.replaceChildren(
-      LANG === 'en' && doc && !doc.en ? h('div', { class: 'callout', style: 'margin-bottom:14px' }, icon('info'), h('span', null, t('rulesHuOnly'))) : null,
-      h('section', { class: 'panel pad' }, renderMarkdown(src)),
-      doc && doc.updatedAt ? h('p', { class: 'note' }, t('lastUpdated', { date: fmtDate(doc.updatedAt) })) : h('p', { class: 'note' }, t('rulesDefaultNote')));
-  }).catch(() => box.replaceChildren(
-    isAdmin() ? h('div', { class: 'callout warn', style: 'margin-bottom:14px' }, icon('alert'), h('span', null, t('rulesReadFailed'))) : null,
-    h('section', { class: 'panel pad' }, renderMarkdown(DEFAULT_RULES.hu))));
+  const frame = h('iframe', { class: 'rules-frame', src: RULES_DOC + '?embedded=true', title: t('rules'), loading: 'lazy', referrerpolicy: 'no-referrer' });
   return frag(h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('h1', { class: 'display page-title' }, t('rules')),
-    isAdmin() ? h('a', { class: 'btn small', href: '#/szabalyzat/szerkesztes' }, icon('edit'), t('edit')) : null), box);
+    h('a', { class: 'btn small', href: RULES_DOC, target: '_blank', rel: 'noopener' }, icon('book'), t('rulesOpenDoc'))),
+    h('div', { class: 'rules-paper' }, frame), h('p', { class: 'note' }, t('rulesDocNote')));
 }
 
 export function screenRulesEdit() {

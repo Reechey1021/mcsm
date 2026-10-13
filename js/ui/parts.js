@@ -9,10 +9,9 @@ import { trophy } from './trophy.js';
 
 export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); return m ? +m[1] : null; }
 export function avatar(p, team, cls = '') {
-  const hue = teamHue(team);
-  const bg = hue == null ? (team && team.c1 ? team.c1 : '#36405F') : `hsl(${hue} 42% 30%)`;
+  const bg = '#36405F';
   const url = avatarUrl(p);
-  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: p.photoUrl ? '' : 'gt7', onerror: (e) => e.target.remove() }) : null;
+  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: 'gt7', onerror: (e) => e.target.remove() }) : null;
   return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
 // A team's logo, or its colour as a small rounded square when there's no logo yet.

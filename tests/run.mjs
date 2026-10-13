@@ -91,7 +91,8 @@ await test('validators', () => {
   eq(P.validate.raceNumber(1, {}, {}), 'errNumberOne'); eq(P.validate.raceNumber(1, {}, { isAdmin: true }), ''); eq(P.validate.raceNumber(0, {}, {}), 'errNumber');
   eq(P.validate.raceNumber(1000, {}, {}), 'errNumber'); eq(P.validate.raceNumber(21, {}, { teammateNumbers: [21] }), 'errNumberTeam');
   eq(P.validate.wheelBrand(null, { input: 'pad' }), ''); eq(P.validate.wheelBrand(null, { input: 'wheel' }), '', 'brand is optional'); eq(P.validate.wheelBrand('other', { input: 'wheel', wheelOther: '' }), 'errWheelOther');
-  eq(P.validate.stream('https://twitch.tv/x'), ''); eq(P.validate.stream('http://twitch.tv/x'), 'errStream'); eq(P.validate.stream(''), '');
+  eq([P.validate.stream('https://twitch.tv/tomikj2'), P.validate.stream('Tomikj2'), P.validate.stream('https://youtube.com/@x'), P.validate.stream('')], ['', '', 'errStream', '']);
+  eq([P.twitchLogin('https://www.twitch.tv/Tomikj2/'), P.twitchLogin('tomikj2'), P.twitchLogin('youtube.com/x')], ['tomikj2', 'tomikj2', null]);
 });
 await test('completeness and steps', () => {
   const p = { lastName: 'Teszt', firstName: 'Elek', psn: 'Teszt_Elek', input: 'pad', view: 'chase', raceNumber: 7, dr: 'B', sr: 'A' };

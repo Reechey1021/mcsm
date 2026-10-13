@@ -80,7 +80,7 @@ export function screenMe() {
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const myRoles = ROLE_KEYS.filter((k) => roles()[k]);
     box.replaceChildren(...[
-      profileComplete() ? frag(profileHead(p, team, { editable: true, gt, uid: session.user.uid }), profileKv({ ...p, uid: session.user.uid }, team, gt && gt.tag, gt)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
+      profileComplete() ? frag(profileHead(p, team, { gt, uid: session.user.uid }), profileKv({ ...p, uid: session.user.uid }, team, gt && gt.tag, gt)) : h('div', { class: 'empty' }, t('profileIncomplete'), h('div', { style: 'margin-top:14px' }, h('a', { class: 'btn primary', href: '#/profil' }, t('finishProfileBtnShort')))),
       p.teamRequest ? h('div', { class: 'callout', style: 'margin-top:12px' }, icon('clock'), h('span', null, t('teamRequestPending', { team: (tm[p.teamRequest] || {}).name || '' }))) : null,
       myRoles.length ? h('div', { class: 'roles', style: 'margin-top:12px' }, myRoles.map((k) => h('span', { class: 'role-tag ' + k }, t('role_' + k)))) : null,
       myEntriesBox,

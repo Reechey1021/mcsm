@@ -1,7 +1,8 @@
 // data/gt7-images.js
 // Pictures from the drivers' gran-turismo.com profiles (links only, nothing is copied).
 export const GT7_DEFAULT_AVATAR = 'https://www.gran-turismo.com/common/dist/gt7/companion/images/0f71c1f701e0aa00014efaf283a12312.png';
-export const avatarUrl = (p) => (p && (p.photoUrl || p.gt7Avatar)) || null;
+// GT7 driver pictures only (own uploads were retired in 0.9.6).
+export const avatarUrl = (p) => (p && p.gt7Avatar) || null;
 
 // The console script an admin runs on gran-turismo.com while signed in. It opens each profile
 // in a hidden frame, waits for it to render, and reads the cover (background) and driver

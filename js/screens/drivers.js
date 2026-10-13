@@ -1,5 +1,7 @@
 // screens/drivers.js
 // The public driver directory and driver profiles.
+import { session } from '../services/session.js';
+import { fmtInt } from '../core/motion.js';
 import { normName } from '../model/name-match.js';
 import { openSheet } from '../ui/sheet.js';
 import { h, frag } from '../core/dom.js';
@@ -30,6 +32,13 @@ export function screenDrivers() {
   const chips = h('div', { class: 'chips', role: 'group', 'aria-label': t('filters') });
   const sort = h('select', { class: 'select', 'aria-label': t('sortBy') }, [['dr', t('sortDr')], ['mcsm', t('sortMcsm')], ['titles', t('sortTitles')], ['name', t('sortName')], ['no', t('sortNo')], ['new', t('sortNew')]].map(([v, l]) => h('option', { value: v, selected: ui.sort === v }, l)));
   let data = null, tmap = {}, medals = {}, mr = {};
+  // the figure the current sort is about: DR points, MCSM Rating, titles; nothing for the rest
+  const sortFigure = (d, m) => {
+    if (ui.sort === 'dr') return d.drPoints != null ? h('span', { class: 'sort-fig' }, h('b', null, fmtInt(d.drPoints)), h('small', null, 'DR')) : d.dr ? h('span', { class: 'sort-fig' }, h('b', null, d.dr), h('small', null, 'DR')) : null;
+    if (ui.sort === 'mcsm') return mrOf(d) != null ? h('span', { class: 'sort-fig' }, h('b', null, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')), h('small', null, 'MCSM')) : h('span', { class: 'sort-fig dim' }, h('small', null, t('mrUnranked')));
+    if (ui.sort === 'titles') return m && m.medals[0] ? h('span', { class: 'sort-fig' }, trophyCount(m.medals[0], 0, 16)) : null;
+    return null;
+  };
   const mrOf = (u) => { const x = mr[u.uid]; return x && x.e ? x.r : null; };
   const mk = (u) => { const m = medals[u.uid]; return m ? m.medals[0] * 10000 + m.medals[1] * 100 + m.medals[2] : 0; };
   const list = () => {
@@ -55,8 +64,8 @@ export function screenDrivers() {
     const av = avatar(d, tm);
     const m = medals[d.uid];
     const a = h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(d.psnLower), dataset: { key: d.uid } }, av,
-      h('span', { class: 'nm' }, h('b', null, fullName(d), m && m.medals[0] ? trophyCount(m.medals[0], 0, 14) : null, mrOf(d) != null ? h('span', { class: 'mr-chip', title: 'MCSM Rating' }, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')) : null), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
-        tm ? h('span', { class: 'team-line' }, teamBadge(tm, 16), h('span', null, tm.name)) : null));
+      h('span', { class: 'nm' }, h('b', null, fullName(d)), h('span', null, h('span', { class: 'rnum' }, '#' + d.raceNumber), ' · ', d.psn),
+        tm ? h('span', { class: 'team-line' }, teamBadge(tm, 16), h('span', null, tm.name)) : null), sortFigure(d, m));
     a.addEventListener('click', () => { av.style.viewTransitionName = 'drv-hero'; });
     if (vtBack === d.uid) { av.style.viewTransitionName = 'drv-hero'; vtBack = null; setTimeout(() => { av.style.viewTransitionName = ''; }, 700); }
     return a;
@@ -87,17 +96,18 @@ export function screenDrivers() {
 
 export function screenDriver({ psn }) {
   const box = h('div', null, skelRows(3, 120));
+  const topRight = h('div');
   Promise.all([users(), teamMap(), gtTeams()]).then(([us, tm, gts]) => {
     const p = us.find((u) => u.psnLower === psn.toLowerCase());
     if (!p || !isComplete(p)) { box.replaceChildren(empty(t('notFound'))); return; }
     vtBack = p.uid;
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const res = h('div', null, skelRows(2, 60));
-    const cmp = h('button', { class: 'btn small', type: 'button', onclick: () => pickCompare(p, us) }, icon('users'), t('compare'));
-    box.replaceChildren(h('div', { style: 'display:flex;justify-content:flex-end;margin:-6px 0 10px' }, cmp), profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, oldResults(p));
+    topRight.replaceChildren(h('button', { class: 'btn small', type: 'button', onclick: () => pickCompare(p, us) }, icon('users'), t('compare')));
+    box.replaceChildren(profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, oldResults(p));
     driverResults(p.uid).then((blocks) => res.replaceChildren(...(blocks.length ? blocks : [secHead(t('results')), empty(t('resultsLater'))]))).catch(() => res.replaceChildren());
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
-  return frag(backLink(t('drivers'), '#/pilotak'), box);
+  return frag(h('div', { class: 'top-row' }, backLink(t('drivers'), '#/pilotak'), topRight), box);
 }
 
 async function driverResults(uid) {
@@ -122,7 +132,8 @@ async function driverResults(uid) {
 function pickCompare(p, us) {
   const q = h('input', { class: 'input', type: 'search', placeholder: t('searchPeople'), autocomplete: 'off' });
   const list = h('div', { class: 'stack', style: 'gap:6px;max-height:360px;overflow-y:auto;margin-top:10px' });
-  const draw = () => { const s = q.value.trim().toLowerCase(); list.replaceChildren(...us.filter((u) => u.uid !== p.uid && isComplete(u) && (!s || `${fullName(u)} ${u.psn}`.toLowerCase().includes(s))).slice(0, 30).map((u) => h('button', { class: 'row-card', type: 'button', onclick: () => { sh.close(true); location.hash = `#/osszevetes/${encodeURIComponent(p.psnLower)}/${encodeURIComponent(u.psnLower)}`; } }, avatar(u, null), h('span', { class: 'nm' }, h('b', null, fullName(u)), h('span', null, u.psn))))); };
+  const draw = () => { const s = q.value.trim().toLowerCase(); const meUid = session.user && session.user.uid;
+    list.replaceChildren(...us.filter((u) => u.uid !== p.uid && isComplete(u) && (!s || `${fullName(u)} ${u.psn}`.toLowerCase().includes(s))).sort((a, b) => (b.uid === meUid) - (a.uid === meUid) || fullName(a).localeCompare(fullName(b), 'hu')).slice(0, 40).map((u) => h('button', { class: 'row-card', type: 'button', onclick: () => { sh.close(true); location.hash = `#/osszevetes/${encodeURIComponent(p.psnLower)}/${encodeURIComponent(u.psnLower)}`; } }, avatar(u, null), h('span', { class: 'nm' }, h('b', null, fullName(u)), h('span', null, u.psn))))); };
   q.addEventListener('input', draw);
   const sh = openSheet({ title: t('compareWith', { name: fullName(p) }), body: h('div', null, q, list) });
   draw(); setTimeout(() => q.focus(), 300);

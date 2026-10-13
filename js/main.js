@@ -1,5 +1,6 @@
 // main.js
 // Boot: theme and language first (no flash), then the backend, session, shell and router.
+import { backend } from './services/backend.js';
 import { h } from './core/dom.js';
 import { on } from './core/bus.js';
 import { initPress } from './core/motion.js';
@@ -51,6 +52,9 @@ async function boot() {
   let wasIn = null;
   on('session', () => { if (!session.ready) return; const nowIn = !!session.user; const force = wasIn === false && nowIn; wasIn = nowIn; if (!nowIn) return; setTimeout(() => import('./ui/news.js').then((m) => m.showWelcomeNews(force)), force ? 900 : 1600); });
   on('session', () => { if (session_ready()) listenForeground(); });
+  // Admins: make sure the public copy of the function address exists (used for the Twitch live list).
+  let epDone = false;
+  on('session', () => { if (epDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; epDone = true; backend.content.get('endpoints').then((ep) => (ep && ep.fn ? null : backend.admin.functionsConfig().then((c) => (c && c.url && !String(c.url).startsWith('fake:') ? backend.content.save('endpoints', { fn: c.url }) : null)))).catch(() => {}); });
   // Once a day, the first admin to open the site refreshes DR/SR quietly in the background.
   let autoDone = false;
   on('session', () => { if (!autoDone && session_ready() && session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true)) { autoDone = true; setTimeout(() => import('./services/ratings.js').then((m) => m.autoDailySync()), 8000); } });

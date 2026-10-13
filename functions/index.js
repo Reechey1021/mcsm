@@ -27,6 +27,45 @@ admin.initializeApp();
 
 const ALLOWED_ORIGINS = ['https://reechey1021.github.io', 'https://mcsm.hu', 'https://www.mcsm.hu', 'http://localhost:8765'];
 const TOPIC = 'mcsm-all';
+let twitchToken = null;
+async function twitchAppToken() {
+  if (twitchToken && twitchToken.exp > Date.now() + 60000) return twitchToken.value;
+  const id = process.env.TWITCH_CLIENT_ID, secret = process.env.TWITCH_CLIENT_SECRET;
+  if (!id || !secret) throw Object.assign(new Error('TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET not set'), { code: 'twitch-missing' });
+  const r = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(id)}&client_secret=${encodeURIComponent(secret)}&grant_type=client_credentials`, { method: 'POST' });
+  const j = await r.json();
+  if (!r.ok) throw new Error('Twitch token: ' + (j.message || r.status));
+  twitchToken = { value: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
+  return twitchToken.value;
+}
+async function twitchLive() {
+  const db = admin.firestore();
+  const ref = db.doc('content/live');
+  const cur = (await ref.get()).data() || {};
+  if (cur.at && Date.now() - cur.at < 90000) return { at: cur.at, streams: cur.streams || [] };
+  let channels = cur.channels;
+  if (!channels || !cur.channelsAt || Date.now() - cur.channelsAt > 30 * 60000) {
+    const users = await db.collection('users').get();
+    channels = {};
+    users.forEach((d) => { const m = /twitch\.tv\/([A-Za-z0-9_]{3,25})/i.exec(String(d.data().streamUrl || '')); if (m) channels[m[1].toLowerCase()] = d.id; });
+    await ref.set({ channels, channelsAt: Date.now() }, { merge: true });
+  }
+  const logins = Object.keys(channels);
+  const streams = [];
+  if (logins.length) {
+    const token = await twitchAppToken();
+    for (let i = 0; i < logins.length; i += 100) {
+      const q = logins.slice(i, i + 100).map((l) => 'user_login=' + encodeURIComponent(l)).join('&');
+      const r = await fetch('https://api.twitch.tv/helix/streams?first=100&' + q, { headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, Authorization: 'Bearer ' + token } });
+      const j = await r.json();
+      (j.data || []).forEach((s) => streams.push({ uid: channels[String(s.user_login).toLowerCase()] || null, login: s.user_login, name: s.user_name, title: s.title || '', viewers: s.viewer_count || 0, thumb: String(s.thumbnail_url || '').replace('{width}', '440').replace('{height}', '248'), startedAt: s.started_at || null }));
+    }
+  }
+  streams.sort((a, b) => b.viewers - a.viewers);
+  const at = Date.now();
+  await ref.set({ at, streams }, { merge: true });
+  return { at, streams };
+}
 
 functions.http('mcsmAdmin', async (req, res) => {
   const origin = req.get('origin') || '';
@@ -38,6 +77,9 @@ functions.http('mcsmAdmin', async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ code: 'fn-method', error: 'POST only' });
 
   try {
+    // Public: which members are live on Twitch. Cached in content/live for 90 s, so visitors never
+    // hit Twitch directly; the list of channels is re-read from profiles every 30 minutes.
+    if ((req.body || {}).action === 'twitchLive') return res.json(await twitchLive());
     const token = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ code: 'fn-forbidden', error: 'Sign in first' });
     const decoded = await admin.auth().verifyIdToken(token);

@@ -14,7 +14,9 @@ export const ROLE_KEYS = ['owner', 'admin', 'judgeChair', 'judge', 'resultsEdito
 
 const NAME_RE = /^[\p{L}][\p{L}' .-]{0,39}$/u;
 const PSN_RE = /^[A-Za-z][A-Za-z0-9_-]{2,15}$/;
-const STREAM_RE = /^https:\/\/(www\.)?(twitch\.tv|youtube\.com|youtu\.be)\/\S+$/i;
+// Twitch channel: a twitch.tv link or just the channel name.
+const STREAM_RE = /^(https?:\/\/(www\.|m\.)?twitch\.tv\/)?[A-Za-z0-9_]{3,25}\/?$/i;
+export const twitchLogin = (v) => { const m = /^(?:https?:\/\/(?:www\.|m\.)?twitch\.tv\/)?([A-Za-z0-9_]{3,25})\/?$/i.exec(String(v || '').trim()); return m ? m[1].toLowerCase() : null; };
 
 export const psnKey = (psn) => String(psn || '').trim().toLowerCase();
 

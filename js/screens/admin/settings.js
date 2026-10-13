@@ -15,7 +15,7 @@ export function screenSettings() {
   backend.admin.functionsConfig().then((c) => { if (c && c.url && !String(c.url).startsWith('fake:')) urlIn.value = c.url; });
   backend.content.get('push').then((c) => { if (c && c.vapidKey) vapidIn.value = c.vapidKey; }).catch(() => {});
   const saveUrl = h('button', { class: 'btn small', type: 'button' }, icon('check'), t('save'));
-  saveUrl.addEventListener('click', () => busy(saveUrl, async () => { try { await backend.config.save('functions', { url: urlIn.value.trim() }); toast(t('saved')); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
+  saveUrl.addEventListener('click', () => busy(saveUrl, async () => { try { await backend.config.save('functions', { url: urlIn.value.trim() }); await backend.content.save('endpoints', { fn: urlIn.value.trim() }); toast(t('saved')); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   const ping = h('button', { class: 'btn small', type: 'button', disabled: !isOwner() }, icon('bolt'), t('gsTest'));
   ping.addEventListener('click', () => busy(ping, async () => { try { await backend.admin.call('ping', {}); toast(t('fnOk')); } catch (e) { toast(t(errorKey(e)), 'alert'); } }));
   const saveVapid = h('button', { class: 'btn small', type: 'button' }, icon('check'), t('save'));

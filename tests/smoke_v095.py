@@ -90,7 +90,7 @@ with sync_playwright() as p:
         check(pg.query_selector('.nc-overlay') is not None, f'{size}: news after sign-in')
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
         pg.click('.hdr-actions button:last-child'); pg.wait_for_timeout(600)
-        check('MCSM v0.9.5' in text(pg, '.sheet'), f'{size}: version in the menu')
+        check('MCSM v0.9.' in text(pg, '.sheet'), f'{size}: version in the menu')
         ctx.close()
     b.close()
 print(json.dumps({'passed': passes, 'failed': fails, 'errors': real(errs)}, ensure_ascii=False, indent=1))

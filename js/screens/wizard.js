@@ -1,6 +1,7 @@
 // screens/wizard.js
 // The three-step profile wizard (also the profile editor). Each step saves as you go,
 // so a half-finished profile can be resumed on any device.
+import { twitchLogin } from '../model/profile.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { reduced, haptic, SPRING } from '../core/motion.js';
@@ -125,8 +126,8 @@ function build(teams, gts, query) {
         return b;
       });
       list.append(...btns);
-      const stream = h('input', { class: 'input', type: 'url', inputmode: 'url', value: draft.streamUrl || '', placeholder: 'https://twitch.tv/…' });
-      stream.addEventListener('input', () => { draft.streamUrl = stream.value.trim(); setters.streamUrl(''); });
+      const stream = h('input', { class: 'input', type: 'text', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false', value: draft.streamUrl || '', placeholder: 'twitch.tv/csatornaneved' });
+      stream.addEventListener('input', () => { const v = stream.value.trim(); const login = twitchLogin(v); draft.streamUrl = login ? 'https://twitch.tv/' + login : v; setters.streamUrl(''); });
       return frag(h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('gtTeam')), gtChoice, h('span', { class: 'hint' }, t('gtTeamHint'))),
         h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), list, note),
         row('streamUrl', t('streamLink'), stream, t('streamHint')));

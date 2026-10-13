@@ -39,7 +39,17 @@ function dial({ size, r, stroke, value, color, marker = true, lo, hi }) {
   }
   return s;
 }
-const standing = (v) => (v == null ? null : v >= 105 ? ['up', t('mrAbove')] : v <= 95 ? ['down', t('mrBelow')] : ['par', t('mrPar')]);
+// Standing = where the value sits among every ranked driver (same component), as a percentile.
+// share of ranked drivers who are better (the best driver is at 0, shown as "Top 1%")
+export function percentileOf(all, v) { if (v == null || !all.length) return null; const better = all.filter((x) => x > v + 1e-9).length; return (better / all.length) * 100; }
+export function standingFor(pct) {
+  if (pct == null) return null;
+  if (pct < 10) return ['up', t('mrTopPct', { n: Math.max(1, Math.ceil(pct)) })];
+  if (pct <= 25) return ['up', t('mrBand25')];
+  if (pct <= 45) return ['up', t('mrBand45')];
+  if (pct <= 55) return ['par', t('mrBand55')];
+  return ['down', t('mrBand100')];
+}
 
 export function mcsmRatingCard(uid) {
   const card = h('section', { class: 'panel mr-card' });
@@ -49,28 +59,30 @@ export function mcsmRatingCard(uid) {
   load.then((P) => {
     const x = (P.drivers || {})[uid];
     const ranked = !!(x && x.e);
+    const pool = Object.values(P.drivers || {}).filter((d) => d.e);
+    const standing = (k, v) => standingFor(percentileOf(pool.map((d) => d[k]), v));
     const head = h('div', { class: 'mr-head' }, h('span', { class: 'label' }, 'MCSM Rating'), demo ? h('span', { class: 'mr-demo' }, t('mrDemo')) : null, help);
     // main dial
-    const st = ranked ? standing(x.r) : null;
+    const st = ranked ? standing('r', x.r) : null;
     const main = h('div', { class: 'mr-mainwrap' },
-      ranked ? (() => { const [ax, ay] = at(100, 100, 103, toT(100)); return h('span', { class: 'mr-avg', style: `left:${(ax / 2).toFixed(1)}%;top:${(ay / 2).toFixed(1)}%` }, '100,0'); })() : null,
-      dial({ size: 200, r: 82, stroke: 13, value: ranked ? x.r : null, color: 'var(--accent)' }),
+      dial({ size: 200, r: 84, stroke: 14, value: ranked ? x.r : null, color: 'var(--accent)', marker: false }),
       h('div', { class: 'mr-center' },
         ranked ? h('b', { class: 'display mr-big' }, f1(x.r)) : h('b', { class: 'display mr-unranked' }, t('mrUnranked')),
         ranked && x.dl ? h('span', { class: 'mr-delta ' + (x.dl > 0 ? 'up' : 'down') }, signed(x.dl)) : null),
-      h('div', { class: 'mr-status ' + (st ? st[0] : 'par') }, ranked ? `${st[0] === 'up' ? '▲' : st[0] === 'down' ? '▼' : '–'} ${st[1]}` : t('mrRoundsToRank', { n: x ? x.n : 0, total: RATING_CFG.provisionalRounds })));
+      );
+    const status = h('div', { class: 'mr-status ' + (st ? st[0] : 'par') }, ranked ? st[1] : t('mrRoundsToRank', { n: x ? x.n : 0, total: RATING_CFG.provisionalRounds }));
     // the parts
     const part = (label, v, color, opts = {}) => {
-      const s2 = opts.noStanding ? null : ranked ? standing(v) : null;
+      const s2 = opts.noStanding ? null : ranked ? standing(opts.k, v) : null;
       return h('div', { class: 'mr-part' },
-        h('div', { class: 'mr-ring' }, dial({ size: 64, r: 26, stroke: 5, value: ranked ? v : null, color, marker: !opts.noMarker, lo: opts.lo, hi: opts.hi }), h('b', null, ranked ? (opts.fmt || f1)(v) : '–')),
-        h('div', { class: 'mr-ptext' }, h('span', { class: 'mr-pname', style: `color:${color}` }, label), h('span', { class: 'mr-pstat ' + (s2 ? s2[0] : '') }, ranked ? (s2 ? `${s2[0] === 'up' ? '▲' : s2[0] === 'down' ? '▼' : '–'} ${s2[1]}` : opts.sub || '') : t('mrHidden'))));
+        h('div', { class: 'mr-ring' }, dial({ size: 64, r: 26, stroke: 5, value: ranked ? v : null, color, marker: false, lo: opts.lo, hi: opts.hi }), h('b', null, ranked ? (opts.fmt || f1)(v) : '–')),
+        h('span', { class: 'mr-pname', style: `color:${color}` }, label), h('span', { class: 'mr-pstat ' + (s2 ? s2[0] : '') }, ranked ? (s2 ? s2[1] : opts.sub || '') : t('mrHidden')));
     };
     const parts = h('div', { class: 'mr-parts' },
-      part(t('quali'), x && x.q, '#38BDF8'), part('Sprint', x && x.s, 'var(--accent)'), part("Gran'Prix", x && x.g, '#A584FF'));
+      part(t('quali'), x && x.q, '#38BDF8', { k: 'q' }), part('Sprint', x && x.s, 'var(--accent)', { k: 's' }), part("Gran'Prix", x && x.g, '#A584FF', { k: 'g' }));
     const hist = ranked && (x.h || []).length > 1 ? h('button', { class: 'linkish', type: 'button', onclick: () => ratingHistory(x) }, icon('bolt'), t('mrHistory')) : null;
     const facts = ranked ? h('div', { class: 'mr-facts2' }, h('span', null, t('mrHighest'), h('b', null, f1(x.hi))), h('span', null, t('mrRoundsDone'), h('b', null, x.n)), hist) : null;
-    card.replaceChildren(head, h('div', { class: 'mr-body' }, main, parts), facts);
+    card.replaceChildren(head, h('div', { class: 'mr-body' }, main, status, parts), facts);
   }).catch(() => card.remove());
   return card;
 }

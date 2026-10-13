@@ -60,6 +60,20 @@ The model defaults to `gemini-flash-lite-latest`. If Google renames models and r
 with "model not found", set the current Flash-Lite model name in Admin → Haladó → Kapcsolatok.
 Free-tier requests may be used by Google to improve its products; these are public race results.
 
+## Live Twitch streams (free)
+
+The home page shows members who are live on Twitch. The function asks Twitch (at most every 90
+seconds, cached for everyone) using a free Twitch app:
+
+1. https://dev.twitch.tv/console/apps → **Register Your Application** (sign in with Twitch).
+   Name: `MCSM`, OAuth Redirect URL: `http://localhost`, Category: **Website Integration**,
+   Client Type: **Confidential** → Create.
+2. Open it → copy the **Client ID** → **New Secret** → copy the **Client Secret**.
+3. Cloud Run → `mcsm-admin` → **Edit & deploy new revision** → paste the new `index.js` →
+   **Variables & Secrets**: add `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` (keep
+   `GEMINI_API_KEY`) → **Deploy**.
+4. Drivers add their Twitch channel in their profile (name or link). That's all.
+
 ## Phone notifications
 
 1. Firebase console → Project settings → **Cloud Messaging** → Web Push certificates →

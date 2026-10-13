@@ -22,7 +22,7 @@ import { screenWizard } from './screens/wizard.js';
 import { screenMe } from './screens/me.js';
 import { screenDrivers, screenDriver } from './screens/drivers.js';
 import { screenTeams, screenTeam } from './screens/teams.js';
-import { screenSoon, screenRules, screenRulesEdit, screenNotFound } from './screens/static.js';
+import { screenSoon, screenRules, screenNotFound } from './screens/static.js';
 import { screenGt7 } from './screens/admin/gt7.js';
 import { screenAction } from './screens/action.js';
 import { screenSeasons, screenSeason } from './screens/seasons.js';
@@ -52,7 +52,6 @@ const ROUTES = [
   ['/csapatok', screenTeams, { tab: 5 }],
   ['/csapatok/:id', screenTeam, { tab: 5 }],
   ['/szabalyzat', screenRules, {}],
-  ['/szabalyzat/szerkesztes', screenRulesEdit, { auth: true, admin: true }],
   ['/admin/gt7', screenGt7, { tab: 4, auth: true, admin: true }],
   ['/sajat', screenMe, { tab: 4, auth: true, noBanner: true }],
   ['/profil', screenWizard, { tab: 4, auth: true, noBanner: true, keep: true }],

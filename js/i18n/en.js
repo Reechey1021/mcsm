@@ -30,7 +30,7 @@ export const en = {
   drLabel: 'Driver Rating (DR)', srLabel: 'Sportsmanship Rating (SR)', ratingsLater: 'Later these update automatically from your PSN ID.',
   gtTeam: 'GT team', gtTeamHint: 'The team you use in GT7 (e.g. IGTSH, MGTK).', mcsmTeam: 'MCSM team', noTeam: 'No team', none: 'None',
   teamPerm: 'By permission', teamFree: 'Open', teamRequestNote: "{team} is by permission: when you save, we'll send a request to the league staff.", teamRequestPending: 'Join request pending: {team}',
-  streamLink: 'Stream link (optional)', streamHint: 'Your Twitch or YouTube channel.',
+  streamLink: 'Twitch channel (optional)', streamHint: "Your channel name or link. When you're live, you appear among the live streams on the home page.",
   errRequired: 'Required.', errChoose: 'Pick one.', errName: 'Letters, spaces and hyphens only, up to 40 characters.', errPsn: '3–16 characters starting with a letter: letters, numbers, - and _.',
   errPsnTaken: "This PSN ID belongs to another account. If you raced on the old site, activate your old account with \"Coming from the old MCSM?\" on the sign-in page; if that doesn't work, an owner can merge the accounts.", errWheelOther: 'Type the brand.', errNumber: 'A whole number from 1 to 999.', errNumberOne: 'Number 1 belongs to the reigning champion.',
   errNumberTeam: 'This number is already taken in your team.', errStream: 'Needs a Twitch or YouTube link (https://…).', errEmail: "That doesn't look like a valid email.", errEmailUsed: 'There is already an account with this email. Sign in, or reset your password.',
@@ -195,7 +195,7 @@ export const en = {
   drPointsCap: 'DR POINTS',
 
   // ----- 0.6: import, activation, roles, uploads, tracks -----
-  view_monitor: 'Monitor', view_vr: 'VR (PSVR2)', viewLabel: 'Display',
+  view_monitor: 'Monitor', view_vr: 'VR (PSVR2)', viewLabel: 'View',
   tracksTitle: 'Tracks (photo and map)', tracksNone: 'No track list yet.', tracksHave: '{n} tracks, updated {date}', tracksImport: 'Refresh track list', tracksDone: '{n} tracks saved', tracksHelp: "GT GridStats' track photos and maps appear in the round boxes and on the round page. Uses a few requests from the daily allowance.",
   cornersN: '{n} corners', legacyRoundNote: 'This round came from the old site, which only stored round totals and positions, not each session.',
   impTitle: 'Import from the old site', impSub: 'Drivers, teams, seasons, entries and results from the old mcsm.hu.', impAdminSub: "Bring the old site's data across (owners only).",
@@ -272,4 +272,6 @@ export const en = {
   userDelete: 'Delete user', userDeleteHint: 'Deletes the profile, the PSN ID reservation and the email address. Past entries and results stay in the seasons.', userDeleteTitle: 'Delete {psn}', userDeleteText: 'The profile is deleted for good. The sign-in account can be deleted in the Firebase console (Authentication) if needed.', userDeleteType: 'To confirm, type the PSN ID: {psn}', userDeleteConfirm: 'Delete for good',
   entryTeam: 'Team this season', entryTeamHint: 'This season only; team points automatically go to this team.', entryTeamSaved: 'Team changed; the team standings update',
   podiumTitle: '{s} podiums', compare: 'Compare', compareTitle: 'Compare', compareWith: 'Compare {name} with…', cmpGtRaces: 'GT7 races', cmpGtWins: 'GT7 wins', oldResultsTitle: 'MCSM25–30 results', oldResultsEstimated: '* positions estimated from the overall standings',
+  mrTopPct: 'Top {n}%', mrBand25: 'Exceptional', mrBand45: 'Above average', mrBand55: 'Below average', mrBand100: 'Needs improvement', cmpTitles: 'Championship titles', cmpDrPoints: 'DR points',
+  liveStreams: 'Live streams ({n})', liveNow: 'LIVE', rulesOpenDoc: 'Open separately', rulesDocNote: "The rules come from the league's Google Doc; changes there show up here within a few minutes.",
 };

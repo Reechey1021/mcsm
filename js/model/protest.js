@@ -20,7 +20,8 @@ export function windowState(round, roundDoc, now = Date.now()) {
 }
 
 const scopeOf = (p) => (Array.isArray(p.judgeScope) && p.judgeScope.length ? p.judgeScope : ['A', 'B', 'C']);
-export const isJudgeProfile = (p) => !!(p && p.roles && (p.roles.judge || p.roles.judgeChair));
+// Judges, the judge chair, and everyone above them (admins, owners) can judge cases.
+export const isJudgeProfile = (p) => !!(p && p.roles && (p.roles.judge === true || p.roles.judgeChair === true || p.roles.admin === true || p.roles.owner === true));
 
 // Everyone who could sit on this case, and why someone is left out.
 // judges: [{ uid, ...profile }], teamOf: uid -> teamId in this season.

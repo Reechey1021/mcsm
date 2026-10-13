@@ -76,7 +76,7 @@ function editPerson(u, tms, reload) {
   const roleRows = ROLE_KEYS.map((k) => {
     const self = u.uid === session.user.uid;
     return h('div', { class: 'toggle-row' }, h('span', null, t('role_' + k), h('small', null, t('roleHint_' + k))),
-      toggle(draft.roles[k] === true, (v) => { if (v) draft.roles[k] = true; else delete draft.roles[k]; }, { label: t('role_' + k), disabled: !grantableRoles().includes(k) || self }));
+      toggle(draft.roles[k] === true, (v) => { if (v) draft.roles[k] = true; else delete draft.roles[k]; }, { label: t('role_' + k), disabled: !grantableRoles().includes(k) }));
   });
   const scope = new Set(Array.isArray(u.judgeScope) && u.judgeScope.length ? u.judgeScope : ['A', 'B', 'C']);
   draft.judgeScope = [...scope];

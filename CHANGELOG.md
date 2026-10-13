@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.9
+- Admins (and owners) can be given the Bírói elnök role, also on their own profile.
+- Admins and owners count as judges in every case: eligible, on panels, and in the "on behalf" dropdown.
+
 ## 0.9.8 – Fixes
 - Fixed: owners/admins got a permission error filing a protest (rules now always allow admins).
 - Any season entrant may file a protest about any drivers, in any lobby.

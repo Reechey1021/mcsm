@@ -1,3 +1,4 @@
+import { NOTIFICATION_LIMIT, NOTIFICATION_WINDOW_MS } from '../notification-query.js';
 // services/cloud/firebase.js
 // The real backend: email + password sign-in and Firestore, loaded from Google's CDN
 // only when a config exists. Same interface as fake.js.
@@ -76,7 +77,30 @@ export async function createFirebaseBackend(config) {
     users: {
       watch(uid, cb) { return F.onSnapshot(userRef(uid), (s) => cb(s.exists() ? s.data() : null), () => cb(null)); },
       async get(uid) { const s = await F.getDoc(userRef(uid)); return s.exists() ? s.data() : null; },
+      async byPsn(psn) {
+        const qs = await F.getDocs(F.query(F.collection(db, 'users'), F.where('psnLower', '==', String(psn || '').toLowerCase()), F.limit(1)));
+        return qs.empty ? null : { uid: qs.docs[0].id, ...qs.docs[0].data() };
+      },
       async list() { const qs = await F.getDocs(F.collection(db, 'users')); return qs.docs.map((d) => ({ uid: d.id, ...d.data() })); },
+      // Shared public driver directory. One Storage download for everyone, no Firestore
+      // per-driver query. Intentionally no full-Firestore fallback if the file is absent.
+      async publicList() {
+        const bytes = await S.getBytes(S.ref(bucket(), 'public-cache/drivers.json'), 1024 * 1024);
+        const data = JSON.parse(new TextDecoder().decode(bytes));
+        if (!data || data.version !== 1 || !data.drivers || Array.isArray(data.drivers)) throw new Error('Invalid public driver directory');
+        return Object.values(data.drivers);
+      },
+      async homeOverview() {
+        // Aggregations are billed by index entries (minimum one read), NOT by every user doc.
+        const col = F.collection(db, 'users');
+        const completed = F.query(col, F.where('complete', '==', true));
+        const wheels = F.query(completed, F.where('input', '==', 'wheel'));
+        const recent = F.query(completed, F.orderBy('createdAt', 'desc'), F.limit(5));
+        const [total, onWheels, latest] = await Promise.all([
+          F.getCountFromServer(completed), F.getCountFromServer(wheels), F.getDocs(recent),
+        ]);
+        return { driverCount: total.data().count, wheelCount: onWheels.data().count, recent: latest.docs.map((d) => ({ uid: d.id, ...d.data() })) };
+      },
       async getPrivate(uid) { return wrap(async () => { const s = await F.getDoc(F.doc(db, 'users', uid, 'private', 'account')); return s.exists() ? s.data() : {}; }); },
       async lockOwner(psnLower) { const s = await F.getDoc(F.doc(db, 'psnIds', psnLower)); return s.exists() ? s.data().uid : null; },
       async remove(uid) { return wrap(() => F.deleteDoc(F.doc(db, 'users', uid))); },
@@ -234,13 +258,33 @@ export async function createFirebaseBackend(config) {
       async save(id, data) { return wrap(() => F.setDoc(F.doc(db, 'config', id), data)); },
     },
     notify: {
-      async list(uid) {
+      // Two indexed and bounded server-side queries, not an unbounded history download.
+      queries(uid) {
         const col = F.collection(db, 'notifications');
-        const qs = [F.query(col, F.where('kind', 'in', ['all', 'season']))];
-        if (uid) qs.push(F.query(col, F.where('uids', 'array-contains', uid)));
-        const res = await Promise.all(qs.map((q) => F.getDocs(q)));
+        const horizon = Date.now() - NOTIFICATION_WINDOW_MS;
+        const global = F.query(col, F.where('kind', 'in', ['all', 'season']), F.where('at', '>=', horizon), F.orderBy('at', 'desc'), F.limit(NOTIFICATION_LIMIT));
+        return uid ? [global, F.query(col, F.where('uids', 'array-contains', uid), F.where('at', '>=', horizon), F.orderBy('at', 'desc'), F.limit(NOTIFICATION_LIMIT))] : [global];
+      },
+      async list(uid) {
+        const res = await Promise.all(this.queries(uid).map((q) => F.getDocs(q)));
         const m = new Map(); res.forEach((r) => r.docs.forEach((d) => m.set(d.id, { id: d.id, ...d.data() })));
-        return [...m.values()];
+        return [...m.values()].sort((a, b) => b.at - a.at);
+      },
+      watch(uid, cb, onError = () => {}) {
+        const snapshots = this.queries(uid).map(() => null);
+        const unsubs = [];
+        let stopped = false;
+        for (const [i, q] of this.queries(uid).entries()) {
+          unsubs.push(F.onSnapshot(q, (qs) => {
+            if (stopped) return;
+            snapshots[i] = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+            if (snapshots.every((part) => part !== null)) {
+              const m = new Map(snapshots.flat().map((n) => [n.id, n]));
+              cb([...m.values()].sort((a, b) => b.at - a.at));
+            }
+          }, (error) => { if (!stopped) onError(error); }));
+        }
+        return () => { stopped = true; unsubs.forEach((stop) => stop()); };
       },
       async add(n) { return wrap(async () => (await F.addDoc(F.collection(db, 'notifications'), { ...n, by: auth.currentUser.uid, at: Date.now() })).id); },
     },

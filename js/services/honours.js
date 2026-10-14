@@ -14,7 +14,7 @@ async function computed() {
   const tmap = await teamMap();
   const out = [];
   for (const s of all) {
-    const ctx = await loadRace(s.id).catch(() => null);
+    const ctx = await loadRace(s.id, { includeUsers: false }).catch(() => null);
     if (!ctx || !ctx.built.length) continue;
     const person = (r) => { const p = ctx.snaps[r.id] || {}; return { uid: r.id, psn: p.psn || '', name: `${p.lastName || ''} ${p.firstName || ''}`.trim() }; };
     const d = driverStandings(ctx.built, ctx.ids, { table: ctx.points }).slice(0, 3).map(person);

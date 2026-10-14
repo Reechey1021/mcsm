@@ -1,3 +1,4 @@
+import { selectNotifications } from '../notification-query.js';
 // services/cloud/fake.js
 // The test backend: same interface as firebase.js, but everything lives in this
 // browser's localStorage. Each tab is its own "device" (signed-in user kept in
@@ -193,6 +194,7 @@ export function createFakeBackend() {
 
   const authSubs = new Set();
   const userSubs = new Map(); // uid -> Set(cb)
+  const noteSubs = new Set();
   const sget = (k) => { try { return sessionStorage.getItem(k); } catch { return null; } };
   const sset = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* */ } };
   // ?fakeuser=owner signs this tab in as a test account
@@ -204,11 +206,13 @@ export function createFakeBackend() {
   const toUser = (a) => (a ? { uid: a.uid, email: a.email, emailVerified: !!a.emailVerified } : null);
   const fireAuth = () => { const u = toUser(currentAcct()); authSubs.forEach((cb) => cb(u)); };
   const fireUser = (uid) => { (userSubs.get(uid) || []).forEach((cb) => cb(clone(db.users[uid]) || null)); };
+  const fireNotes = () => { noteSubs.forEach(({ uid, cb }) => cb(selectNotifications(Object.values(clone(db.notifications || {})), uid))); };
   // other tabs = other devices
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY) return;
     try { db = JSON.parse(e.newValue) || db; } catch { /* */ }
     userSubs.forEach((_, uid) => fireUser(uid));
+    fireNotes();
   });
   const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
   const me = () => { const a = currentAcct(); if (!a) fail('permission-denied'); return a; };
@@ -269,7 +273,13 @@ export function createFakeBackend() {
         return () => userSubs.get(uid).delete(cb);
       },
       async get(uid) { await lag(); return clone(db.users[uid]) || null; },
+      async byPsn(psn) { await lag(); const match = Object.entries(db.users).find(([, p]) => p.psnLower === String(psn || '').toLowerCase()); return match ? { uid: match[0], ...clone(match[1]) } : null; },
       async list() { await lag(); return Object.entries(db.users).map(([uid, p]) => ({ uid, ...clone(p) })); },
+      async homeOverview() {
+        await lag();
+        const done = Object.entries(db.users).map(([uid, p]) => ({ uid, ...clone(p) })).filter(isComplete);
+        return { driverCount: done.length, wheelCount: done.filter((p) => p.input === 'wheel').length, recent: done.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5) };
+      },
       async getPrivate(uid) { await lag(); const a = me(); if (a.uid !== uid && !isAdminUid(a.uid)) fail('permission-denied'); return clone(db.priv[uid]) || {}; },
       async lockOwner(psnLower) { await lag(); return db.psnIds[psnLower] || null; },
       async remove(uid) { await lag(); const a = me(); if (!roleOf(a.uid).owner) fail('permission-denied'); delete db.users[uid]; persist(); },
@@ -451,7 +461,13 @@ export function createFakeBackend() {
     notify: {
       async list(uid) {
         await lag();
-        return Object.values(clone(db.notifications || {})).filter((n) => n.kind === 'all' || n.kind === 'season' || (uid && (n.uids || []).includes(uid)));
+        return selectNotifications(Object.values(clone(db.notifications || {})), uid);
+      },
+      watch(uid, cb) {
+        const entry = { uid, cb };
+        noteSubs.add(entry);
+        setTimeout(() => { if (noteSubs.has(entry)) cb(selectNotifications(Object.values(clone(db.notifications || {})), uid)); }, 0);
+        return () => noteSubs.delete(entry);
       },
       async add(n) {
         await lag(); const a = me();
@@ -459,7 +475,7 @@ export function createFakeBackend() {
         if (!(isAdminUid(a.uid) || isJudgeUid(a.uid) || (n.kind === 'users' && driverTypes.includes(n.type) && (n.uids || []).length <= 60))) fail('permission-denied');
         db.notifications = db.notifications || {};
         const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        db.notifications[id] = { ...clone(n), id, by: a.uid, at: Date.now() }; persist(); return id;
+        db.notifications[id] = { ...clone(n), id, by: a.uid, at: Date.now() }; persist(); fireNotes(); return id;
       },
     },
     audit: {

@@ -1,3 +1,11 @@
+## v0.9.12 — Shared public Drivers directory (prepared; not deployed)
+
+- Public Drivers listing obtains a single cached JSON from the existing Firebase Storage bucket rather than querying all `users` documents on each fresh visit. Admin and individual profile flows remain unchanged.
+- New isolated Firestore event functions incrementally publish public profile changes; a manual `cacheRequests/drivers` request initialises or repairs the file. No new daily sync or scheduler.
+- Only a small public field whitelist is included; added server-side batching, stale-event protection, atomic Storage writes, a maximum 1 MiB payload and a 10-minute retry expiry.
+- Honours calculation avoids loading all user documents when it only needs saved race snapshots.
+- Deployment requires the additive Firebase Storage rule and CORS verification; see `DRIVER_DIRECTORY_DEPLOY.md`.
+
 # Changelog
 
 ## 0.9.9

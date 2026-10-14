@@ -65,14 +65,15 @@ function refreshBell() {
 const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock', claimDispute: 'alert', roleGranted: 'shield', lobbyHost: 'users' };
 function openNotes() {
   const list = h('div');
-  const draw = () => list.replaceChildren(...(notes.items.length ? notes.items.map((n) => h('a', { class: 'notif' + ((n.synthetic || (n.at || 0) > ((session.profile || {}).notifReadAt || 0)) && n.by !== (session.user || {}).uid ? ' unread' : ''), href: n.link || '#/', onclick: () => sh.close(true) },
+  const draw = () => list.replaceChildren(...(notes.items.length ? notes.items.map((n) => h('a', { class: 'notif' + ((n.synthetic || (n.at || 0) > ((session.profile || {}).notifReadAt || 0)) && n.by !== (session.user || {}).uid ? ' unread' : ''), href: n.link || '#/', onclick: () => { stopRedraw(); sh.close(true); } },
     h('span', { class: 'ic' }, icon(NOTE_ICON[n.type] || 'bell')),
     h('span', null, h('b', null, t('nt_' + n.type, n.params || {})), n.params && n.params.title ? h('span', null, n.params.title) : null, h('time', null, n.synthetic ? t('today') : relTime(n.at)))))
-    : [h('div', { class: 'empty' }, t('noNotifications'))]));
+    : [h('div', { class: 'empty' }, t(notes.error ? 'loadFailed' : 'noNotifications'))]));
   draw();
+  const stopRedraw = on('notes', draw);
   const markBtn = h('button', { class: 'btn small block', type: 'button' }, icon('check'), t('markAllRead'));
   markBtn.addEventListener('click', async () => { await markAllRead(); draw(); });
-  const sh = openSheet({ title: t('notifications'), body: frag(h('div', { class: 'notif-top' }, markBtn), list) });
+  const sh = openSheet({ title: t('notifications'), body: frag(h('div', { class: 'notif-top' }, markBtn), list), onClose: stopRedraw });
   refreshNotes().then(draw).catch(() => {});
 }
 
@@ -119,8 +120,6 @@ export function initShell() {
   on('session', refreshMe);
   on('session', refreshBell);
   on('notes', refreshBell);
-  let lastUid = null;
-  on('session', () => { const uid = session.user ? session.user.uid : null; if (uid !== lastUid && session.ready) { lastUid = uid; refreshNotes().catch(() => {}); } });
   on('route', updateNav);
   window.addEventListener('resize', () => updateNav(currentRoute()), { passive: true });
 }

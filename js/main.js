@@ -15,7 +15,6 @@ import { teamMap } from './core/data.js';
 import { initNotes } from './services/notify.js';
 import { initKeyboard } from './ui/keyboard.js';
 import { listenForeground } from './services/push.js';
-import { refreshNotes } from './services/notify.js';
 
 // Guard: a conditional child that's empty (null/false) must never render as the word "null".
 const nativeReplace = Element.prototype.replaceChildren;
@@ -47,7 +46,7 @@ async function boot() {
   initPress();
   initNotes();
   initKeyboard();
-  on('pushed', () => refreshNotes().catch(() => {}));
+  // The notification listener receives Firestore changes directly, regardless of push permission.
   // News carousel: once per visit, after the first screen and again right after signing in.
   let wasIn = null;
   on('session', () => { if (!session.ready) return; const nowIn = !!session.user; const force = wasIn === false && nowIn; wasIn = nowIn; if (!nowIn) return; setTimeout(() => import('./ui/news.js').then((m) => m.showWelcomeNews(force)), force ? 900 : 1600); });

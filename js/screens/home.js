@@ -10,10 +10,10 @@ import { emit } from '../core/bus.js';
 import { t, fmtDate } from '../i18n/index.js';
 import { backend } from '../services/backend.js';
 import { session, signedIn, profileComplete } from '../services/session.js';
-import { stepsDone, fullName, isComplete } from '../model/profile.js';
+import { stepsDone, fullName } from '../model/profile.js';
 import { LIVE_STATES, countdownTarget, entryTable, regStatus, nextRound } from '../model/season.js';
 import { roundTitle } from '../data/tracks.js';
-import { users, teams, teamMap, gtTeams, seasons as loadSeasons } from '../core/data.js';
+import { homeOverview, teams, teamMap, gtTeams, seasons as loadSeasons, entries as loadEntries } from '../core/data.js';
 import { avatar, ratingEl, secHead, skelRows } from '../ui/parts.js';
 import { seasonPill } from '../ui/season-parts.js';
 import { enterSheet } from './seasons.js';
@@ -33,7 +33,7 @@ export function screenHome() {
     const live = all.filter((s) => LIVE_STATES.includes(s.state)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.no - a.no);
     const featured = live[0];
     if (!featured) { top.replaceChildren(welcomeHero()); return; }
-    const [entries, cat] = await Promise.all([backend.entries.list(featured.id), loadTracks()]);
+    const [entries, cat] = await Promise.all([loadEntries(featured.id), loadTracks()]);
     top.replaceChildren(seasonHero({ season: featured, entries, tmap, gts, table: entryTable(featured, entries), cat }));
     const others = live.slice(1);
     if (others.length) strip.replaceChildren(h('div', { class: 'strip' }, others.map((s) => { const nr = nextRound(s); return h('a', { class: 'round-item', href: '#/szezonok/' + s.id }, h('span', { class: 'no display', style: 'width:auto;font-size:26px' }, s.no), h('span', { class: 't' }, h('b', null, s.name || 'MCSM' + s.no), h('span', { class: 'sub' }, nr ? t('nextRoundShort', { n: nr.n, date: fmtDate(nr.date) }) : '', seasonPill(s))), icon('chevR', 'chev')); })));
@@ -42,7 +42,7 @@ export function screenHome() {
   loadSeasons().then(async (all) => {
     const s = all.filter((x) => ['running', 'pq'].includes(x.state)).sort((a, b) => b.no - a.no)[0];
     if (!s) return;
-    const ctx = await loadRace(s.id);
+    const ctx = await loadRace(s.id, { includeUsers: false });
     if (!ctx || !ctx.built.length) return;
     const last = ctx.built[ctx.built.length - 1];
     const win = (L, S) => { const r = ((last.results[L] || {})[S] || []).find((x) => x.status === 'OK'); return r ? fullName(ctx.snaps[r.id] || {}) : '–'; };
@@ -53,12 +53,10 @@ export function screenHome() {
           h('span', { class: 't' }, h('b', null, "Gran'Prix: " + win(L, 'GP')), h('span', { class: 'sub' }, 'Sprint: ' + win(L, 'S'))), icon('chevR', 'chev'))))),
       h('section', null, secHead(t('standings'), t('fullTable'), '#/eredmenyek/' + s.id), towerEl(ctx, 'drivers', ctx.built.length, { limit: 5 }).el)));
   }).catch(() => {});
-  Promise.all([users(), teams(), teamMap()]).then(([us, tms, tmap]) => {
-    const done = us.filter((u) => isComplete(u));
+  Promise.all([homeOverview(), teams(), teamMap()]).then(([stats, tms, tmap]) => {
     const sv = (v, k) => { const el = h('div', { class: 'v display num' }, '0'); requestAnimationFrame(() => countUp(el, 0, v, 900)); return h('div', null, el, h('div', { class: 'k' }, k)); };
-    nums.replaceChildren(sv(done.length, t('statDrivers')), sv(tms.length, t('statTeams')), sv(done.filter((u) => u.input === 'wheel').length, t('statWheels')));
-    const recent = done.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
-    latest.replaceChildren(h('div', { class: 'stack', style: 'gap:8px' }, recent.map((u) => h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(u.psnLower) }, avatar(u, tmap[u.teamId]),
+    nums.replaceChildren(sv(stats.driverCount, t('statDrivers')), sv(tms.length, t('statTeams')), sv(stats.wheelCount, t('statWheels')));
+    latest.replaceChildren(h('div', { class: 'stack', style: 'gap:8px' }, stats.recent.map((u) => h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(u.psnLower) }, avatar(u, tmap[u.teamId]),
       h('span', { class: 'nm' }, h('b', null, fullName(u)), h('span', null, h('span', { class: 'rnum' }, '#' + u.raceNumber), '  ', u.psn)), ratingEl(u)))));
   }).catch(() => latest.replaceChildren(h('div', { class: 'empty' }, t('loadFailed'))));
   const links = h('div', { class: 'tiles', style: 'margin-top:4px' },

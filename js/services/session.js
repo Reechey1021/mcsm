@@ -3,6 +3,7 @@
 // router listen for the 'session' event on the bus.
 import { emit } from '../core/bus.js';
 import { isComplete } from '../model/profile.js';
+import { invalidate } from '../core/cache.js';
 
 export const session = { ready: false, user: null, profile: null };
 
@@ -11,6 +12,7 @@ export function initSession(backend) {
   backend.auth.onChange((user) => {
     // Same person, refreshed (e.g. email just confirmed): update without re-subscribing.
     if (user && session.user && user.uid === session.user.uid) { session.user = user; emit('session'); return; }
+    invalidate(); // identity/permission boundary: do not reuse the last account's cached data
     session.user = user;
     if (unwatch) { unwatch(); unwatch = null; }
     if (!user) { session.profile = null; session.ready = true; emit('session'); return; }

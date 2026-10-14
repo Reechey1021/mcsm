@@ -1,6 +1,7 @@
 // screens/drivers.js
 // The public driver directory and driver profiles.
 import { session } from '../services/session.js';
+import { backend } from '../services/backend.js';
 import { fmtInt } from '../core/motion.js';
 import { normName } from '../model/name-match.js';
 import { openSheet } from '../ui/sheet.js';
@@ -9,7 +10,7 @@ import { icon } from '../core/icons.js';
 import { flip } from '../core/motion.js';
 import { avatar, ratingEl, pageTitle, skelRows, empty, backLink, secHead } from '../ui/parts.js';
 import { t } from '../i18n/index.js';
-import { users, teamMap, gtTeams } from '../core/data.js';
+import { users, publicDriverDirectory, teamMap, gtTeams } from '../core/data.js';
 import { fullName, isComplete, DR_RANK } from '../model/profile.js';
 import { profileHead, profileKv } from './me.js';
 import { teamBadge } from '../ui/parts.js';
@@ -80,7 +81,7 @@ export function screenDrivers() {
   };
   let qT; input.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => { ui.q = input.value; update(true); }, 90); });
   sort.addEventListener('change', () => { ui.sort = sort.value; update(true); });
-  Promise.all([users(), teamMap(), gtTeams(), honours().catch(() => null), publicRatings()]).then(([us, tm, gts, H, P]) => {
+  Promise.all([publicDriverDirectory(), teamMap(), gtTeams(), honours().catch(() => null), publicRatings()]).then(([us, tm, gts, H, P]) => {
     mr = (P && P.drivers) || {};
     data = us.filter(isComplete); tmap = tm;
     if (H) data.forEach((u) => { const m = medalsForUser(H.people, u); if (m) medals[u.uid] = m; });
@@ -99,13 +100,12 @@ export function screenDrivers() {
 export function screenDriver({ psn }) {
   const box = h('div', null, skelRows(3, 120));
   const topRight = h('div');
-  Promise.all([users(), teamMap(), gtTeams()]).then(([us, tm, gts]) => {
-    const p = us.find((u) => u.psnLower === psn.toLowerCase());
+  Promise.all([backend.users.byPsn(psn), teamMap(), gtTeams()]).then(([p, tm, gts]) => {
     if (!p || !isComplete(p)) { box.replaceChildren(empty(t('notFound'))); return; }
     vtBack = p.uid;
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const res = h('div', null, skelRows(2, 60));
-    topRight.replaceChildren(h('button', { class: 'btn small', type: 'button', onclick: () => pickCompare(p, us) }, icon('users'), t('compare')));
+    topRight.replaceChildren(h('button', { class: 'btn small', type: 'button', onclick: () => users().then((us) => pickCompare(p, us)).catch(() => {}) }, icon('users'), t('compare')));
     box.replaceChildren(profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, oldResults(p));
     driverResults(p.uid).then((blocks) => res.replaceChildren(...(blocks.length ? blocks : [secHead(t('results')), empty(t('resultsLater'))]))).catch(() => res.replaceChildren());
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
@@ -116,7 +116,7 @@ async function driverResults(uid) {
   const all = (await loadSeasons()).filter((s) => ['pq', 'running', 'finished', 'archived'].includes(s.state)).sort((a, b) => b.no - a.no).slice(0, 4);
   const out = [];
   for (const s of all) {
-    const ctx = await loadRace(s.id);
+    const ctx = await loadRace(s.id, { includeUsers: false });
     if (!ctx || !ctx.built.some((r) => (r.legacy && r.legacy.some((x) => x.id === uid)) || Object.values(r.lobbies).some((l) => l.includes(uid)))) continue;
     const rows = ctx.built.map((rd) => {
       const tot = roundTotals(rd, ctx.points)[uid]; if (!tot) return null;

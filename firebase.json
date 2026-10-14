@@ -1,11 +1,39 @@
 {
-  "firestore": { "rules": "firestore.rules" },
-  "storage": { "rules": "storage.rules" },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "firestore.rules", "storage.rules", "tests/**", "**/*.md", "**/.*"],
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "storage.rules",
+      "tests/**",
+      "**/*.md",
+      "**/.*",
+      "functions/**",
+      "firestore.required-indexes.json",
+      "directory-cache/**"
+    ],
     "headers": [
-      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ]
-  }
+  },
+  "functions": [
+    {
+      "source": "directory-cache",
+      "codebase": "driverdirectory"
+    }
+  ]
 }

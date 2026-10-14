@@ -67,17 +67,43 @@ async function twitchAppToken() {
   twitchToken = { value: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
   return twitchToken.value;
 }
+// Member Twitch IDs may be stored as a link or a plain channel name.
+const twitchLogin = (value) => {
+  const m = /^(?:https?:\/\/(?:www\.|m\.)?twitch\.tv\/)?([A-Za-z0-9_]{3,25})\/?$/i.exec(String(value || '').trim());
+  return m ? m[1].toLowerCase() : null;
+};
+const streamProfile = (uid, d) => ({
+  uid, firstName: d.firstName || '', lastName: d.lastName || '',
+  psn: d.psn || '', psnLower: d.psnLower || '', gt7Avatar: d.gt7Avatar || '',
+  teamId: d.teamId || '', raceNumber: d.raceNumber || null,
+});
+// One request per warm instance performs the refresh; concurrent visitors share the Promise.
+let twitchRefreshing = null;
 async function twitchLive() {
+  if (twitchRefreshing) return twitchRefreshing;
+  twitchRefreshing = readAndRefreshTwitch();
+  try { return await twitchRefreshing; } finally { twitchRefreshing = null; }
+}
+async function readAndRefreshTwitch() {
   const db = admin.firestore();
   const ref = db.doc('content/live');
   const cur = (await ref.get()).data() || {};
   if (cur.at && Date.now() - cur.at < 90000) return { at: cur.at, streams: cur.streams || [] };
   let channels = cur.channels;
-  if (!channels || !cur.channelsAt || Date.now() - cur.channelsAt > 30 * 60000) {
-    const users = await db.collection('users').get();
+  let channelProfiles = cur.channelProfiles || {};
+  if (!channels || !cur.channelsAt || Date.now() - cur.channelsAt > 30 * 60000 || !cur.channelProfiles) {
+    // Firestore charges per matching document, not all registered drivers.
+    // Only profiles with non-empty streamUrl are fetched (single-field index).
+    const users = await db.collection('users').where('streamUrl', '>', '').get();
     channels = {};
-    users.forEach((d) => { const m = /twitch\.tv\/([A-Za-z0-9_]{3,25})/i.exec(String(d.data().streamUrl || '')); if (m) channels[m[1].toLowerCase()] = d.id; });
-    await ref.set({ channels, channelsAt: Date.now() }, { merge: true });
+    channelProfiles = {};
+    users.forEach((d) => {
+      const login = twitchLogin(d.data().streamUrl);
+      if (!login || ['__proto__', 'constructor', 'prototype'].includes(login)) return;
+      channels[login] = d.id;
+      channelProfiles[login] = streamProfile(d.id, d.data());
+    });
+    await ref.set({ channels, channelProfiles, channelsAt: Date.now() }, { merge: true });
   }
   const logins = Object.keys(channels);
   const streams = [];
@@ -87,17 +113,17 @@ async function twitchLive() {
       const q = logins.slice(i, i + 100).map((l) => 'user_login=' + encodeURIComponent(l)).join('&');
       const r = await fetch('https://api.twitch.tv/helix/streams?first=100&' + q, { headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, Authorization: 'Bearer ' + token } });
       const j = await r.json();
-      (j.data || []).forEach((s) => streams.push({ uid: channels[String(s.user_login).toLowerCase()] || null, login: s.user_login, name: s.user_name, title: s.title || '', viewers: s.viewer_count || 0, thumb: String(s.thumbnail_url || '').replace('{width}', '440').replace('{height}', '248'), startedAt: s.started_at || null }));
+      (j.data || []).forEach((s) => streams.push({ uid: channels[String(s.user_login).toLowerCase()] || null, login: s.user_login, name: s.user_name, title: s.title || '', viewers: s.viewer_count || 0, thumb: String(s.thumbnail_url || '').replace('{width}', '440').replace('{height}', '248'), startedAt: s.started_at || null, profile: channelProfiles[String(s.user_login).toLowerCase()] || null }));
     }
   }
   streams.sort((a, b) => b.viewers - a.viewers);
   const at = Date.now();
   const wasLive = new Set((cur.streams || []).map((s) => String(s.login).toLowerCase()));
   const notified = cur.notified || {};
-  const fresh = streams.filter((s) => !wasLive.has(String(s.login).toLowerCase()) && !(notified[s.login] && at - notified[s.login] < 2 * 3600000));
+  const fresh = streams.filter((s) => !wasLive.has(String(s.login).toLowerCase()) && !(notified[String(s.login).toLowerCase()] && at - notified[String(s.login).toLowerCase()] < 2 * 3600000));
   for (const s of fresh) {
-    notified[s.login] = at;
-    const who = s.uid ? ((await db.doc(`users/${s.uid}`).get()).data() || {}) : {};
+    notified[String(s.login).toLowerCase()] = at;
+    const who = s.profile || {};
     const name = who.lastName ? `${String(who.lastName).toLocaleUpperCase('hu')} ${who.firstName || ''}`.trim() : s.name;
     const tokens = await tokensFor(null, 'live', s.uid).catch(() => []);
     if (tokens.length) await sendTo(tokens, { notification: { title: `${name} élőben van`, body: s.title || 'Twitch' }, webpush: { fcmOptions: { link: 'https://twitch.tv/' + s.login } } }).catch(() => 0);
@@ -116,8 +142,7 @@ functions.http('mcsmAdmin', async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ code: 'fn-method', error: 'POST only' });
 
   try {
-    // Public: which members are live on Twitch. Cached in content/live for 90 s, so visitors never
-    // hit Twitch directly; the list of channels is re-read from profiles every 30 minutes.
+    // Public: one 90-second shared Twitch cache, with 30-minute refresh of Twitch-enabled profiles only.
     if ((req.body || {}).action === 'twitchLive') return res.json(await twitchLive());
     const token = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ code: 'fn-forbidden', error: 'Sign in first' });

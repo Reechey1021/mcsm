@@ -5,12 +5,11 @@ import { icon } from '../../core/icons.js';
 import { countUp } from '../../core/motion.js';
 import { pageTitle } from '../../ui/parts.js';
 import { t } from '../../i18n/index.js';
-import { users, teams, invalidate } from '../../core/data.js';
+import { users, teams } from '../../core/data.js';
 import { isComplete } from '../../model/profile.js';
 import { isOwner } from '../../services/session.js';
 
 export function screenAdmin() {
-  invalidate('users');
   const n = () => h('span', { class: 'n display num' }, '–');
   const cells = { people: n(), incomplete: n(), teams: n(), requests: n() };
   const tile = (ic, k, href, num) => h('a', { class: 'tile', href }, icon(ic), h('b', null, t(k)), num);

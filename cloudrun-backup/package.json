@@ -1,0 +1,11 @@
+{
+  "name": "mcsm-admin",
+  "version": "1.0.0",
+  "description": "MCSM admin function: import sign-in accounts, GridStats proxy",
+  "main": "index.js",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
+    "firebase-admin": "^12.6.0"
+  }
+}

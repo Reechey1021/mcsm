@@ -14,6 +14,89 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap">
 <link rel="stylesheet" href="css/app.css">
 <script type="module" src="js/main.js"></script>
+
+<!-- MCSM Google Analytics 4 -->
+<script>
+(() => {
+  const GA_ID = 'G-4RWFT4579E';
+  let enabled = false;
+  let lastPage = '';
+  let previousPage = document.referrer
+    ? new URL(document.referrer).origin
+    : '';
+
+  const pageNames = {
+    '': 'Főoldal',
+    'pilotak': 'Pilóták',
+    'szezonok': 'Szezonok',
+    'eredmenyek': 'Eredmények',
+    'csapatok': 'Csapatok',
+    'szabalyzat': 'Szabályzat',
+    'sajat': 'Saját profil',
+    'belepes': 'Bejelentkezés'
+  };
+
+  function currentPage() {
+    const hash = (location.hash || '#/').split('?')[0];
+    const section = hash.replace(/^#\//, '').split('/')[0];
+
+    return {
+      url: location.origin + location.pathname + hash,
+      title: 'MCSM | ' + (pageNames[section] || 'Egyéb')
+    };
+  }
+
+  function trackPage() {
+    if (!enabled) return;
+
+    const page = currentPage();
+    if (page.url === lastPage) return;
+
+    gtag('set', {
+      page_location: page.url,
+      page_title: page.title
+    });
+
+    gtag('event', 'page_view', {
+      page_location: page.url,
+      page_title: page.title,
+      ...(previousPage ? { page_referrer: previousPage } : {})
+    });
+
+    previousPage = page.url;
+    lastPage = page.url;
+  }
+
+  window.startMCSMAnalytics = function () {
+    if (enabled) return;
+    enabled = true;
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () {
+      window.dataLayer.push(arguments);
+    };
+
+    gtag('js', new Date());
+    gtag('config', GA_ID, {
+      send_page_view: false,
+      allow_google_signals: false,
+      page_location: currentPage().url
+    });
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.googletagmanager.com/gtag/js?id='
+      + encodeURIComponent(GA_ID);
+    document.head.appendChild(script);
+
+    trackPage();
+  };
+
+  window.addEventListener('hashchange', trackPage);
+  window.startMCSMAnalytics();
+})();
+</script>
+
 </head>
 <body>
 <main id="view"><div class="boot"><span class="spin" aria-label="Betöltés"></span></div></main>

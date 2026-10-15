@@ -5,7 +5,7 @@ import { h, frag } from '../../core/dom.js';
 import { icon } from '../../core/icons.js';
 import { field, passwordInput, busy } from '../../ui/controls.js';
 import { pageTitle, backLink, formError, skelRows } from '../../ui/parts.js';
-import { toast } from '../../ui/sheet.js';
+import { openSheet, toast } from '../../ui/sheet.js';
 import { t, fmtDate } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
 import { users as loadUsers, invalidate } from '../../core/data.js';
@@ -21,7 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const gsError = (e) => (e && e.code === 'permission-denied' ? t('permRulesHint') : t({ 'gs-blocked': 'gsBlocked', 'gs-auth': 'gsAuth', 'gs-quota': 'gsQuota', 'gs-notfound': 'gsNotFound', 'gs-http': 'gsHttp' }[e && e.code] || errorKey(e)));
 
 export function screenGt7() {
-  const root = h('div', null, skelRows(3, 120));
+  const root = h('div', { class: 'gt7-admin stack', style: 'gap:14px' }, skelRows(3, 120));
   let stop = false;
   onLeave(() => { stop = true; });
   Promise.all([backend.config.get('gridstats').catch((e) => ({ __error: e })), backend.content.get('cars').catch(() => null)]).then(([cfg0, carsDoc]) => {
@@ -75,36 +75,105 @@ export function screenGt7() {
     }));
     // Bulk profile writes go through the admin function (admin rights), else directly.
     const writeUsers = async (ops) => { if (!ops.length) return; try { await backend.admin.call('importData', { ops }); } catch (e) { if (e.code === 'fn-missing') { for (const o of ops) await backend.users.save(o.path[1], o.data); } else throw e; } };
-    // GT7 profile pictures: a console script on gran-turismo.com reads them, we store the links
+    // GT7 profile pictures: the existing import, presented as a guided sequence.
     const picInfo = h('p', { class: 'muted', style: 'margin:0' });
-    const picOut = h('div');
-    const paste = h('textarea', { class: 'input script-box', placeholder: '[{"guid":"…","avatar":"https://…","cover":"https://…"}]' });
-    const copyBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('list'), t('picsCopyScript'));
-    const saveBtn = h('button', { class: 'btn primary', type: 'button' }, icon('check'), t('picsSave'));
     let withGuid = [];
     const refreshPics = async () => { invalidate('users'); const us = await loadUsers(); withGuid = us.filter((u) => u.gt7Guid); picInfo.textContent = t('picsInfo', { n: withGuid.length, a: us.filter((u) => u.gt7Avatar).length, all: us.filter(isComplete).length }); };
     refreshPics().catch(() => {});
-    const onlyMissing = toggle(true, () => {}, { label: t('picsOnlyMissing') });
-    const psnFilter = h('input', { class: 'input', placeholder: t('picsPsnPh'), autocapitalize: 'off', spellcheck: 'false' });
-    copyBtn.addEventListener('click', () => busy(copyBtn, async () => {
-      await refreshPics();
-      if (!withGuid.length) { toast(t('picsNoGuid'), 'alert'); return; }
-      const wanted = psnFilter.value.split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
-      const pick = withGuid.filter((u) => (wanted.length ? wanted.includes(String(u.psn).toLowerCase()) : onlyMissing.getAttribute('aria-checked') !== 'true' || !u.gt7Avatar));
-      if (!pick.length) { toast(t('picsNothingToDo'), 'info'); return; }
-      withGuid = pick;
-      const script = profileScript(withGuid.map((u) => ({ guid: u.gt7Guid, psn: u.psn })));
-      try { await navigator.clipboard.writeText(script); toast(t('picsCopied', { n: withGuid.length })); }
-      catch { picOut.replaceChildren(h('textarea', { class: 'input script-box', readonly: true }, script)); toast(t('picsCopyManual'), 'info'); }
-    }));
-    saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
-      let rows; try { rows = JSON.parse(paste.value.trim()); if (!Array.isArray(rows)) throw 0; } catch { picOut.replaceChildren(formError(t('picsBadJson'))); return; }
-      const us = await loadUsers(); const byGuid = Object.fromEntries(us.filter((u) => u.gt7Guid).map((u) => [u.gt7Guid, u]));
-      const ops = []; let missing = 0;
-      rows.forEach((r) => { const u = byGuid[r.guid]; if (!u) { missing++; return; } ops.push({ path: ['users', u.uid], data: { gt7Avatar: r.avatar || GT7_DEFAULT_AVATAR, gt7Cover: r.cover || null }, merge: true }); });
-      try { await writeUsers(ops); invalidate('users'); await refreshPics(); drawDiag().catch(() => {}); picOut.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('picsSaved', { n: ops.length, m: missing })))); paste.value = ''; }
-      catch (e) { picOut.replaceChildren(formError(gsError(e) + (e.message ? ` (${e.message})` : ''))); }
-    }));
+    const startPics = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '', onclick: () => openPicsWizard() }, icon('refresh'), t('picsWizardStart'));
+    function openPicsWizard() {
+      let step = 0;
+      const bars = h('div', { class: 'wizard-steps', 'aria-hidden': 'true' }, [0, 1, 2, 3].map(() => h('i')));
+      const stepInfo = h('p', { class: 'note', style: 'margin:0 0 6px', role: 'status' });
+      const heading = h('h3', { class: 'display', style: 'font-size:24px;margin-bottom:16px' });
+      const body = h('div', { class: 'form' });
+      const picOut = h('div');
+      const paste = h('textarea', { class: 'input script-box', placeholder: '[{"guid":"...","avatar":"https://...","cover":"https://..."}]' });
+      const pasteField = field(t('picsWizardPasteLabel'), paste);
+      const onlyMissing = toggle(true, () => {}, { label: t('picsOnlyMissing') });
+      const psnFilter = h('input', { class: 'input', placeholder: t('picsPsnPh'), autocapitalize: 'off', spellcheck: 'false' });
+      const psnField = field(t('picsPsnFilter'), psnFilter, { hint: t('picsPsnHint') });
+      const copyBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('list'), t('picsCopyScript'));
+      const saveBtn = h('button', { class: 'btn primary', type: 'button' }, icon('check'), t('picsSave'));
+      let wizardRateMode = rateMode;
+      const wizardRateSeg = seg(rateOptions(), wizardRateMode, (v) => { wizardRateMode = v; }, { scroll: true });
+      const wizardRateProg = h('div');
+      const refreshBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('refresh'), t('gsRatingsTitle'));
+      const wizardStop = h('button', { class: 'btn small', type: 'button', onclick: () => { stop = true; } }, t('stop'));
+      const back = h('button', { class: 'btn', type: 'button', onclick: () => showStep(step - 1) }, t('back'));
+      const next = h('button', { class: 'btn primary', type: 'button', onclick: () => showStep(step + 1) }, t('next'));
+      const close = h('button', { class: 'btn primary', type: 'button', onclick: () => sheet.close() }, t('close'));
+      const foot = h('div', { class: 'wizard-foot' });
+      const sheet = openSheet({ title: t('picsTitle'), body: h('div', { class: 'gt7-pics-wizard' }, bars, stepInfo, heading, body, foot) });
+      const text = (key) => h('p', { class: 'muted', style: 'margin:0' }, t(key));
+      const steps = ['picsWizardRefreshTitle', 'picsWizardSelectTitle', 'picsWizardRunTitle', 'picsWizardPasteTitle'];
+      function showStep(n) {
+        step = n;
+        [...bars.children].forEach((b, i) => { b.className = i < step ? 'done' : i === step ? 'on' : ''; });
+        stepInfo.textContent = step < 4 ? t('picsWizardProgress', { n: step + 1, total: 4 }) : '';
+        heading.textContent = t(step < 4 ? steps[step] : 'picsWizardDone');
+        next.textContent = t(step === 2 ? 'picsWizardRan' : 'next');
+        if (step === 0) {
+          body.replaceChildren(text('picsWizardRefreshHelp'),
+            h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('rateWho')), wizardRateSeg),
+            h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, refreshBtn, wizardStop), wizardRateProg);
+          foot.replaceChildren(next);
+          requestAnimationFrame(() => wizardRateSeg._place());
+        } else if (step === 1) {
+          picOut.replaceChildren();
+          body.replaceChildren(text('picsWizardSelectHelp'),
+            h('div', { class: 'toggle-row' }, h('span', null, t('picsOnlyMissing'), h('small', null, t('picsOnlyMissingHint'))), onlyMissing),
+            psnField.row, h('div', null, copyBtn), picOut);
+          foot.replaceChildren(back);
+        } else if (step === 2) {
+          body.replaceChildren(text('picsWizardRunHelp'),
+            h('a', { class: 'btn primary', href: 'https://www.gran-turismo.com/gb/gt7/user/signin/', target: '_blank', rel: 'noopener' }, icon('link'), t('picsWizardOpenGt7')),
+            h('ol', { class: 'muted', style: 'margin:0;padding-left:22px;line-height:1.6' },
+              h('li', null, t('picsWizardConsole')), h('li', null, t('picsWizardExecute')), h('li', null, t('picsWizardReturn'))));
+          foot.replaceChildren(back, next);
+        } else if (step === 3) {
+          picOut.replaceChildren();
+          body.replaceChildren(text('picsWizardPasteHelp'), pasteField.row, picOut);
+          foot.replaceChildren(back, saveBtn);
+        } else {
+          body.replaceChildren(picOut);
+          foot.replaceChildren(close);
+        }
+        sheet.body.scrollTop = 0;
+      }
+      refreshBtn.addEventListener('click', () => busy(refreshBtn, async () => {
+        next.disabled = true;
+        try { await refreshRatings(wizardRateProg, wizardRateMode); }
+        finally { next.disabled = false; }
+      }));
+      copyBtn.addEventListener('click', () => busy(copyBtn, async () => {
+        await refreshPics();
+        if (!withGuid.length) { toast(t('picsNoGuid'), 'alert'); return; }
+        const wanted = psnFilter.value.split(/[\s,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+        const pick = withGuid.filter((u) => (wanted.length ? wanted.includes(String(u.psn).toLowerCase()) : onlyMissing.getAttribute('aria-checked') !== 'true' || !u.gt7Avatar));
+        if (!pick.length) { toast(t('picsNothingToDo'), 'info'); return; }
+        withGuid = pick;
+        const script = profileScript(withGuid.map((u) => ({ guid: u.gt7Guid, psn: u.psn })));
+        try { await navigator.clipboard.writeText(script); toast(t('picsCopied', { n: withGuid.length })); showStep(2); }
+        catch {
+          picOut.replaceChildren(text('picsCopyManual'), h('textarea', { class: 'input script-box', readonly: true }, script));
+          foot.replaceChildren(back, next);
+          toast(t('picsCopyManual'), 'info');
+        }
+      }));
+      saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
+        let rows; try { rows = JSON.parse(paste.value.trim()); if (!Array.isArray(rows)) throw 0; } catch { picOut.replaceChildren(formError(t('picsBadJson'))); return; }
+        const us = await loadUsers(); const byGuid = Object.fromEntries(us.filter((u) => u.gt7Guid).map((u) => [u.gt7Guid, u]));
+        const ops = []; let missing = 0;
+        rows.forEach((r) => { const u = byGuid[r.guid]; if (!u) { missing++; return; } ops.push({ path: ['users', u.uid], data: { gt7Avatar: r.avatar || GT7_DEFAULT_AVATAR, gt7Cover: r.cover || null }, merge: true }); });
+        try {
+          await writeUsers(ops); invalidate('users'); await refreshPics(); drawDiag().catch(() => {});
+          picOut.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('picsSaved', { n: ops.length, m: missing }))));
+          paste.value = ''; showStep(4);
+        } catch (e) { picOut.replaceChildren(formError(gsError(e) + (e.message ? ` (${e.message})` : ''))); }
+      }));
+      showStep(0);
+    }
     // Diagnostics: who has no GT7 ID (GridStats couldn't find the PSN ID), who has no picture.
     const diagBox = h('div');
     const drawDiag = async () => {
@@ -146,12 +215,13 @@ export function screenGt7() {
     const rateProg = h('div');
     const rateBtn = h('button', { class: 'btn primary', type: 'button', 'data-haptic': '' }, icon('refresh'), t('gsRatingsSync'));
     let rateMode = 'missing';
-    const rateSeg = seg([{ value: 'missing', label: t('rateMissing') }, { value: 'stale', label: t('rateStale') }, { value: 'all', label: t('rateAll') }], rateMode, (v) => { rateMode = v; }, { scroll: true });
-    rateBtn.addEventListener('click', () => busy(rateBtn, async () => {
+    const rateOptions = () => [{ value: 'missing', label: t('rateMissing') }, { value: 'stale', label: t('rateStale') }, { value: 'all', label: t('rateAll') }];
+    const rateSeg = seg(rateOptions(), rateMode, (v) => { rateMode = v; }, { scroll: true });
+    const refreshRatings = async (target, mode) => {
       stop = false;
-      const pr = progress(); rateProg.replaceChildren(pr.el);
+      const pr = progress(); target.replaceChildren(pr.el);
       invalidate('users');
-      const drivers = pickDrivers(await loadUsers(), rateMode);
+      const drivers = pickDrivers(await loadUsers(), mode);
       if (!drivers.length) { pr.line(t('rateNone')); return; }
       try {
         const r = await syncRatings(drivers, client(), { fake, stop: () => stop, onBatch: (b, total, n) => { pr.set(b / total); pr.line(t('gsBatch', { b, total, n })); } });
@@ -159,23 +229,24 @@ export function screenGt7() {
         await backend.audit.add({ action: 'gt7.ratings', target: 'users', targetName: 'DR/SR', before: null, after: { updated: r.updated, missing: r.missing.length }, reason: null });
         toast(t('gsRatingsDone', { n: r.updated })); refreshPics().catch(() => {}); drawDiag().catch(() => {});
       } catch (e) { pr.line(gsError(e) + (e.message ? ` (${e.message})` : '')); toast(gsError(e), 'alert'); }
-    }));
+    };
+    rateBtn.addEventListener('click', () => busy(rateBtn, () => refreshRatings(rateProg, rateMode)));
     const autoRow = h('div', { class: 'toggle-row' }, h('span', null, t('rateAuto'), h('small', null, cfg && cfg.lastAuto ? t('rateAutoLast', { date: fmtDate(cfg.lastAuto, true) }) : t('rateAutoHint'))),
       toggle(!cfg || cfg.autoDaily !== false, async (v) => { try { const cur = (await backend.config.get('gridstats')) || {}; await backend.config.save('gridstats', { ...cur, token: tokenIn.input.value.trim(), base: baseIn.value.trim(), autoDaily: v }); toast(t('saved')); } catch (e) { toast(gsError(e), 'alert'); } }, { label: t('rateAuto') }));
     const stopBtn = h('button', { class: 'btn small', type: 'button', onclick: () => { stop = true; } }, t('stop'));
     root.replaceChildren(
-      fake ? h('div', { class: 'callout', style: 'margin-bottom:14px' }, icon('info'), h('span', null, t('gsFakeNote'))) : null,
-      h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsCarsTitle')), carsInfo, h('p', { class: 'note', style: 'margin:0' }, t('gsCarsHelp'), ' ', h('a', { href: 'https://ddm999.github.io/gt7info/', target: '_blank', rel: 'noopener', style: 'color:var(--accent-text);font-weight:650' }, 'GT7 Info')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, carsBtn), carsProg),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsConnection')), tokenF.row,
-        h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
-        h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('diagTitle')), diagBox),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
-        h('ol', { class: 'note', style: 'margin:0;padding-left:20px;line-height:1.6' }, h('li', null, t('picsStep1')), h('li', null, t('picsStep2')), h('li', null, t('picsStep3')), h('li', null, t('picsStep4'))),
-        h('div', { class: 'toggle-row' }, h('span', null, t('picsOnlyMissing'), h('small', null, t('picsOnlyMissingHint'))), onlyMissing), field(t('picsPsnFilter'), psnFilter, { hint: t('picsPsnHint') }).row,
-        h('div', null, copyBtn), paste, h('div', null, saveBtn), picOut),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
-      h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('rateWho')), rateSeg), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg, autoRow));
+      fake ? h('div', { class: 'callout' }, icon('info'), h('span', null, t('gsFakeNote'))) : null,
+      h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('diagTitle')), diagBox),
+      h('div', { class: 'stack gt7-admin-tools' },
+        h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsCarsTitle')), carsInfo, h('p', { class: 'note', style: 'margin:0' }, t('gsCarsHelp'), ' ', h('a', { href: 'https://ddm999.github.io/gt7info/', target: '_blank', rel: 'noopener', style: 'color:var(--accent-text);font-weight:650' }, 'GT7 Info')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, carsBtn), carsProg),
+        h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
+        h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('rateWho')), rateSeg), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg, autoRow)),
+      h('details', { class: 'adv', style: 'margin-top:0' }, h('summary', null, icon('cog'), t('gsToken'), icon('down', 'chev')),
+        h('div', { class: 'stack', style: 'gap:12px' }, tokenF.row,
+          h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
+          h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status)),
+      h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
+        h('p', { class: 'note', style: 'margin:0' }, t('picsWizardIntro')), h('div', null, startPics)));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));
   return frag(backLink(t('admin'), '#/admin'), pageTitle(t('gsTitle'), t('gsSub')), root);
 }

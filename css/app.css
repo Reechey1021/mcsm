@@ -1056,3 +1056,12 @@ details.adv .round-item, .stack > .round-item{ box-sizing:border-box; max-width:
 /* 0.9.8 */
 .stars-lg .star{ width:19px; height:18px; }
 .mr-status{ margin:-4% 0 14px; }
+
+/* GT7 admin only: existing panels/controls, three columns on desktop. */
+.gt7-admin .gt7-admin-tools{ grid-template-columns:minmax(0, 1fr); gap:14px; }
+.gt7-admin .gt7-admin-tools > .panel{ min-width:0; align-content:start; }
+.gt7-admin .gt7-admin-tools .seg{ min-width:0; }
+.gt7-admin > details.adv .input{ box-sizing:border-box; max-width:100%; min-width:0; }
+@media (min-width:900px){
+  .gt7-admin .gt7-admin-tools{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+}

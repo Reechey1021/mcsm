@@ -1,14 +1,17 @@
 // services/mcsm-rating.js
-// MCSM Rating v3.2 wiring. The historical bootstrap (MCSM25-30, imported once by an admin) lives in
+// MCSM Rating v3.2 wiring. The historical bootstrap (MCSM25–30, imported once by an admin) lives in
 // an admin-only record (config/ratingBootstrap). Admins compute; only what drivers may see is
 // published to content/ratings: full numbers for established drivers, the round count otherwise.
 import { backend } from './backend.js';
 import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
+import { gpGrid } from '../engine/scoring.js';
 import { computeRatings, overallOf, publicOf, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
 import { normName } from '../model/name-match.js';
+
 export const LIVE_FROM_SEASON = 31;
 const ALIASES = { 'tdrenkovics': 'mgtknothingtomi' };
+
 // Finished live rounds (MCSM31 onwards) with session results; imported old rounds only have totals.
 export async function collectRounds() {
   const all = (await loadSeasons()).filter((s) => s.no >= LIVE_FROM_SEASON).sort((a, b) => a.no - b.no);
@@ -19,13 +22,19 @@ export async function collectRounds() {
     if (!ctx) continue;
     for (const rd of ctx.built.slice().sort((a, b) => a.n - b.n)) {
       if (rd.legacy || rd.state !== 'final' || !rd.results || !Object.keys(rd.results).length) continue;
-      out.push({ key: `${s.id}-${rd.n}`, label: `MCSM${s.no} / ${rd.n}`, results: rd.results });
+      const grids = Object.fromEntries(Object.entries(rd.results).map(([L, res]) => {
+        const q = (res.Q || []).filter((r) => r.status === 'OK' || r.status === 'NT').sort((a, b) => a.pos - b.pos);
+        return [L, { S: q.map((r) => r.id), GP: gpGrid(res.Q || []).map((r) => r.id) }];
+      }));
+      out.push({ key: `${s.id}-${rd.n}`, label: `MCSM${s.no} / ${rd.n}`, results: rd.results, grids });
     }
   }
   return out;
 }
+
 export async function loadBootstrap() { return (await backend.config.get('ratingBootstrap').catch(() => null)) || null; }
 export const saveBootstrap = (doc) => backend.config.save('ratingBootstrap', doc);
+
 // Match imported PSN IDs to accounts: saved choices first, then exact PSN (accents/case ignored).
 export function matchBootstrap(entries, users, map = {}) {
   const byNorm = {};
@@ -36,6 +45,7 @@ export function matchBootstrap(entries, users, map = {}) {
     return { ...e, key: k, uid };
   });
 }
+
 export function startFrom(boot, users) {
   const start = {};
   if (!boot || !boot.entries) return start;
@@ -45,6 +55,7 @@ export function startFrom(boot, users) {
   });
   return start;
 }
+
 export async function computeAndPublish() {
   invalidate('users'); invalidate();
   const [boot, users, rounds] = await Promise.all([loadBootstrap(), loadUsers(), collectRounds()]);
@@ -72,4 +83,5 @@ export async function computeAndPublish() {
   invalidate('mcsmRatings');
   return { rounds: rounds.length, established, audit: res.audit };
 }
+
 export const publicRatings = () => cached('mcsmRatings', () => backend.content.get('ratings').then((d) => d || { drivers: {} }).catch(() => ({ drivers: {} })));

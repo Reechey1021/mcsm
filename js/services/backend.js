@@ -60,6 +60,11 @@ function installInvalidation(b) {
     if (['cars', 'tracks', 'ratings', 'news'].includes(id)) invalidate(id === 'ratings' ? 'mcsmRatings' : id);
   });
   after('admin', 'writeMany', () => invalidate());
+  const touch = (sid) => { const id = typeof sid === 'string' ? sid : sid && sid.id; if (id) import('./season-summary.js').then((m) => m.touchSummary(id)).catch(() => {}); };
+  for (const method of ['save', 'patch']) after('seasons', method, touch);
+  for (const method of ['save', 'remove']) after('entries', method, touch);
+  for (const method of ['pqSave', 'roundSave', 'sheetSave']) after('race', method, touch);
+  for (const method of ['save', 'remove']) after('penalties', method, touch);
 }
 
 // Errors from both backends arrive as { code }. Map them to translation keys.

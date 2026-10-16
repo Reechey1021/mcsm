@@ -26,7 +26,8 @@ export const isJudgeProfile = (p) => !!(p && p.roles && (p.roles.judge === true 
 // Everyone who could sit on this case, and why someone is left out.
 // judges: [{ uid, ...profile }], teamOf: uid -> teamId in this season.
 export function eligibility(protest, judges, teamOf) {
-  const involved = new Set([protest.by, ...(protest.involved || [])].filter(Boolean));
+  const complainant = protest.type === 'judge' ? null : protest.complainant || protest.by;
+  const involved = new Set([complainant, ...(protest.involved || [])].filter(Boolean));
   const involvedTeams = new Set([...involved].map((u) => teamOf(u)).filter(Boolean));
   return judges.filter(isJudgeProfile).map((j) => {
     let reason = '';

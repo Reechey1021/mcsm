@@ -393,13 +393,15 @@ export function createFakeBackend() {
     protests: {
       async list(sid) {
         await lag(); const a = currentAcct(); const judge = a && isJudgeUid(a.uid);
-        return Object.values(clone(bucket(sid).protests)).filter((p) => judge || p.status === 'published' || (a && (p.by === a.uid || (p.involved || []).includes(a.uid))));
+        return Object.values(clone(bucket(sid).protests)).filter((p) => judge || p.status === 'published' || p.status === 'notInvestigated' || (a && (p.by === a.uid || p.complainant === a.uid || (p.involved || []).includes(a.uid))));
       },
       async save(sid, id, data) {
         await lag(); const a = me(); const b = bucket(sid); const cur = id ? b.protests[id] : null;
         if (!cur) {
           if (data.by !== a.uid) fail('permission-denied');
-          if (data.type === 'judge') { if (!isJudgeUid(a.uid)) fail('permission-denied'); }
+          const r0 = roleOf(a.uid);
+          if (r0.admin || r0.owner) { /* admins may always file */ }
+          else if (data.type === 'judge') fail('permission-denied');
           else {
             const season = db.seasons[sid]; const round = (season.rounds || []).find((r) => r.n === data.n);
             const entry = (db.entries[sid] || {})[a.uid];

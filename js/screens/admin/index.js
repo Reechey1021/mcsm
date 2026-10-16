@@ -8,6 +8,9 @@ import { t } from '../../i18n/index.js';
 import { users, teams } from '../../core/data.js';
 import { isComplete } from '../../model/profile.js';
 import { isOwner } from '../../services/session.js';
+import { busy } from '../../ui/controls.js';
+import { toast } from '../../ui/sheet.js';
+import { errorKey } from '../../services/backend.js';
 
 export function screenAdmin() {
   const n = () => h('span', { class: 'n display num' }, '–');
@@ -25,14 +28,29 @@ export function screenAdmin() {
       tile('flag', 'adminTeams', '#/admin/csapatok', cells.teams),
       tile('clock', 'adminRequests', '#/admin/csapatok', cells.requests)),
     h('div', { class: 'stack', style: 'gap:8px;margin-top:16px' },
+      h('a', { class: 'round-item', href: '#/admin/szerepkorok' }, icon('shield', 'chev'), h('span', { class: 't' }, h('b', null, t('rolesTitle')), h('span', { class: 'sub' }, t('rolesSub'))), icon('chevR', 'chev')),
       h('a', { class: 'round-item', href: '#/admin/gt' }, icon('grid', 'chev'), h('span', { class: 't' }, h('b', null, t('adminGt')), h('span', { class: 'sub' }, t('adminGtSub'))), icon('chevR', 'chev')),
       h('a', { class: 'round-item', href: '#/admin/naplo' }, icon('history', 'chev'), h('span', { class: 't' }, h('b', null, t('adminAudit')), h('span', { class: 'sub' }, t('adminAuditSub'))), icon('chevR', 'chev'))),
     h('details', { class: 'adv' }, h('summary', null, icon('cog'), t('advanced'), icon('down', 'chev')),
       h('div', { class: 'stack', style: 'gap:8px;margin-top:10px' },
-      h('a', { class: 'round-item', href: '#/admin/szerepkorok' }, icon('shield', 'chev'), h('span', { class: 't' }, h('b', null, t('rolesTitle')), h('span', { class: 'sub' }, t('rolesSub'))), icon('chevR', 'chev')),
-      isOwner() ? h('a', { class: 'round-item', href: '#/admin/import' }, icon('refresh', 'chev'), h('span', { class: 't' }, h('b', null, t('impTitle')), h('span', { class: 'sub' }, t('impAdminSub'))), icon('chevR', 'chev')) : null,
-      h('a', { class: 'round-item', href: '#/admin/gt7' }, icon('car', 'chev'), h('span', { class: 't' }, h('b', null, t('gsTitle')), h('span', { class: 'sub' }, t('gsAdminSub'))), icon('chevR', 'chev')),
-        h('a', { class: 'round-item', href: '#/admin/mcsm-rating' }, icon('bolt', 'chev'), h('span', { class: 't' }, h('b', null, 'MCSM Rating'), h('span', { class: 'sub' }, t('mrAdminSub'))), icon('chevR', 'chev')),
-        isOwner() ? h('a', { class: 'round-item', href: '#/admin/osszevonas' }, icon('users', 'chev'), h('span', { class: 't' }, h('b', null, t('mergeTitle')), h('span', { class: 'sub' }, t('mergeAdminSub'))), icon('chevR', 'chev')) : null,
-        h('a', { class: 'round-item', href: '#/admin/beallitasok' }, icon('bell', 'chev'), h('span', { class: 't' }, h('b', null, t('settingsTitle')), h('span', { class: 'sub' }, t('settingsSub'))), icon('chevR', 'chev')))));
+        h('a', { class: 'round-item', href: '#/admin/gt7' }, icon('car', 'chev'), h('span', { class: 't' }, h('b', null, t('gsTitle')), h('span', { class: 'sub' }, t('gsAdminSub'))), icon('chevR', 'chev')),
+        h('a', { class: 'round-item', href: '#/admin/mcsm-rating' }, icon('bolt', 'chev'), h('span', { class: 't' }, h('b', null, 'MCSM Rating'), h('span', { class: 'sub' }, t('mrAdminSub'))), icon('chevR', 'chev')))),
+    // Developer tools: one-off and technical things. Owners only, collapsed.
+    isOwner() ? h('details', { class: 'adv dev-tools' }, h('summary', null, icon('alert'), t('devTools'), icon('down', 'chev')),
+      h('div', { class: 'stack', style: 'gap:8px;margin-top:10px' },
+        h('p', { class: 'note', style: 'margin:0' }, t('devToolsHint')),
+        h('a', { class: 'round-item', href: '#/admin/beallitasok' }, icon('bell', 'chev'), h('span', { class: 't' }, h('b', null, t('settingsTitle')), h('span', { class: 'sub' }, t('settingsSubDev'))), icon('chevR', 'chev')),
+        h('a', { class: 'round-item', href: '#/admin/import' }, icon('refresh', 'chev'), h('span', { class: 't' }, h('b', null, t('impTitle')), h('span', { class: 'sub' }, t('impAdminSub'))), icon('chevR', 'chev')),
+        h('a', { class: 'round-item', href: '#/admin/osszevonas' }, icon('users', 'chev'), h('span', { class: 't' }, h('b', null, t('mergeTitle')), h('span', { class: 'sub' }, t('mergeAdminSub'))), icon('chevR', 'chev')),
+        summaryTool())) : null);
+}
+
+// Rebuild the saved summaries of finished seasons (normally written automatically).
+function summaryTool() {
+  const b = h('button', { class: 'btn small', type: 'button' }, icon('refresh'), t('summariesRebuild'));
+  b.addEventListener('click', () => busy(b, async () => {
+    try { const { rebuildAllSummaries } = await import('../../services/season-summary.js'); const n = await rebuildAllSummaries(); toast(t('summariesDone', { n })); }
+    catch (e) { toast(t(errorKey(e)) + (e.message ? ` (${e.message})` : ''), 'alert'); }
+  }));
+  return h('div', { class: 'round-item', style: 'cursor:default' }, icon('list', 'chev'), h('span', { class: 't' }, h('b', null, t('summariesTitle')), h('span', { class: 'sub' }, t('summariesSub'))), b);
 }

@@ -27,7 +27,7 @@ const ui = { q: '', filter: 'all', sort: 'dr' };
 let vtBack = null;
 
 export function screenDrivers() {
-  const grid = h('div', { class: 'drv-grid' }, skelRows(6, 66));
+  const grid = h('div', { class: 'drv-grid' }, ...Array.from({ length: 9 }, () => h('div', { class: 'skel', style: 'height:66px' })));
   const count = h('span', { class: 'faint' });
   const input = h('input', { type: 'search', placeholder: t('searchDrivers'), value: ui.q, 'aria-label': t('searchDrivers'), autocomplete: 'off', enterkeyhint: 'search' });
   const chips = h('div', { class: 'chips', role: 'group', 'aria-label': t('filters') });
@@ -106,21 +106,35 @@ export function screenDriver({ psn }) {
     const gt = gts.find((g) => g.id === p.gtTeamId);
     const res = h('div', null, skelRows(2, 60));
     topRight.replaceChildren(h('button', { class: 'btn small', type: 'button', onclick: () => users().then((us) => pickCompare(p, us)).catch(() => {}) }, icon('users'), t('compare')));
-    box.replaceChildren(profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, oldResults(p));
-    driverResults(p.uid).then((blocks) => res.replaceChildren(...(blocks.length ? blocks : [secHead(t('results')), empty(t('resultsLater'))]))).catch(() => res.replaceChildren());
+    const old = h('div');
+    box.replaceChildren(profileHead(p, tm[p.teamId], { vt: true, gt }), profileKv(p, tm[p.teamId], gt && gt.tag, gt), res, old);
+    driverResults(p.uid, p).then((blocks) => { res.replaceChildren(...(blocks.length ? blocks : [secHead(t('results')), empty(t('resultsLater'))])); old.replaceChildren(oldResults(p, blocks.shown)); })
+      .catch(() => { res.replaceChildren(); old.replaceChildren(oldResults(p)); });
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
   return frag(h('div', { class: 'top-row' }, backLink(t('drivers'), '#/pilotak'), topRight), box);
 }
 
-async function driverResults(uid) {
+// Seasons imported from the old site only kept round totals and an overall rank. Their lobby and
+// within-lobby positions come from the MCSM25–30 history data (matched by PSN ID).
+async function driverResults(uid, p = {}) {
   const all = (await loadSeasons()).filter((s) => ['pq', 'running', 'finished', 'archived'].includes(s.state)).sort((a, b) => b.no - a.no).slice(0, 4);
   const out = [];
+  out.shown = new Set();
+  const { HISTORY } = await import('../data/history-s25-30.js').catch(() => ({ HISTORY: [] }));
   for (const s of all) {
     const ctx = await loadRace(s.id, { includeUsers: false });
     if (!ctx || !ctx.built.some((r) => (r.legacy && r.legacy.some((x) => x.id === uid)) || Object.values(r.lobbies).some((l) => l.includes(uid)))) continue;
+    out.shown.add(s.no);
+    const names = new Set([p.psn, (ctx.snaps[uid] || {}).psn].filter(Boolean).map(normName));
+    const histRow = (n) => HISTORY.find((r) => r[0] === s.no && r[1] === n && names.has(normName(r[3])));
     const rows = ctx.built.map((rd) => {
       const tot = roundTotals(rd, ctx.points)[uid]; if (!tot) return null;
-      const st = (S) => { if (rd.legacy) return S === 'GP' ? 'P' + tot.gpPos : '–'; const r = (rd.results[tot.lobby][S] || []).find((x) => x.id === uid); return !r ? '–' : r.status === 'OK' ? 'P' + r.pos : r.status; };
+      const hr = rd.legacy ? histRow(rd.n) : null;
+      if (hr) tot.lobby = hr[2];
+      const st = (S) => {
+        if (rd.legacy) { const v = hr ? hr[{ Q: 4, S: 5, GP: 6 }[S]] : null; return v == null ? '–' : typeof v === 'number' ? 'P' + v : v; }
+        const r = (rd.results[tot.lobby][S] || []).find((x) => x.id === uid); return !r ? '–' : r.status === 'OK' ? 'P' + r.pos : r.status;
+      };
       return h('tr', null, h('td', null, h('a', { href: `#/szezonok/${s.id}/fordulo/${rd.n}`, style: 'font-weight:700' }, t('roundN', { n: rd.n }))), h('td', null, tot.lobby ? h('span', { class: 'lobby ' + tot.lobby }, tot.lobby) : '–'),
         h('td', { class: 'r' }, st('Q')), h('td', { class: 'r' }, st('S')), h('td', { class: 'r' }, st('GP')), h('td', { class: 'r', style: 'font-weight:800' }, tot.total));
     }).filter(Boolean);
@@ -142,14 +156,15 @@ function pickCompare(p, us) {
 }
 
 // MCSM25–30: finishing positions from before the site kept session results.
-function oldResults(p) {
+function oldResults(p, skip = new Set()) {
   const box = h('section');
   import('../data/history-s25-30.js').then(({ HISTORY }) => {
     const me = normName(p.psn);
-    const rows = HISTORY.filter((r) => normName(r[3]) === me).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+    const rows = HISTORY.filter((r) => normName(r[3]) === me && !skip.has(r[0])).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
     if (!rows.length) { box.remove(); return; }
-    const pos = (v) => (v == null ? '–' : 'P' + v);
-    box.replaceChildren(secHead(t('oldResultsTitle')), h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' },
+    const pos = (v) => (v == null ? '–' : typeof v === 'number' ? 'P' + v : v);
+    const ss = rows.map((r) => r[0]);
+    box.replaceChildren(secHead(t('oldResultsRange', { a: Math.min(...ss), b: Math.max(...ss) }).replace(/MCSM(\d+)–MCSM?\1(?!\d)/, 'MCSM$1')), h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' },
       h('thead', null, h('tr', null, h('th', null, t('season')), h('th', null, t('lobby')), h('th', { class: 'r' }, 'Q'), h('th', { class: 'r' }, 'S'), h('th', { class: 'r' }, 'GP'))),
       h('tbody', null, rows.map((r) => h('tr', null, h('td', null, `MCSM${r[0]} / ${r[1]}`, r[7] ? ' *' : ''), h('td', null, h('span', { class: 'lobby ' + r[2] }, r[2])), h('td', { class: 'r' }, pos(r[4])), h('td', { class: 'r' }, pos(r[5])), h('td', { class: 'r' }, pos(r[6]))))))),
       rows.some((r) => r[7]) ? h('p', { class: 'note' }, t('oldResultsEstimated')) : null);

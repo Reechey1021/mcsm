@@ -109,7 +109,8 @@ function roundView(ctx, n, reload) {
   const published = ['provisional', 'final'].includes(doc.resultsState);
   const showResults = built && (published || isStaff());
   const myL = session.user ? lobbyOf(doc.lobbies, session.user.uid) : null;
-  if (!rui.L || !(doc.lobbies || {})[rui.L]) rui.L = myL || 'A';
+  const ruiKey = ctx.season.id + ':' + n;
+  if (rui.key !== ruiKey || !rui.L || !(doc.lobbies || {})[rui.L]) { rui.key = ruiKey; rui.L = myL || 'A'; }
   if (built && built.legacy) {
     const me = session.user && session.user.uid;
     const fl = built.legacy.find((r) => r.fl);

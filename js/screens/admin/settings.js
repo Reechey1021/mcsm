@@ -2,12 +2,34 @@
 // Connections that are set once: the admin function's address and the Web Push key.
 import { h, frag } from '../../core/dom.js';
 import { icon } from '../../core/icons.js';
-import { busy, field } from '../../ui/controls.js';
+import { busy, field, passwordInput } from '../../ui/controls.js';
+import { gridstatsClient, fakeGridstats } from '../../services/gridstats.js';
+import { formError } from '../../ui/parts.js';
 import { pageTitle, backLink } from '../../ui/parts.js';
 import { toast } from '../../ui/sheet.js';
 import { t } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
 import { isOwner } from '../../services/session.js';
+
+// GT GridStats API token (used by the GT7 data page for DR/SR sync and the track list).
+function gridstatsSection() {
+  const fake = backend.kind === 'fake';
+  const tokenIn = passwordInput({ autocomplete: 'off' });
+  const baseIn = h('input', { class: 'input', value: 'https://gt-gridstats.com/api' });
+  let cfg = {};
+  backend.config.get('gridstats').then((c) => { cfg = c || {}; tokenIn.input.value = cfg.token || ''; if (cfg.base) baseIn.value = cfg.base; }).catch(() => {});
+  const status = h('div');
+  const save = h('button', { class: 'btn small', type: 'button' }, icon('check'), t('save'));
+  const doSave = async () => { const next = { ...cfg, token: tokenIn.input.value.trim(), base: baseIn.value.trim() }; await backend.config.save('gridstats', next); cfg = next; };
+  save.addEventListener('click', () => busy(save, async () => { try { await doSave(); toast(t('gsTokenSaved')); } catch (e) { status.replaceChildren(formError(t(errorKey(e)))); } }));
+  const test = h('button', { class: 'btn small primary', type: 'button' }, icon('bolt'), t('gsTest'));
+  test.addEventListener('click', () => busy(test, async () => {
+    try { await (fake ? fakeGridstats() : gridstatsClient({ token: tokenIn.input.value.trim(), base: baseIn.value.trim() })).ping(); if (!fake) await doSave(); status.replaceChildren(h('div', { class: 'callout' }, icon('check'), h('span', null, t('gsOk')))); }
+    catch (e) { status.replaceChildren(formError(t('gsAuth'))); }
+  }));
+  return h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, 'GT GridStats'),
+    field(t('gsToken'), tokenIn, { hint: t('gsTokenHint') }).row, field(t('gsBase'), baseIn).row, h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status);
+}
 
 export function screenSettings() {
   const urlIn = h('input', { class: 'input', type: 'url', placeholder: 'https://mcsm-admin-….run.app' });
@@ -30,5 +52,5 @@ export function screenSettings() {
     h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('pushTitle')), h('p', { class: 'note', style: 'margin:0' }, t('pushAdminHelp')),
       field(t('vapidKey'), vapidIn, { hint: t('vapidHint') }).row, h('div', null, saveVapid)),
     h('section', { class: 'panel pad stack', style: 'gap:12px;margin-top:14px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('aiSettingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('aiSettingsHelp')),
-      field(t('aiModel'), modelIn, { hint: t('aiModelHint') }).row, h('div', null, saveModel)));
+      field(t('aiModel'), modelIn, { hint: t('aiModelHint') }).row, h('div', null, saveModel)), gridstatsSection());
 }

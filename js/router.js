@@ -62,7 +62,7 @@ const ROUTES = [
   ['/udv', screenWelcome, { auth: true, noBanner: true, keep: true }],
   ['/admin/import', screenImport, { tab: 4, auth: true, owner: true }],
   ['/admin/szerepkorok', screenRoles, { tab: 4, auth: true, roleAdmin: true }],
-  ['/admin/beallitasok', screenSettings, { tab: 4, auth: true, admin: true }],
+  ['/admin/beallitasok', screenSettings, { tab: 4, auth: true, owner: true }],
   ['/admin/osszevonas', screenMerge, { tab: 4, auth: true, owner: true }],
   ['/admin/mcsm-rating', screenRatingAdmin, { tab: 4, auth: true, admin: true }],
   ['/osszevetes/:a/:b', screenCompare, { tab: 3 }],

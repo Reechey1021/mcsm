@@ -3,7 +3,8 @@
 // TTL handles changes published from other tabs or devices.
 import { backend } from '../services/backend.js';
 import { isStaff, session } from '../services/session.js';
-import { teamMap, gtTeams, entries as loadEntries } from './data.js';
+import { teamMap, gtTeams, entries as loadEntries, seasons as loadSeasons } from './data.js';
+import { readSummary, FINISHED_STATES } from '../services/season-summary.js';
 import { cached, invalidateRace as clearRace } from './cache.js';
 import { entryTable } from '../model/season.js';
 import { buildRounds, seasonTeams, tableOf, pqRanking } from '../model/race.js';
@@ -16,6 +17,11 @@ export function loadRace(sid, { drafts = false, includeUsers = true } = {}) {
   const userScope = staff ? (session.user?.uid || 'anonymous') : 'public';
   return cached(`race:${sid}:${visibility}:${view}:${includeUsers ? 'enriched' : 'light'}:${userScope}`, async () => {
     const raw = await cached(`raceDocs:${sid}:${visibility}:${userScope}`, async () => {
+      if (!staff) {
+        const meta = (await loadSeasons().catch(() => [])).find((x) => x.id === sid);
+        const sum = meta && FINISHED_STATES.includes(meta.state) ? await readSummary(sid) : null;
+        if (sum) { const [tmap, gts] = await Promise.all([teamMap(), gtTeams()]); return { season: sum.season, entries: sum.entries, roundDocs: sum.roundDocs, sheets: sum.sheets, pqDocs: sum.pqDocs, penalties: sum.penalties, tmap, gts }; }
+      }
       const [season, entries, roundDocs, sheets, pqDocs, penalties, tmap, gts] = await Promise.all([
         backend.seasons.get(sid), loadEntries(sid), backend.race.roundsList(sid, { staff }),
         backend.race.sheetsList(sid, { staff }), backend.race.pqList(sid),

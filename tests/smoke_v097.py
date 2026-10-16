@@ -43,7 +43,7 @@ with sync_playwright() as p:
         # filing form: own lobby only, "Kanyar / Időpont"
         pg.click('a.protest-btn'); pg.wait_for_timeout(2000)
         v = text(pg)
-        lob = len(pg.query_selector_all('.form .f-row:first-child .seg button'))
+        lob = len(pg.query_selector_all('.form .f-row:has(.f-label:text-is("Lobby")) .seg button'))
         check(lob >= 1 and 'Kanyar / Időpont' in v, f'{size}: driver form: any lobby of the season (since 0.9.8) ({lob})')
         go(pg, '/szezonok/mcsm31/fordulo/1/ovas', 'owner')
         check('Kanyar / Időpont' in text(pg) and 'Pl. T4 / Hajtű / 12:36.000' in pg.content() and pg.query_selector('.toggle-row:has-text("Hivatalos")') is not None or 'Kanyar / Időpont' in text(pg), f'{size}: admin form: corner/time, official case option')

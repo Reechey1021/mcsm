@@ -1,5 +1,6 @@
 // screens/teams.js
 // Teams: the list (logos, members, titles) and a page per team with its honours and drivers.
+import { loadRace } from '../core/race-data.js';
 import { publicDriverDirectory, seasons as loadSeasons, entries as loadEntries } from '../core/data.js';
 import { publicRatings } from '../services/mcsm-rating.js';
 import { h, frag } from '../core/dom.js';
@@ -28,7 +29,7 @@ async function pastDrivers(teamId, currentUids) {
   const all = (await loadSeasons()).filter((s) => !['draft', 'announced'].includes(s.state)).sort((a, b) => b.no - a.no);
   const byUid = {};
   for (const s of all) {
-    const es = await loadEntries(s.id).catch(() => []);
+    const es = ['finished', 'archived'].includes(s.state) ? await loadRace(s.id, { includeUsers: false }).then((c) => (c ? c.entries : [])).catch(() => []) : await loadEntries(s.id).catch(() => []);
     es.filter((e) => e.snapshot && e.snapshot.teamId === teamId && !currentUids.has(e.uid)).forEach((e) => {
       const x = byUid[e.uid] || (byUid[e.uid] = { uid: e.uid, snap: e.snapshot, seasons: [] });
       x.seasons.push(s.no);
@@ -38,7 +39,7 @@ async function pastDrivers(teamId, currentUids) {
 }
 
 export function screenTeams() {
-  const grid = h('div', { class: 'team-grid' }, skelRows(6, 80));
+  const grid = h('div', { class: 'team-grid' }, ...Array.from({ length: 6 }, () => h('div', { class: 'skel', style: 'height:80px' })));
   Promise.all([teams(), people(), honours().catch(() => null), publicRatings()]).then(([tms, us, H, P]) => {
     const members = (id) => us.filter((u) => u.teamId === id && isComplete(u));
     const shown = tms.filter((x) => x.status !== 'retired').map((tm) => ({ tm, m: H ? medalsForTeam(H.teams, tm) : null }))

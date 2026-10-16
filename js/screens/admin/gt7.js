@@ -241,10 +241,7 @@ export function screenGt7() {
         h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsCarsTitle')), carsInfo, h('p', { class: 'note', style: 'margin:0' }, t('gsCarsHelp'), ' ', h('a', { href: 'https://ddm999.github.io/gt7info/', target: '_blank', rel: 'noopener', style: 'color:var(--accent-text);font-weight:650' }, 'GT7 Info')), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, carsBtn), carsProg),
         h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('tracksTitle')), trackInfo, h('p', { class: 'note', style: 'margin:0' }, t('tracksHelp')), h('div', null, trackBtn), trackProg),
         h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('gsRatingsTitle')), h('p', { class: 'note', style: 'margin:0' }, t('gsRatingsHelp')), h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('rateWho')), rateSeg), h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, rateBtn, stopBtn), rateProg, autoRow)),
-      h('details', { class: 'adv', style: 'margin-top:0' }, h('summary', null, icon('cog'), t('gsToken'), icon('down', 'chev')),
-        h('div', { class: 'stack', style: 'gap:12px' }, tokenF.row,
-          h('details', null, h('summary', { style: 'cursor:pointer;font-weight:650;font-size:14px;color:var(--ink-2)' }, t('gsAdvanced')), h('div', { style: 'margin-top:10px' }, field(t('gsBase'), baseIn).row)),
-          h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, test, save), status)),
+      !fake && !(cfg && cfg.token) ? h('div', { class: 'callout warn' }, icon('alert'), h('span', null, t('gsTokenMissing'))) : null, status,
       h('section', { class: 'panel pad stack', style: 'gap:12px' }, h('h2', { class: 'display', style: 'font-size:24px' }, t('picsTitle')), picInfo,
         h('p', { class: 'note', style: 'margin:0' }, t('picsWizardIntro')), h('div', null, startPics)));
   }).catch(() => root.replaceChildren(formError(t('loadFailed'))));

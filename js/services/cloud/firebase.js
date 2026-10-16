@@ -205,8 +205,8 @@ export async function createFirebaseBackend(config) {
       async list(sid, { judge = false, uid = null } = {}) {
         const col = F.collection(db, 'seasons', sid, 'protests');
         if (judge) { const qs = await F.getDocs(col); return qs.docs.map((d) => ({ id: d.id, ...d.data() })); }
-        const qs = [F.query(col, F.where('status', '==', 'published'))];
-        if (uid) qs.push(F.query(col, F.where('by', '==', uid)), F.query(col, F.where('involved', 'array-contains', uid)));
+        const qs = [F.query(col, F.where('status', 'in', ['published', 'notInvestigated']))];
+        if (uid) qs.push(F.query(col, F.where('by', '==', uid)), F.query(col, F.where('complainant', '==', uid)), F.query(col, F.where('involved', 'array-contains', uid)));
         const res = await Promise.all(qs.map((q) => F.getDocs(q)));
         const m = new Map(); res.forEach((r) => r.docs.forEach((d) => m.set(d.id, { id: d.id, ...d.data() })));
         return [...m.values()];

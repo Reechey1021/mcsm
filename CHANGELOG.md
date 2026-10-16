@@ -1,3 +1,25 @@
+## v0.9.14 — Protest complainants, true lobby positions, season summaries
+
+- Protests: the official-case switch is gone. A "Panaszos" picker chooses who the complaint is
+  from: you by default, any driver in that round, or (admins) a stewards' investigation with no
+  complainant. The filer and the complainant are both stored; the complainant can see and
+  withdraw the case, is a party for judge conflicts, and gets the filing and decision notices.
+  Cases closed as "not investigated" are now visible to every entrant, like decisions.
+  Firestore rules changed (complainant can read/withdraw): publish again.
+- Profiles: seasons imported from the old site (MCSM29–30) showed the overall rank (e.g. P40).
+  They now show the driver's lobby and within-lobby Q / Sprint / GP places (or DNS), from the
+  per-round results workbook merged into the MCSM25–30 history data. The old-results table no
+  longer repeats seasons shown above it.
+- Round pages open on the visitor's own lobby every time (A if they didn't race).
+- Season summaries: a finished season's public race data is saved as one document
+  (content/summary-<sid>) when the season finishes and after any later admin edit. Visitors read
+  that instead of six collections (standings, hall of fame, profiles, team history). Staff still
+  see live data. Developer tools → Season summaries → Rebuild for existing seasons.
+- Admin: Roles above GT teams; Advanced = GT7 data and MCSM Rating; new owners-only "Fejlesztői
+  eszközök" (Connections, old-site import, account merge, season summaries). Connections is now
+  owners-only and holds the GridStats token (moved off the GT7 data page).
+- Drivers and Teams: loading placeholders fill the grid columns.
+
 ## v0.9.13 — Protest overhaul, results final summary, team history
 
 - Notifications: drivers couldn't switch on phone notifications ("Nincs megadva felhőfüggvény

@@ -43,7 +43,7 @@ export const hu = {
   errWeakPassword: 'A jelszó legalább 8 karakter legyen.', errCredentials: 'Hibás e-mail-cím vagy jelszó.', errTooMany: 'Túl sok próbálkozás. Várj pár percet.', errNetwork: 'Nincs kapcsolat. Ellenőrizd az internetet.',
   errRecentLogin: 'Biztonsági okból lépj ki és be, aztán próbáld újra.', errPermission: 'Ehhez nincs jogosultságod.', errGeneric: 'Valami nem sikerült. Próbáld újra.', errConsent: 'A regisztrációhoz el kell fogadnod.', errGtTag: '1–12 karakter: betűk, számok, - és _.',
   // me
-  myPage: 'Saját oldal', account: 'Fiók', publicProfile: 'Nyilvános profilom', changePassword: 'Jelszó módosítása', currentPassword: 'Jelenlegi jelszó', newPassword: 'Új jelszó', passwordChanged: 'Jelszó módosítva',
+  myPage: 'Saját profil', account: 'Fiók', publicProfile: 'Nyilvános profilom', changePassword: 'Jelszó módosítása', currentPassword: 'Jelenlegi jelszó', newPassword: 'Új jelszó', passwordChanged: 'Jelszó módosítva',
   memberSince: 'Tag {date} óta', profileIncomplete: 'A profilod még nincs kész. Fejezd be, hogy nevezhess a szezonokra.',
   role_owner: 'Tulajdonos', role_admin: 'Admin', role_judgeChair: 'Bírói elnök', role_judge: 'Versenybíró', role_resultsEditor: 'Eredményrögzítő',
   roleHint_owner: 'Mindenhez hozzáfér, adminokat nevez ki.', roleHint_admin: 'Szezonok, eredmények, csapatok, felhasználók.', roleHint_judgeChair: 'Ügyeket oszt ki, döntéseket tesz közzé.', roleHint_judge: 'Óvásokat vizsgál és szavaz.', roleHint_resultsEditor: 'PQ-időket és eredményeket rögzít piszkozatként.',
@@ -322,4 +322,5 @@ export const hu = {
   devTools: 'Fejlesztői eszközök', devToolsHint: 'Egyszeri és technikai eszközök. Csak tulajdonosoknak; a napi munkához nem kellenek.', settingsSubDev: 'Felhőfüggvény, push kulcs, AI modell, GridStats token', summariesTitle: 'Szezon-összefoglalók', summariesSub: 'A lezárt szezonok mentett összesítője (gyorsabb, kevesebb olvasás). Lezáráskor magától frissül.', summariesRebuild: 'Újraépítés', summariesDone: '{n} szezon összefoglalója frissítve', gsTokenMissing: 'Nincs GridStats token. A tulajdonos a Fejlesztői eszközök → Kapcsolatok oldalon adhatja meg.',
   gtHasMembers: 'Előbb mindenkit ki kell venni a GT csapatból ({n} pilóta van benne).', teamsMcsm: 'MCSM csapatok', teamsGt: 'GT csapatok', driversShort: 'PILÓTA', noGtTeams: 'Még nincs GT csapat.',
   finalStandings: 'Végeredmény', lobbyAvgShort: 'Lobby átlag:',
+  dotrTitle: 'A forduló pilótája', dotrSub: 'legnagyobb MCSM Rating növekedés', mgtkTitles: 'MGTK címek', mgtkChampionN: '{n}× MGTK bajnok', hofMgtkTable: 'MGTK éremtáblázat',
 };

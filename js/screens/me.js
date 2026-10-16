@@ -53,7 +53,14 @@ function headTitles(p, opts) {
 // the MGTK table lives on the hall of fame page).
 function titlesBox(p) {
   const box = h('section', { style: 'margin-top:12px' });
-  honours().then((H) => { const m = medalsForUser(H.people, p); if (!m) { box.remove(); return; } box.replaceChildren(h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status champ' }, trophy(0, 14), t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true }))); }).catch(() => box.remove());
+  honours().then((H) => {
+    const m = medalsForUser(H.people, p);
+    const mg = medalsForUser(H.mgtk || [], p) || (p.gtTeamId === 'MGTK' ? { medals: [0, 0, 0], seasons: [[], [], []] } : null);
+    if (!m && !mg) { box.remove(); return; }
+    box.replaceChildren(
+      m ? h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status champ' }, trophy(0, 14), t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true })) : null,
+      mg ? h('div', { class: 'panel pad', style: m ? 'margin-top:12px' : '' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('mgtkTitles')), mg.medals[0] ? h('span', { class: 'status champ outline' }, trophy(0, 14, { outline: true }), t('mgtkChampionN', { n: mg.medals[0] })) : null), medalRow(mg, { seasons: true, outline: true })) : null);
+  }).catch(() => box.remove());
   return box;
 }
 

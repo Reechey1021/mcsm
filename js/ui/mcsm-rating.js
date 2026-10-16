@@ -42,6 +42,15 @@ function dial({ size, r, stroke, value, color, marker = true, lo, hi }) {
 }
 // Standing = where the value sits among every ranked driver (same component), as a percentile.
 // share of ranked drivers who are better (the best driver is at 0, shown as "Top 1%")
+// Stars by fixed rating bands (same for the overall rating and each part), judged on the value as
+// displayed (one decimal): 140+ = 5; 130–139.9 = 4.5; ... 60–69.9 = 1; below 60 = 0.5.
+export function starsForRating(v) {
+  if (v == null) return null;
+  const r = Math.round(v * 10) / 10;
+  if (r >= 140) return 5;
+  if (r < 60) return 0.5;
+  return 1 + Math.floor((r - 60) / 10) * 0.5;
+}
 export function percentileOf(all, v) { if (v == null || !all.length) return null; const better = all.filter((x) => x > v + 1e-9).length; return (better / all.length) * 100; }
 export function standingFor_old(pct) {
   if (pct == null) return null;
@@ -61,7 +70,7 @@ export function mcsmRatingCard(uid) {
     const x = (P.drivers || {})[uid];
     const ranked = !!(x && x.e);
     const pool = Object.values(P.drivers || {}).filter((d) => d.e);
-    const standing = (k, v) => starsFor(percentileOf(pool.map((d) => d[k]), v));
+    const standing = (k, v) => starsForRating(v);
     const head = h('div', { class: 'mr-head' }, h('span', { class: 'label' }, 'MCSM Rating'), demo ? h('span', { class: 'mr-demo' }, t('mrDemo')) : null, help);
     // main dial
     const st = ranked ? standing('r', x.r) : null;

@@ -7,7 +7,7 @@ import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { flip, reduced, haptic, moveThumb } from '../core/motion.js';
 import { seg, busy, field } from '../ui/controls.js';
-import { avatar, ratingEl, empty, backLink, formError, secHead, skelRows, pageTitle } from '../ui/parts.js';
+import { avatar, ratingEl, empty, backLink, formError, secHead, skelRows, pageTitle, teamBadge } from '../ui/parts.js';
 import { openSheet, toast } from '../ui/sheet.js';
 import { t, fmtDate } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
@@ -160,7 +160,7 @@ function roundView(ctx, n, reload) {
   return frag(head, practice, hostNote, isStaff() ? adminRoundCard(ctx, n, reload) : null,
     doc.resultsState === 'provisional' ? h('div', { class: 'callout', style: 'margin-bottom:12px' }, icon('info'), h('span', null, t('provisionalNote'))) : null,
     !published && built && isStaff() ? h('div', { class: 'callout warn', style: 'margin-bottom:12px' }, icon('alert'), h('span', null, t('draftResultsNote'))) : null,
-    tools, body, roundProtests(ctx, n, reload));
+    doc.resultsState === 'final' ? driverOfTheRound(ctx, n) : null, tools, body, roundProtests(ctx, n, reload));
 }
 
 function roundBody(ctx, n, L, S, built) {
@@ -421,5 +421,42 @@ function myRoundSummary(ctx, n, built) {
       h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, t('fsRoundTotal')), h('b', null, tot.total), h('small', null, t('pointsShort'))),
       h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, t('fsChampionship')), h('b', null, myPos ? myPos + '.' : '–'), h('small', null, (myRow ? myRow.total : 0) + ' ' + t('pointsShort'))),
       tm ? h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, tm.name), h('b', null, tPos ? tPos + '.' : '–'), h('small', null, t('fsTeamRound', { n: teamRound ?? 0, total: tRow ? tRow.total : 0 }))) : null));
+  return box;
+}
+
+// "A forduló pilótája": whoever gained the most MCSM Rating in this round, across all lobbies.
+// Ranked drivers only (their first round as a ranked driver has no change, so it doesn't count).
+function driverOfTheRound(ctx, n) {
+  const box = h('section', { class: 'dotr', style: 'display:none' });
+  const label = `MCSM${ctx.season.no} / ${n}`;
+  publicRatings().then((P) => {
+    let best = null;
+    Object.entries(P.drivers || {}).forEach(([uid, x]) => {
+      if (!x || !x.e || !ctx.snaps[uid]) return;
+      const hist = (x.h || []).map((e) => (Array.isArray(e) ? { l: e[0], r: e[1] } : e));
+      const i = hist.findIndex((e) => e.l === label);
+      if (i < 1) return;
+      const gain = hist[i].r - hist[i - 1].r;
+      if (gain > 0 && (!best || gain > best.gain)) best = { uid, gain, after: hist[i].r };
+    });
+    if (!best) { box.remove(); return; }
+    const p = ctx.person(best.uid), tm = ctx.tmap[p.teamId];
+    const rd = ctx.built.find((r) => r.n === n);
+    const tot = rd ? roundTotals(rd, ctx.points)[best.uid] : null;
+    const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+    const res = (k, v) => h('span', { class: 'dotr-res' }, h('small', null, k), h('b', null, v ? 'P' + v : '–'));
+    box.replaceChildren(
+      h('div', { class: 'dotr-head' }, h('span', { class: 'dotr-star' }, icon('bolt')), h('b', null, t('dotrTitle')), h('span', { class: 'dotr-sub' }, t('dotrSub'))),
+      h('a', { class: 'dotr-main', href: '#/pilotak/' + encodeURIComponent(p.psnLower || '') },
+        avatar(p, tm, 'lg'),
+        h('span', { class: 'dotr-who' },
+          h('b', { class: 'dotr-name' }, fullName(p)),
+          h('span', { class: 'dotr-meta' }, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null),
+          tm ? h('span', { class: 'dotr-team' }, teamBadge(tm, 16), tm.name) : null,
+          tot ? h('span', { class: 'dotr-results' }, tot.lobby ? h('span', { class: 'lobby ' + tot.lobby }, tot.lobby) : null, res(t('quali'), tot.qPos), res('Sprint', tot.sPos), res('GP', tot.gpPos)) : null),
+        h('span', { class: 'dotr-gain' }, h('b', { class: 'display' }, '+' + fmt(best.gain)), h('small', null, 'MCSM Rating'), h('span', { class: 'mr-pill' }, fmt(best.after)))));
+    box.style.display = '';
+    if (!reduced()) box.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }).catch(() => box.remove());
   return box;
 }

@@ -26,5 +26,7 @@ async function computed() {
 }
 export const honours = () => cached('honours', async () => {
   const seasons = [...HALL, ...(await computed().catch(() => []))].sort((a, b) => b.no - a.no);
-  return { seasons, people: driverMedals(seasons), teams: teamMedals(seasons) };
+  // MGTK: the same counting, over each season's MGTK podium (best MGTK drivers in the standings)
+  const mgtk = driverMedals(seasons.map((s) => ({ no: s.no, drivers: s.mgtk || [] })));
+  return { seasons, people: driverMedals(seasons), teams: teamMedals(seasons), mgtk };
 });

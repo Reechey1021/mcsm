@@ -1,3 +1,17 @@
+## v1.0.3
+
+- Round pages: "A forduló pilótája" between your round summary and the lobby tabs: the ranked driver who
+  gained the most MCSM Rating in that round across all lobbies (photo, name, PSN, number, team, lobby,
+  Q / Sprint / GP places, the gain and the new rating). Only once results are final.
+- Hall of Fame: a third medal table, "MGTK éremtáblázat", counted the same way as the drivers' table but
+  over each season's MGTK podium (MCSM1–29 from the Dicsőségfal sheet, later seasons from the MGTK-filtered
+  standings). Outlined trophies. Three columns on desktop, stacked on phones. MGTK podiums in the season
+  cards use outlined trophies too.
+- Profiles: "MGTK címek" under Bajnoki címek for MGTK drivers (or anyone with MGTK titles): same box,
+  outlined medals (stroke, no fill) and outlined trophies.
+- "Saját oldal" is now "Saját profil" ("My profile"); English "Hall of Fame".
+- Medal cards keep their content at the top when one card in the row is taller.
+
 ## v1.0.2
 
 - Back buttons (top left) return to the page you came from: open a profile from round results and

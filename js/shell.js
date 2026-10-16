@@ -99,7 +99,7 @@ export function openMenu() {
   const mi = (ic, label, href) => h('a', { class: 'menu-item', href: '#' + href, onclick: () => sh.close(true) }, icon(ic), label, icon('chevR', 'chev'));
   const block = (label, el) => h('div', { style: 'margin:16px 0 4px' }, h('div', { class: 'label', style: 'margin-bottom:8px' }, label), el);
   const langSeg = seg([{ value: 'hu', label: 'Magyar' }, { value: 'en', label: 'English' }], LANG, (v) => { setLang(v); sh.close(true); emit('relang'); });
-  const themeSeg = seg([{ value: 'system', label: t('themeSystem') }, { value: 'dark', label: t('themeDark') }, { value: 'light', label: t('themeLight') }], store.get('theme', 'system'), (v) => { store.set('theme', v); applyTheme(v); });
+  const themeSeg = seg([{ value: 'system', label: t('themeSystem') }, { value: 'dark', label: t('themeDark') }, { value: 'light', label: t('themeLight') }], store.get('theme', 'dark'), (v) => { store.set('theme', v); applyTheme(v); });
   const items = signedIn()
     ? [mi('user', t('myPage'), '/sajat'), isAdmin() ? mi('shield', t('admin'), '/admin') : null, isJudgeRole() ? mi('flag', t('judgesArea'), '/birosag') : null, !isAdmin() && canGrantRoles() ? mi('users', t('rolesTitle'), '/admin/szerepkorok') : null, mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')]
     : [mi('user', t('signIn'), '/belepes'), mi('plus', t('signUp'), '/regisztracio'), mi('users', t('teams'), '/csapatok'), mi('book', t('rules'), '/szabalyzat')];

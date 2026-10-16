@@ -42,7 +42,16 @@ export function defaultPanel(protest, judges, teamOf) {
   return eligibility(protest, judges, teamOf).filter((e) => e.eligible).map((e) => e.uid);
 }
 
-const voteKey = (v) => (v.outcome === 'time' ? `time:${v.seconds}:${v.target}` : v.outcome === 'none' ? 'none' : `${v.outcome}:${v.target || ''}`);
+// A verdict or vote as a list of penalty lines [{ target, kind: 'warning'|'time'|'dsq'|'other', seconds, other }].
+// Older data stored one { outcome, target, seconds, other }; both read the same way.
+export function penaltyLines(x) {
+  if (!x) return [];
+  if (Array.isArray(x.penalties)) return x.penalties.filter((l) => l && l.target && l.kind);
+  if (x.outcome && x.outcome !== 'none' && x.outcome !== 'penalties' && x.target) return [{ target: x.target, kind: x.outcome, seconds: x.outcome === 'time' ? x.seconds : null, other: x.outcome === 'other' ? x.other || '' : null }];
+  return [];
+}
+const lineKey = (l) => `${l.kind}:${l.kind === 'time' ? l.seconds : ''}:${l.target}`;
+const voteKey = (v) => { const ls = penaltyLines(v); return ls.length ? ls.map(lineKey).sort().join('|') : 'none'; };
 // Votes from panel members only. Returns counts and the leading option.
 export function tally(votes, panel) {
   const valid = votes.filter((v) => panel.includes(v.uid));

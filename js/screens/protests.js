@@ -2,6 +2,7 @@
 // Protests from both sides: drivers file and follow their cases, everyone reads published
 // decisions, and the Versenybíróság works its cases (panel, votes, notes, decision,
 // publishing the penalty, which then reorders the results by itself).
+import { penaltyLines } from '../model/protest.js';
 import { toggle } from '../ui/controls.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
@@ -32,13 +33,45 @@ const entrantOf = (ctx) => !!(session.user && ctx.entries.some((e) => e.uid === 
 const mayView = (ctx) => isJudge() || entrantOf(ctx);
 const nameOf = (ctx, uid) => fullName(ctx.snaps[uid] || {}) || uid;
 
+const lineText = (l, ctx) => {
+  const who = nameOf(ctx, l.target);
+  if (l.kind === 'time') return t('outcomeTime', { s: l.seconds, who });
+  if (l.kind === 'other') return `${who}: ${l.other || t('outcome_other')}`;
+  return `${who}: ${t('outcome_' + l.kind)}`;
+};
 export function outcomeText(d, ctx) {
   if (!d) return '';
-  const who = d.target ? nameOf(ctx, d.target) : '';
-  if (d.outcome === 'none') return t('outcome_none');
-  if (d.outcome === 'time') return t('outcomeTime', { s: d.seconds, who });
-  if (d.outcome === 'other') return `${who}: ${d.other || t('outcome_other')}`;
-  return `${who}: ${t('outcome_' + d.outcome)}`;
+  const ls = penaltyLines(d);
+  return ls.length ? ls.map((l) => lineText(l, ctx)).join(' · ') : t('outcome_none');
+}
+// "#21 HORVÁTH Richárd · IGTSH_Reechey-" (PSN shown: it's what everyone sees in the game)
+const driverLabel = (ctx, uid) => { const p = ctx.person ? ctx.person(uid) : ctx.snaps[uid] || {}; return `#${p.raceNumber ?? ''} ${(p.lastName || '').toLocaleUpperCase('hu')} ${p.firstName || ''}${p.psn ? ' · ' + p.psn : ''}`.replace(/\s+/g, ' ').trim(); };
+// Anyone who raced in that round can be penalised; the parties come first.
+function penaltyCandidates(ctx, p) {
+  const doc = ctx.roundDoc(p.n) || {};
+  const all = [...new Set(Object.values(doc.lobbies || {}).flat())];
+  const parties = [...new Set([...(p.involved || []), ...(p.type === 'judge' ? [] : [p.by])])].filter(Boolean);
+  const rest = all.filter((u) => !parties.includes(u)).sort((a, b) => nameOf(ctx, a).localeCompare(nameOf(ctx, b), 'hu'));
+  return [...parties, ...rest];
+}
+// Editable list of penalty lines: driver, kind, seconds (time) or text (other). Empty = no penalty.
+function penaltyEditor(ctx, p, lines, onChange) {
+  const box = h('div', { class: 'stack', style: 'gap:8px' });
+  const cands = penaltyCandidates(ctx, p);
+  const KINDS = ['warning', 'time', 'dsq', 'other'];
+  const draw = () => {
+    box.replaceChildren(...lines.map((l, i) => {
+      const who = h('select', { class: 'select', style: 'width:100%' }, cands.map((u) => h('option', { value: u, selected: u === l.target }, driverLabel(ctx, u))));
+      who.addEventListener('change', () => { l.target = who.value; onChange(lines); });
+      const extra = l.kind === 'time' ? choice(TIME_STEPS.map((x) => ({ value: x, label: '+' + x + ' s' })), l.seconds || 5, (x) => { l.seconds = x; onChange(lines); })
+        : l.kind === 'other' ? (() => { const o = h('input', { class: 'input', value: l.other || '', maxlength: 120, placeholder: t('otherPh') }); o.addEventListener('input', () => { l.other = o.value; onChange(lines); }); return o; })() : null;
+      return h('div', { class: 'pen-line' }, h('div', { class: 'row-between' }, h('b', null, t('penaltyN', { n: i + 1 })), h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('delete'), onclick: () => { lines.splice(i, 1); draw(); onChange(lines); } }, icon('close'))),
+        who, choice(KINDS.map((k) => ({ value: k, label: t('outcome_' + k) })), l.kind, (k) => { l.kind = k; if (k === 'time' && !l.seconds) l.seconds = 5; draw(); onChange(lines); }), extra);
+    }), lines.length ? null : h('p', { class: 'note', style: 'margin:0' }, t('noPenaltyYet')),
+    h('button', { class: 'btn small', type: 'button', onclick: () => { lines.push({ target: cands[0] || null, kind: 'time', seconds: 5, other: '' }); draw(); onChange(lines); } }, icon('plus'), t('addPenalty')));
+  };
+  draw();
+  return box;
 }
 
 /* ---------- cards ---------- */
@@ -118,7 +151,8 @@ export function screenProtestForm({ id, n }, query) {
       const roster = ((doc.lobbies || {})[d.L] || []).filter((u) => !session.user || u !== session.user.uid || judgeMode);
       d.involved = d.involved.filter((u) => roster.includes(u));
       invBox.replaceChildren(h('div', { class: 'choice multi' }, roster.map((u) => {
-        const b = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(d.involved.includes(u)) }, '#' + ((ctx.snaps[u] || {}).raceNumber ?? '') + ' ' + ((ctx.snaps[u] || {}).lastName || '').toLocaleUpperCase('hu'));
+        const sp = ctx.snaps[u] || {};
+        const b = h('button', { class: 'chip chip-driver', type: 'button', 'aria-pressed': String(d.involved.includes(u)) }, h('span', null, '#' + (sp.raceNumber ?? '') + ' ' + (sp.lastName || '').toLocaleUpperCase('hu')), sp.psn ? h('small', null, sp.psn) : null);
         b.addEventListener('click', () => { const on = !d.involved.includes(u); d.involved = on ? [...d.involved, u] : d.involved.filter((x) => x !== u); b.setAttribute('aria-pressed', String(on)); });
         return b;
       })));
@@ -224,8 +258,15 @@ function caseView(ctx, p, votes, notes, us, reload) {
   // panel
   sections.push(secHead(t('panel')), h('div', { class: 'stack', style: 'gap:6px' },
     (panel.length ? panel : []).map((uid) => h('div', { class: 'row-card' }, h('span', { class: 'nm' }, h('b', null, userName(uid)), h('span', null, votes.some((v) => v.uid === uid) ? t('voted') : t('notVotedYet'))), votes.some((v) => v.uid === uid) ? icon('check') : icon('clock'))),
-    !panel.length ? empty(t('noPanelYet')) : null,
-    elig.filter((e) => !e.eligible).length ? h('p', { class: 'note', style: 'margin:4px 0 0' }, t('excluded') + ': ' + elig.filter((e) => !e.eligible).map((e) => `${userName(e.uid)} (${t(e.reason)})`).join(', ')) : null));
+    !panel.length ? empty(t('noPanelYet')) : null));
+  const notOn = elig.filter((e) => e.eligible && !panel.includes(e.uid));
+  const excludedJ = elig.filter((e) => !e.eligible);
+  if (notOn.length || excludedJ.length) sections.push(h('details', { class: 'lobby-sec', style: 'margin-top:10px' }, h('summary', null, t('panelOthers', { a: notOn.length, b: excludedJ.length }), icon('down', 'chev')),
+    h('div', { class: 'stack', style: 'gap:6px;padding:6px 0 4px' },
+      notOn.map((e) => h('div', { class: 'row-card' }, h('span', { class: 'nm' }, h('b', null, userName(e.uid)), h('span', null, t('eligibleNotOnPanel'))),
+        isChair() && ['filed', 'review'].includes(p.status) ? h('button', { class: 'btn small', type: 'button', onclick: (ev) => busy(ev.currentTarget, async () => { try { await backend.protests.save(s.id, p.id, { panel: [...panel, e.uid], status: 'review' }); reload(); } catch (x) { toast(t(errorKey(x)), 'alert'); } }) }, icon('plus'), t('addToPanel')) : null)),
+      excludedJ.map((e) => h('div', { class: 'row-card', style: 'opacity:.7' }, h('span', { class: 'nm' }, h('b', null, userName(e.uid)), h('span', null, t(e.reason))))),
+      h('p', { class: 'note', style: 'margin:4px 0 0' }, t('panelWhyHint')))));
   // tally
   sections.push(h('div', { class: 'callout' + (tl.enough ? '' : ' warn'), style: 'margin-top:12px' }, icon(tl.enough ? 'check' : 'info'),
     h('span', null, t('voteCount', { n: tl.valid, min: MIN_VOTES }), tl.leading ? ' ' + t('leadingOption', { o: outcomeText(tl.leading, ctx) }) : '', tl.tie ? ' ' + t('tieNote') : '')));
@@ -255,22 +296,16 @@ function caseView(ctx, p, votes, notes, us, reload) {
 }
 
 function voteForm(ctx, p, mine, reload, opts = {}) {
-  const v = { outcome: mine ? mine.outcome : 'none', target: mine ? mine.target : (p.involved || [])[0] || null, seconds: mine ? mine.seconds : 5, other: mine ? mine.other || '' : '', reason: mine ? mine.reason || '' : '' };
-  const detail = h('div', { class: 'stack', style: 'gap:12px' });
-  const drawDetail = () => {
-    const parts = [];
-    if (v.outcome !== 'none') parts.push(h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('penalisedDriver')), choice((p.involved || []).concat(p.type === 'judge' ? [] : [p.by]).filter((x, i, a) => a.indexOf(x) === i).map((u) => ({ value: u, label: nameOf(ctx, u) })), v.target, (x) => { v.target = x; })));
-    if (v.outcome === 'time') parts.push(h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('seconds')), choice(TIME_STEPS.map((x) => ({ value: x, label: '+' + x + ' s' })), v.seconds, (x) => { v.seconds = x; })));
-    if (v.outcome === 'other') { const o = h('input', { class: 'input', value: v.other, maxlength: 120, placeholder: t('otherPh') }); o.addEventListener('input', () => { v.other = o.value; }); parts.push(field(t('outcome_other'), o).row); }
-    detail.replaceChildren(...parts);
-  };
+  const lines = penaltyLines(mine).map((l) => ({ ...l }));
+  const v = { reason: mine ? mine.reason || '' : '' };
   const reason = h('textarea', { class: 'input', maxlength: 600, placeholder: t('reasonVotePh') }); reason.value = v.reason;
   reason.addEventListener('input', () => { v.reason = reason.value; });
   const save = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '' }, icon('check'), mine ? t('updateVote') : t('castVote'));
   save.addEventListener('click', () => busy(save, async () => {
-    if (v.outcome !== 'none' && !v.target) { toast(t('pickPenalised'), 'alert'); return; }
+    if (lines.some((l) => !l.target)) { toast(t('pickPenalised'), 'alert'); return; }
     try {
-      const data = { ...v, outcome: v.outcome, seconds: v.outcome === 'time' ? v.seconds : null };
+      const clean = lines.map((l) => ({ target: l.target, kind: l.kind, seconds: l.kind === 'time' ? l.seconds || 5 : null, other: l.kind === 'other' ? (l.other || '').trim() : null }));
+      const data = { penalties: clean, outcome: clean.length ? 'penalties' : 'none', reason: v.reason };
       if (opts.forUid) {
         // on a judge's behalf: recorded as theirs, with who logged it; they join the panel
         await backend.votes.saveFor(ctx.season.id, p.id, opts.forUid, { ...data, loggedBy: session.user.uid });
@@ -279,10 +314,9 @@ function voteForm(ctx, p, mine, reload, opts = {}) {
       toast(t('voteSaved')); haptic(12); reload();
     } catch (e) { toast(t(errorKey(e)), 'alert'); }
   }));
-  drawDetail();
   return h('div', { class: 'panel pad stack', style: 'gap:12px' },
-    h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('outcome')), choice(OUTCOMES.map((o) => ({ value: o, label: t('outcome_' + o) })), v.outcome, (x) => { v.outcome = x; drawDetail(); })),
-    detail, field(t('reasonShort'), reason).row, save);
+    h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('penaltiesLabel')), penaltyEditor(ctx, p, lines, () => {})),
+    field(t('reasonShort'), reason).row, save);
 }
 
 function chairTools(ctx, p, tl, judges, teamOf, reload) {
@@ -303,44 +337,41 @@ function chairTools(ctx, p, tl, judges, teamOf, reload) {
     box.append(h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, assign, reject));
   }
   if (p.status === 'review' || p.status === 'decided') {
-    const lead = p.decision || tl.leading || { outcome: 'none' };
-    const d = { outcome: lead.outcome, target: lead.target || null, seconds: lead.seconds || 5, other: lead.other || '', text: (p.decision && p.decision.text) || '' };
-    const flagsBox = h('div');
-    const drawFlags = () => {
-      if (d.outcome !== 'time' || !d.target) { flagsBox.replaceChildren(); return; }
-      const f = dsqFlags(ctx.penalties, d.target, p.n, { kind: 'time', seconds: d.seconds });
-      flagsBox.replaceChildren(f.autoDsq ? h('div', { class: 'callout warn' }, icon('alert'), h('span', null, t('flagAutoDsq', { n: f.count }))) : f.dsqPossible ? h('div', { class: 'callout warn' }, icon('alert'), h('span', null, t('flagDsqPossible', { s: f.total }))) : h('span'));
-    };
+    const lines = penaltyLines(p.decision || tl.leading).map((l) => ({ ...l }));
+    const d = { text: (p.decision && p.decision.text) || '' };
+    const flagsBox = h('div', { class: 'stack', style: 'gap:6px' });
+    const drawFlags = () => flagsBox.replaceChildren(...lines.filter((l) => l.kind === 'time' && l.target).map((l) => {
+      const f = dsqFlags(ctx.penalties, l.target, p.n, { kind: 'time', seconds: l.seconds });
+      return f.autoDsq ? h('div', { class: 'callout warn' }, icon('alert'), h('span', null, nameOf(ctx, l.target) + ': ' + t('flagAutoDsq', { n: f.count })))
+        : f.dsqPossible ? h('div', { class: 'callout warn' }, icon('alert'), h('span', null, nameOf(ctx, l.target) + ': ' + t('flagDsqPossible', { s: f.seconds }))) : null;
+    }));
     const txt = h('textarea', { class: 'input', maxlength: 1500, placeholder: t('decisionTextPh') }); txt.value = d.text; txt.addEventListener('input', () => { d.text = txt.value; });
-    const targetChoice = choice((p.involved || []).concat(p.type === 'judge' ? [] : [p.by]).filter((x, i, a) => a.indexOf(x) === i).map((u) => ({ value: u, label: nameOf(ctx, u) })), d.target, (x) => { d.target = x; drawFlags(); });
-    const secChoice = choice(TIME_STEPS.map((x) => ({ value: x, label: '+' + x + ' s' })), d.seconds, (x) => { d.seconds = x; drawFlags(); });
-    const otherIn = h('input', { class: 'input', value: d.other, maxlength: 120, placeholder: t('otherPh') }); otherIn.addEventListener('input', () => { d.other = otherIn.value; });
-    const detail = h('div', { class: 'stack', style: 'gap:12px' });
-    const drawDetail = () => { detail.replaceChildren(...[d.outcome !== 'none' ? h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('penalisedDriver')), targetChoice) : null, d.outcome === 'time' ? h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('seconds')), secChoice) : null, d.outcome === 'other' ? field(t('outcome_other'), otherIn).row : null].filter(Boolean)); drawFlags(); };
     const publish = h('button', { class: 'btn primary block', type: 'button', 'data-haptic': '', disabled: !tl.enough }, icon('flag'), t('publishDecision'));
     publish.addEventListener('click', async () => {
       if (!d.text.trim()) { toast(t('decisionNeedsText'), 'alert'); return; }
-      if (d.outcome !== 'none' && !d.target) { toast(t('pickPenalised'), 'alert'); return; }
+      if (lines.some((l) => !l.target)) { toast(t('pickPenalised'), 'alert'); return; }
       if (!(await confirmPublish({ text: t('confirmDecision'), draftHint: false }))) return;
       busy(publish, async () => {
-      const decision = { outcome: d.outcome, target: d.outcome === 'none' ? null : d.target, seconds: d.outcome === 'time' ? d.seconds : null, other: d.outcome === 'other' ? d.other : null, text: d.text.trim() };
-      try {
-        if (['time', 'dsq', 'warning', 'other'].includes(d.outcome)) {
-          await backend.penalties.save(s.id, { protestId: p.id, n: p.n, L: lobbyOf((ctx.roundDoc(p.n) || {}).lobbies, d.target) || p.L, S: p.S, uid: d.target, kind: d.outcome, seconds: decision.seconds, note: decision.other });
-        }
-        const people = await loadUsers().catch(() => []);
-        const nm = (uid) => { const u = people.find((x) => x.uid === uid); return u ? fullName(u) : uid; };
-        const voteSummary = (await backend.votes.list(s.id, p.id).catch(() => [])).filter((v) => (p.panel || []).includes(v.uid)).map((v) => ({ uid: v.uid, name: nm(v.uid), outcome: v.outcome, target: v.target || null, seconds: v.seconds || null, other: v.other || null, loggedBy: v.loggedBy || null, loggedByName: v.loggedBy ? nm(v.loggedBy) : null }));
-        await backend.protests.save(s.id, p.id, { status: 'published', decision, voteSummary, decidedAt: Date.now(), publishedAt: Date.now() });
-        await audit('protest.publish', { after: decision });
-        notifyUsers([p.type === 'judge' ? null : p.by, ...(p.involved || [])], 'decision', { s: 'MCSM' + s.no, n: p.n, title: p.title }, `#/szezonok/${s.id}/fordulo/${p.n}`);
-        invalidate('race:' + s.id); toast(t('decisionPublished')); haptic(15); reload();
-      } catch (e) { toast(t(errorKey(e)), 'alert'); }
+        const clean = lines.map((l) => ({ target: l.target, kind: l.kind, seconds: l.kind === 'time' ? l.seconds || 5 : null, other: l.kind === 'other' ? (l.other || '').trim() : null }));
+        const decision = { outcome: clean.length ? 'penalties' : 'none', penalties: clean, text: d.text.trim() };
+        try {
+          const lobbies = (ctx.roundDoc(p.n) || {}).lobbies;
+          for (const l of clean) await backend.penalties.save(s.id, { protestId: p.id, n: p.n, L: lobbyOf(lobbies, l.target) || p.L, S: p.S, uid: l.target, kind: l.kind, seconds: l.seconds, note: l.other });
+          const people = await loadUsers().catch(() => []);
+          const nm = (uid) => { const u = people.find((x) => x.uid === uid); return u ? fullName(u) : uid; };
+          const voteSummary = (await backend.votes.list(s.id, p.id).catch(() => [])).filter((v) => (p.panel || []).includes(v.uid))
+            .map((v) => ({ uid: v.uid, name: nm(v.uid), outcome: penaltyLines(v).length ? 'penalties' : 'none', penalties: penaltyLines(v), loggedBy: v.loggedBy || null, loggedByName: v.loggedBy ? nm(v.loggedBy) : null }));
+          await backend.protests.save(s.id, p.id, { status: 'published', decision, voteSummary, decidedAt: Date.now(), publishedAt: Date.now() });
+          await audit('protest.publish', { after: decision });
+          const told = [...new Set([p.type === 'judge' ? null : p.by, ...(p.involved || []), ...clean.map((l) => l.target)].filter(Boolean))];
+          notifyUsers(told, 'decision', { s: 'MCSM' + s.no, n: p.n, title: p.title }, `#/szezonok/${s.id}/fordulo/${p.n}`);
+          invalidate('race:' + s.id); toast(t('decisionPublished')); haptic(15); reload();
+        } catch (e) { toast(t(errorKey(e)), 'alert'); }
       });
     });
-    drawDetail();
+    drawFlags();
     box.append(h('div', { class: 'label' }, t('finalDecision')),
-      choice(OUTCOMES.map((o) => ({ value: o, label: t('outcome_' + o) })), d.outcome, (x) => { d.outcome = x; drawDetail(); }), detail, flagsBox,
+      penaltyEditor(ctx, p, lines, () => drawFlags()), flagsBox,
       field(t('decisionText'), txt, { hint: t('decisionTextHint') }).row, publish, tl.enough ? null : h('p', { class: 'note', style: 'margin:0' }, t('needVotes', { min: MIN_VOTES })));
   }
   if (p.status === 'published') {

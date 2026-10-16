@@ -103,6 +103,16 @@ export function adminEntrySheet(e, st, reload) {
       });
       return h('div', { class: 'f-row', style: 'margin:0 0 14px' }, h('span', { class: 'f-label' }, t('entryTeam')), sel, h('span', { class: 'hint' }, t('entryTeamHint')));
     })(),
+    (() => {
+      const opts = Object.values(st.gts || {}).sort((a, b) => String(a.tag).localeCompare(String(b.tag)));
+      const sel = h('select', { class: 'select', style: 'width:100%' }, h('option', { value: '' }, t('none')), ...opts.map((g) => h('option', { value: g.id, selected: p.gtTeamId === g.id }, g.tag + (g.name && g.name !== g.tag ? ' – ' + g.name : ''))));
+      sel.addEventListener('change', async () => {
+        const gtTeamId = sel.value || null;
+        try { await backend.entries.save(s.id, e.uid, { snapshot: { ...p, gtTeamId } }); await audit('entry.gtTeam', s, { targetName: `MCSM${s.no}: ${fullName(p)}`, before: { gtTeamId: p.gtTeamId || null }, after: { gtTeamId } }); p.gtTeamId = gtTeamId; invalidate('race:' + s.id); toast(t('entryTeamSaved')); }
+        catch (x) { err.replaceChildren(formError(t(errorKey(x)))); }
+      });
+      return h('div', { class: 'f-row', style: 'margin:0 0 14px' }, h('span', { class: 'f-label' }, t('entryGtTeam')), sel, h('span', { class: 'hint' }, t('entryGtTeamHint')));
+    })(),
     e.type === 'driver' ? h('div', { style: 'display:flex;gap:8px;margin-bottom:12px' },
       h('button', { class: 'btn small', type: 'button', disabled: idx <= 0, onclick: move(-1) }, icon('up'), t('moveUp')),
       h('button', { class: 'btn small', type: 'button', disabled: idx < 0 || idx >= drivers.length - 1, onclick: move(1) }, icon('down'), t('moveDown'))) : null,

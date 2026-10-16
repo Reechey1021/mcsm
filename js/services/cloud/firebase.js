@@ -321,7 +321,11 @@ export async function createFirebaseBackend(config) {
         if (!res.ok) { const e = new Error(body.error || ('HTTP ' + res.status)); e.code = body.code || 'fn-error'; e.status = res.status; throw e; }
         return body;
       },
-      async functionsConfig() { try { const d = await F.getDoc(F.doc(db, 'config', 'functions')); return d.exists() ? d.data() : null; } catch { return null; } },
+      // config/functions is admin-only; everyone else uses the public copy in content/endpoints.
+      async functionsConfig() {
+        try { const d = await F.getDoc(F.doc(db, 'config', 'functions')); if (d.exists() && d.data().url) return d.data(); } catch { /* not an admin */ }
+        try { const e = await F.getDoc(F.doc(db, 'content', 'endpoints')); return e.exists() && e.data().fn ? { url: e.data().fn } : null; } catch { return null; }
+      },
     },
     storage: {
       async upload(path, blob) { const r = S.ref(bucket(), path); await S.uploadBytes(r, blob, { contentType: blob.type, cacheControl: 'public,max-age=31536000' }); return S.getDownloadURL(r); },

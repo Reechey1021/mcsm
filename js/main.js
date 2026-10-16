@@ -19,9 +19,14 @@ import { listenForeground } from './services/push.js';
 // Guard: a conditional child that's empty (null/false) must never render as the word "null".
 const nativeReplace = Element.prototype.replaceChildren;
 Element.prototype.replaceChildren = function replaceChildren(...kids) { return nativeReplace.apply(this, kids.filter((k) => k != null && k !== false)); };
+const nativeAppend = Element.prototype.append, nativePrepend = Element.prototype.prepend;
+Element.prototype.append = function append(...kids) { return nativeAppend.apply(this, kids.filter((k) => k != null && k !== false)); };
+Element.prototype.prepend = function prepend(...kids) { return nativePrepend.apply(this, kids.filter((k) => k != null && k !== false)); };
+const nativeFragAppend = DocumentFragment.prototype.append;
+DocumentFragment.prototype.append = function append(...kids) { return nativeFragAppend.apply(this, kids.filter((k) => k != null && k !== false)); };
 
 document.documentElement.lang = LANG;
-applyTheme(store.get('theme', 'system'));
+applyTheme(store.get('theme', 'dark'));
 
 // Firebase email links arrive as ?mode=…&oobCode=…; send them to the action screen.
 (function routeEmailAction() {

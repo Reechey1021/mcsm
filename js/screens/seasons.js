@@ -2,6 +2,7 @@
 // Season list, the season page (overview, entry list, rounds) and everything a driver
 // does with an entry: enter, join the waitlist, sign up as a reserve, withdraw, rejoin,
 // and say "can't make it" for a round. Admin tools live in ./season-admin.js.
+import { publicDriverDirectory } from '../core/data.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { flip, reduced, countUp, haptic } from '../core/motion.js';
@@ -132,6 +133,7 @@ const TAB_RENDER = {
     };
     const filter = seg([['all', t('all')], ['drivers', t('filterDrivers')], ['waitlist', t('es_waitlist')], ['reserves', t('filterReserves')]].map(([value, label]) => ({ value, label })), ui.entryFilter, (v) => { ui.entryFilter = v; draw(true); }, { scroll: true });
     draw(false);
+    if (!Object.keys(photos).length) publicDriverDirectory().then((list) => { list.forEach((u) => { if (u.gt7Avatar) photos[u.uid] = u.gt7Avatar; }); if (list.length && list.isConnected !== false) draw(false); }).catch(() => {});
     const adminTools = isAdmin() ? h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
       h('button', { class: 'btn small', type: 'button', onclick: () => addDriverSheet(st, reload) }, icon('plus'), t('addDriver')),
       h('button', { class: 'btn small', type: 'button', onclick: () => exportCsv(st) }, icon('list'), 'CSV')) : null;
@@ -156,8 +158,9 @@ function roundsBox(st) {
   return box;
 }
 
+const photos = {};
 function entryRow(e, pos, kind, tmap, st, reload) {
-  const p = e.snapshot || {};
+  const p = { ...(e.snapshot || {}), gt7Avatar: photos[e.uid] || (e.snapshot || {}).gt7Avatar };
   const tm = tmap[p.teamId];
   const mine = session.user && e.uid === session.user.uid;
   const tag = kind === 'in' ? null : h('span', { class: 'status' }, t('es_' + kind));

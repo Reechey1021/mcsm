@@ -34,7 +34,8 @@ const LOBBY_STRIDE = LOBBY_SIZE - 1;
 function globalPosition(lobby, pos) {
   if (!/^[A-Z]$/.test(lobby)) throw new Error(`Unsupported rating lobby: ${lobby}`);
   const rank = Number(pos);
-  if (!Number.isInteger(rank) || rank < 1 || rank > LOBBY_SIZE) throw new Error(`Invalid rating position in lobby ${lobby}: ${pos}`);
+  if (!Number.isInteger(rank) || rank < 1) throw new Error(`Invalid rating position in lobby ${lobby}: ${pos}`);
+  // Lobbies are normally 16; a bigger one keeps counting on (A17 sits just behind B1) instead of failing.
   return (lobby.charCodeAt(0) - 65) * LOBBY_STRIDE + rank;
 }
 

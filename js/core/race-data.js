@@ -28,7 +28,7 @@ export function loadRace(sid, { drafts = false, includeUsers = true } = {}) {
     if (includeUsers) {
       // Profiles are needed for current GT7 avatars in race lobbies; the homepage and
       // standings based on frozen entry snapshots don't need the whole driver directory.
-      try { people = await (await import('./data.js')).users(); } catch { /* snapshots suffice */ }
+      try { const d = await import('./data.js'); people = await d.publicDriverDirectory().catch(() => d.users()); } catch { /* snapshots suffice */ }
     }
     const { season, entries, roundDocs, sheets, pqDocs, penalties, tmap, gts } = raw;
     const table = entryTable(season, entries);

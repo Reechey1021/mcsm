@@ -78,13 +78,12 @@ export function ratingPanel(p) {
   const gs = p.gtStats || null;
   const stat = (v, k) => h('div', null, h('div', { class: 'v display num' }, v == null ? '–' : fmtInt(v)), h('div', { class: 'k' }, k));
   return h('section', { class: 'rating-grid' },
-    h('div', { class: 'panel gauge-card' }, h('div', { class: 'row-between' }, h('span', { class: 'label' }, 'Driver Rating'), h('span', { class: 'faint', style: 'font-size:12.5px' }, p.ratingsSyncedAt ? t('syncedAt', { date: fmtDate(p.ratingsSyncedAt) }) : t('notSyncedYet'))),
+    h('div', { class: 'panel gauge-card ga-dr' }, h('div', { class: 'row-between' }, h('span', { class: 'label' }, 'Driver Rating'), h('span', { class: 'faint', style: 'font-size:12.5px' }, p.ratingsSyncedAt ? t('syncedAt', { date: fmtDate(p.ratingsSyncedAt) }) : t('notSyncedYet'))),
       drGauge(p)),
-    h('div', { class: 'stack', style: 'gap:12px' },
-      h('div', { class: 'panel sr-card' }, h('span', { class: 'label' }, 'Sportsmanship Rating'),
+      h('div', { class: 'panel sr-card ga-sr' }, h('span', { class: 'label' }, 'Sportsmanship Rating'),
         h('div', { class: 'sr-row' }, h('span', { class: 'sr-big display' }, p.sr || '–'),
           h('div', { class: 'sr-scale', role: 'img', 'aria-label': 'SR ' + (p.sr || '–') }, SR_SCALE.map((l) => h('span', { class: l === p.sr ? 'on' : SR_SCALE.indexOf(l) < SR_SCALE.indexOf(p.sr) ? 'past' : '' }, l))))),
-      p.uid ? mcsmRatingCard(p.uid) : null,
-      gs ? h('div', { class: 'panel', style: 'overflow:hidden' }, h('div', { class: 'label', style: 'padding:14px 16px 0' }, t('gt7Career')),
-        h('div', { class: 'stat-row', style: 'border-top:0' }, stat(gs.races, t('statRaces')), stat(gs.wins, t('wins')), stat(gs.clean, t('statClean')))) : null));
+      p.uid ? (() => { const c = mcsmRatingCard(p.uid); c.classList.add('ga-mr'); return c; })() : null,
+      gs ? h('div', { class: 'panel ga-gt', style: 'overflow:hidden' }, h('div', { class: 'label', style: 'padding:14px 16px 0' }, t('gt7Career')),
+        h('div', { class: 'stat-row', style: 'border-top:0' }, stat(gs.races, t('statRaces')), stat(gs.wins, t('wins')), stat(gs.clean, t('statClean')))) : null);
 }

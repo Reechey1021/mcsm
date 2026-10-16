@@ -1,3 +1,32 @@
+## v0.9.13 — Protest overhaul, results final summary, team history
+
+- Notifications: drivers couldn't switch on phone notifications ("Nincs megadva felhőfüggvény
+  címe") and their own notifications never reached phones, because the function address was only
+  readable by admins. Everyone now uses the public copy (content/endpoints).
+- Dark theme by default.
+- Protests: penalties for any number of drivers per case, and anyone who raced that round can be
+  penalised (votes and the chair's verdict are lists; one penalty record per driver; everyone
+  penalised is notified). Older single-driver data still reads. PSN IDs on the driver chips and in
+  the penalty pickers. "Többi bíró" shows eligible judges not on the panel (chair can add them)
+  and excluded judges with the reason. The official-case switch is now "Hivatalból indított
+  vizsgálat" with a clear explanation. Fixed: "null" under the publish button (append() now
+  skips empty values everywhere).
+- Results: a red dot by the name and "+10 mp" by the time when a penalty moved someone.
+- Round page: once results are final, the button becomes a "results are final" box with the
+  signed-in driver's round (Q/Sprint/GP positions and points, MCSM Rating change, round total,
+  championship place, team round and place). Lobby average MCSM Rating on the line-up and in the
+  lobby editor. Lobby editor rows: arrows instead of "Feljutott/Kiesett", never wider than the
+  screen.
+- Teams: titles on each team card, average MCSM Rating of current ranked drivers, and a
+  collapsible "Korábbi pilóták" (from past seasons' entries) on the team page.
+- Season Entries: GT7 pictures. Admin entry sheet: GT team per season next to the MCSM team.
+- Profile (desktop): DR and MCSM Rating side by side, SR and GT7 stats under DR. Back and
+  Compare aligned. User editor: judging scope only shown for judges / judge chair.
+- Hall of fame: no more off-screen boxes on phones (long names forced the columns wider).
+- Rating engine: a lobby with more than 16 classified drivers no longer aborts the whole run.
+- Reads: round pages, teams and entries take profile pictures from the shared driver JSON when
+  available instead of reading every profile.
+
 ## v0.9.12 — Shared public Drivers directory (prepared; not deployed)
 
 - Public Drivers listing obtains a single cached JSON from the existing Firebase Storage bucket rather than querying all `users` documents on each fresh visit. Admin and individual profile flows remain unchanged.

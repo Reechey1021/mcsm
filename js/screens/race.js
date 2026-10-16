@@ -14,7 +14,8 @@ import { backend, errorKey } from '../services/backend.js';
 import { session, isAdmin, isStaff } from '../services/session.js';
 import { loadRace } from '../core/race-data.js';
 import { fullName } from '../model/profile.js';
-import { LOBBIES, sessionPoints, flHolder, gpGrid, promoteRelegate } from '../engine/scoring.js';
+import { LOBBIES, sessionPoints, flHolder, gpGrid, promoteRelegate, roundTotals, driverStandings, teamStandings } from '../engine/scoring.js';
+import { publicRatings } from '../services/mcsm-rating.js';
 import { SESSIONS, sheetId, lobbyOf, pqProposal, pqConflicts, noShows, fmtLap, fmtRace, parseLap } from '../model/race.js';
 import { roundTitle } from '../data/tracks.js';
 import { roundProtests } from './protests.js';
@@ -140,7 +141,8 @@ function roundView(ctx, n, reload) {
   if (lobbies.length) draw(); else body.replaceChildren(empty(t('noLobbiesYet')));
   const started = (info.date && Date.now() >= info.date) || windowState(info, doc) === 'open';
   const racing = session.user && ctx.entries.some((e) => e.uid === session.user.uid && e.status !== 'withdrawn');
-  const practice = started && (racing || isAdmin())
+  const finalBox = doc.resultsState === 'final' ? myRoundSummary(ctx, n, built) : null;
+  const practice = finalBox ? finalBox : started && (racing || isAdmin())
     ? h('a', { class: 'btn block practice-btn protest-btn', href: `#/szezonok/${ctx.season.id}/fordulo/${n}/ovas`, 'data-haptic': '' }, icon('flag'), t('startProtest'))
     : h('button', { class: 'btn primary block practice-btn', type: 'button', 'data-haptic': '', onclick: () => practiceSheet(info, ctx.season) }, icon('flag'), t('practiceRoom'));
   const myLobby = session.user && doc.lobbiesPublished ? lobbyOf(doc.lobbies || {}, session.user.uid) : null;
@@ -159,7 +161,7 @@ function roundBody(ctx, n, L, S, built) {
   const me = session.user && session.user.uid;
   if (S === 'ROSTER') {
     const absent = new Set(ctx.entries.filter((e) => (e.absences || []).includes(n)).map((e) => e.uid));
-    return h('div', { class: 'stack', style: 'gap:8px' }, ids.map((uid) => {
+    return h('div', { class: 'stack', style: 'gap:8px' }, lobbyAverage(ids), ...ids.map((uid) => {
       const p = ctx.person(uid), tm = ctx.tmap[p.teamId];
       return h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, avatar(p, tm),
         h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, h('span', { class: 'rnum' }, '#' + (p.raceNumber ?? '')), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, '  ', tm ? tm.name : t('noTeam'), absent.has(uid) ? '  ' + t('cantComeTag') : '')), ratingEl(p));
@@ -185,10 +187,11 @@ export function resultsTable(ctx, rows, L, S, me) {
   const body = rows.map((r) => {
     const pts = sessionPoints(ctx.points, S, L, r) + (fl === r.id ? ctx.points.fl : 0);
     const timeTxt = S === 'Q' ? fmtLap(r.best) : r.status !== 'OK' ? h('span', { class: 'st ' + r.status.toLowerCase() }, r.status) : r === winner ? fmtRace(r.time) : r.laps ? t('lapsDown', { n: r.laps }) : r.gap != null ? '+' + fmtLap(r.gap) : '–';
+    const penTag = r.penalty ? h('span', { class: 'pen-tag', title: t('penaltyApplied', { s: r.penalty }) }, '+' + r.penalty + ' ' + t('secShort')) : null;
     const second = S === 'Q' ? (r === winner || r.best == null || pole == null ? '' : '+' + (r.best - pole).toFixed(3)) : fmtLap(r.best);
     return h('tr', { style: r.id === me ? 'background:var(--accent-soft)' : '' }, h('td', { class: 'p' }, r.status === 'OK' ? r.pos : '–'),
-      h('td', { class: 'nm' }, nameCell(ctx, r.id), fl === r.id ? h('span', { class: 'fl', title: t('fastestLap') }, 'FL') : null),
-      h('td', { class: 'r' }, timeTxt), h('td', { class: 'r hide-sm' }, second), h('td', { class: 'r', style: 'font-weight:800' }, pts));
+      h('td', { class: 'nm' }, nameCell(ctx, r.id), r.penalty ? h('span', { class: 'pen-dot', title: t('penaltyApplied', { s: r.penalty }) }) : null, fl === r.id ? h('span', { class: 'fl', title: t('fastestLap') }, 'FL') : null),
+      h('td', { class: 'r' }, timeTxt, penTag), h('td', { class: 'r hide-sm' }, second), h('td', { class: 'r', style: 'font-weight:800' }, pts));
   });
   return h('div', { class: 'rtable-wrap' }, h('table', { class: 'rtable' }, h('thead', null, thead), h('tbody', null, body)));
 }
@@ -249,16 +252,17 @@ function lobbyEditor(ctx, n, reload) {
     const p = ctx.snaps[uid] || {}, tm = ctx.tmap[p.teamId];
     const wasL = prev ? lobbyOf(prev.lobbies, uid) : null;
     const mv = wasL && wasL !== L ? (wasL > L ? 'up' : 'down') : null;
-    return h('button', { class: 'row-card', type: 'button', dataset: { key: uid }, onclick: () => moveSheet(uid, L) }, avatar(p, tm),
+    return h('button', { class: 'row-card lobby-row', type: 'button', dataset: { key: uid }, onclick: () => moveSheet(uid, L) }, avatar(p, tm),
       h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, tm ? '  · ' + tm.name : '', flags.has(uid) ? '  ' + t('noShowTag') : '')),
       pqOf[uid] ? h('span', { class: 'pq-chip' }, pqOf[uid].seeded ? '★' : pqOf[uid].t ? fmtLap(pqOf[uid].t) : '–', h('small', null, 'P' + pqOf[uid].pos)) : null,
-      mv ? h('span', { class: 'delta ' + mv, style: 'font-size:12.5px' }, mv === 'up' ? '▲ ' + t('promoted') : '▼ ' + t('relegated')) : null);
+      mv ? h('span', { class: 'mv-arrow ' + mv, title: mv === 'up' ? t('promoted') : t('relegated'), 'aria-label': mv === 'up' ? t('promoted') : t('relegated') }, mv === 'up' ? '▲' : '▼') : null);
   };
   const totals = h('span', { class: 'prog' });
   const draw = (animate) => {
     totals.textContent = t('lobbyTotals', { a: lobbies.A.length, b: lobbies.B.length, c: lobbies.C.length });
     const build = () => wrap.replaceChildren(...LOBBIES.map((L) => h('section', null,
       h('div', { class: 'row-between', style: 'margin-bottom:8px' }, h('div', { style: 'display:flex;gap:10px;align-items:center' }, lobbyBadge(L), h('b', { style: 'font-size:17px' }, t('lobbyX', { l: L }))), h('span', { class: 'faint', style: lobbies[L].length > sz[L] ? 'color:var(--red);font-weight:700' : '' }, `${lobbies[L].length} / ${sz[L]}`, lobbyHost(s, L) ? ` · host: ${fullName(ctx.person(lobbyHost(s, L))) || '?'}` : '')),
+      lobbies[L].length ? lobbyAverage(lobbies[L]) : null,
       h('div', { class: 'stack', style: 'gap:6px' }, lobbies[L].length ? lobbies[L].map((uid) => rowEl(uid, L)) : [h('div', { class: 'empty', style: 'padding:14px' }, t('emptyLobby'))])),
     ), (() => { const rest = pool(); return rest.length ? h('section', null, h('div', { class: 'label', style: 'margin-bottom:8px' }, t('notInLobby', { n: rest.length })), h('div', { class: 'stack', style: 'gap:6px' }, rest.map((e) => rowEl(e.uid, null)))) : null; })());
     animate ? flip(wrap, build, { stagger: 6 }) : build();
@@ -364,4 +368,53 @@ export function screenPqEntry({ sid, pq }) {
       h('div', { class: 'entry-bar' }, h('span', { class: 'prog' }, countEl, ' ', t('timesLabel')), save));
   }).catch(() => root.replaceChildren(empty(t('loadFailed'))));
   return frag(backLink(t('backToSeason'), `#/szezonok/${sid}/pq`), root);
+}
+
+// The average MCSM Rating of the ranked drivers in a lobby (filled in once the ratings load).
+function lobbyAverage(ids) {
+  const el = h('div', { class: 'lobby-avg', style: 'display:none' });
+  publicRatings().then((P) => {
+    const vals = ids.map((u) => (P.drivers || {})[u]).filter((x) => x && x.e).map((x) => x.r);
+    if (!vals.length) return;
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    el.replaceChildren(h('span', null, t('lobbyAvg')), h('b', null, (Math.round(avg * 10) / 10).toFixed(1).replace('.', ',')), h('small', null, t('lobbyAvgOf', { n: vals.length, m: ids.length })));
+    el.style.display = '';
+  }).catch(() => {});
+  return el;
+}
+
+// Results are final: a box with the signed-in driver's own round (only if they raced it).
+function myRoundSummary(ctx, n, built) {
+  const uid = session.user && session.user.uid;
+  const box = h('section', { class: 'panel final-box' }, h('div', { class: 'final-head' }, icon('check'), h('b', null, t('resultsFinalTitle'))));
+  if (!uid || !built) return box;
+  const idx = ctx.built.findIndex((r) => r.n === n);
+  const rd = ctx.built[idx];
+  const tot = rd ? roundTotals(rd, ctx.points)[uid] : null;
+  if (!tot) return box;
+  const p = ctx.person(uid), tm = ctx.tmap[p.teamId];
+  const upTo = ctx.built.slice(0, idx + 1);
+  const ds = driverStandings(upTo, ctx.ids, { table: ctx.points });
+  const myPos = ds.findIndex((r) => r.id === uid) + 1, myRow = ds[myPos - 1];
+  const ts = p.teamId ? teamStandings(upTo, ctx.teams, { table: ctx.points }) : [];
+  const tPos = ts.findIndex((r) => r.id === p.teamId) + 1, tRow = ts[tPos - 1];
+  const teamRound = p.teamId ? Object.entries(roundTotals(rd, ctx.points)).filter(([id]) => (ctx.snaps[id] || {}).teamId === p.teamId).reduce((a, [, x]) => a + (x.total || 0), 0) : null;
+  const res = (S, pos, pts) => h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, S), h('b', null, pos ? 'P' + pos : '–'), h('small', null, (pts ?? 0) + ' ' + t('pointsShort')));
+  const mr = h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, 'MCSM Rating'), h('b', null, '…'), h('small', null, ''));
+  publicRatings().then((P) => {
+    const x = (P.drivers || {})[uid];
+    const label = `MCSM${ctx.season.no} / ${n}`;
+    const hist = x && x.e ? (x.h || []).map((e) => (Array.isArray(e) ? { l: e[0], r: e[1] } : e)) : [];
+    const i = hist.findIndex((e) => e.l === label);
+    if (i > 0) { const d = hist[i].r - hist[i - 1].r; mr.children[1].textContent = (d >= 0 ? '+' : '−') + (Math.round(Math.abs(d) * 10) / 10).toFixed(1).replace('.', ','); mr.children[1].className = d >= 0 ? 'up' : 'down'; mr.children[2].textContent = (Math.round(hist[i].r * 10) / 10).toFixed(1).replace('.', ','); }
+    else { mr.children[1].textContent = x && x.e ? '–' : t('mrUnranked'); }
+  }).catch(() => { mr.children[1].textContent = '–'; });
+  box.append(
+    h('div', { class: 'fs-who' }, avatar(p, tm), h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, '#' + (p.raceNumber ?? ''), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, tot.lobby ? ' · ' + t('lobbyX', { l: tot.lobby }) : ''))),
+    h('div', { class: 'fs-grid' }, res(t('quali'), tot.qPos, tot.q), res('Sprint', tot.sPos, tot.s), res("Gran'Prix", tot.gpPos, tot.gp), mr),
+    h('div', { class: 'fs-grid fs-2' },
+      h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, t('fsRoundTotal')), h('b', null, tot.total), h('small', null, t('pointsShort'))),
+      h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, t('fsChampionship')), h('b', null, myPos ? myPos + '.' : '–'), h('small', null, (myRow ? myRow.total : 0) + ' ' + t('pointsShort'))),
+      tm ? h('div', { class: 'fs-cell' }, h('span', { class: 'k' }, tm.name), h('b', null, tPos ? tPos + '.' : '–'), h('small', null, t('fsTeamRound', { n: teamRound ?? 0, total: tRow ? tRow.total : 0 }))) : null));
+  return box;
 }

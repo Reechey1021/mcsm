@@ -1065,3 +1065,55 @@ details.adv .round-item, .stack > .round-item{ box-sizing:border-box; max-width:
 @media (min-width:900px){
   .gt7-admin .gt7-admin-tools{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
 }
+
+/* 0.9.13 protests */
+.pen-line{ display:grid; gap:8px; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-3); }
+.chip-driver{ display:inline-grid; text-align:left; line-height:1.15; padding-top:6px; padding-bottom:6px; }
+.chip-driver small{ font-size:11px; font-weight:600; opacity:.7; }
+
+/* ===== 0.9.13 ===== */
+/* profile: DR and MCSM Rating side by side; SR and GT7 stats under DR (desktop) */
+.rating-grid{ display:grid; gap:12px; grid-template-columns:minmax(0, 1fr); grid-template-areas:"dr" "sr" "mr" "gt"; }
+.ga-dr{ grid-area:dr; } .ga-sr{ grid-area:sr; } .ga-mr{ grid-area:mr; } .ga-gt{ grid-area:gt; }
+@media (min-width:760px){ .rating-grid{ grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); grid-template-areas:"dr mr" "sr mr" "gt mr"; align-items:start; } .rating-grid .ga-mr{ align-self:stretch; } }
+/* results: penalty marks */
+.pen-tag{ display:inline-block; margin-left:6px; padding:1px 6px; border-radius:6px; background:rgba(229,72,77,.16); color:#ff6b6f; font-size:11.5px; font-weight:800; white-space:nowrap; }
+.pen-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:#E5484D; margin-left:6px; vertical-align:middle; }
+/* lobby editor rows: never wider than the screen; arrows instead of words */
+.lobby-row{ position:relative; min-width:0; }
+.lobby-row .nm{ min-width:0; flex:1 1 auto; }
+.lobby-row .nm > *{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+.lobby-row .pq-chip{ flex:0 0 auto; margin-left:6px; }
+.mv-arrow{ flex:0 0 auto; font-size:13px; line-height:1; margin-left:6px; }
+.mv-arrow.up{ color:#22C55E; } .mv-arrow.down{ color:var(--red); }
+.lobby-avg{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:8px 12px; border-radius:var(--r-md); background:var(--bg-2); border:1px solid var(--line); font-size:13px; color:var(--ink-2); }
+.lobby-avg b{ font-size:17px; color:var(--accent-text); font-variant-numeric:tabular-nums; }
+.lobby-avg small{ color:var(--ink-3); }
+/* results final: your round */
+.final-box{ padding:14px 16px; margin-bottom:14px; border-color:rgba(182,240,60,.35); }
+.final-head{ display:flex; align-items:center; gap:8px; color:var(--accent-text); margin-bottom:10px; }
+.final-head svg{ width:18px; height:18px; }
+.fs-who{ display:flex; align-items:center; gap:12px; margin-bottom:12px; min-width:0; }
+.fs-who .nm{ display:grid; min-width:0; } .fs-who .nm > span{ font-size:13px; color:var(--ink-3); }
+.fs-grid{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+.fs-grid.fs-2{ grid-template-columns:repeat(3, minmax(0, 1fr)); margin-top:8px; }
+@media (max-width:520px){ .fs-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); } .fs-grid.fs-2{ grid-template-columns:minmax(0, 1fr); } }
+.fs-cell{ display:grid; gap:1px; padding:9px 10px; border-radius:10px; background:var(--bg-3); min-width:0; }
+.fs-cell .k{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fs-cell b{ font-size:19px; font-variant-numeric:tabular-nums; }
+.fs-cell b.up{ color:#22C55E; } .fs-cell b.down{ color:var(--red); }
+.fs-cell small{ font-size:11.5px; color:var(--ink-3); }
+/* teams */
+.team-avg{ display:block; font-size:12px; color:var(--accent-text); font-weight:700; margin-top:2px; }
+.team-card .sort-fig{ align-self:center; }
+.team-avg-box{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+.team-avg-box b{ font-size:34px; color:var(--accent-text); }
+/* profile top row: back and Compare on one line, same spacing */
+.top-row{ margin-bottom:14px; }
+.top-row > *{ margin-bottom:0 !important; margin-top:0 !important; }
+/* hall of fame on phones: nothing wider than the screen */
+.hof, .hof-card, .hof-cols, .hof-col, .medal-table, .mt-row{ min-width:0; }
+.hof-cols{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.pod{ min-width:0; }
+.pod a, .pod span.n{ flex:1 1 auto; }
+.pod small{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

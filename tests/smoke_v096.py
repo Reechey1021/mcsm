@@ -31,7 +31,7 @@ with sync_playwright() as p:
         pg.click('button:has-text("Újraszámolás és közzététel")'); pg.wait_for_timeout(4000)
         go(pg, '/pilotak/igtsh_saby', 'owner')
         card = text(pg, '.mr-card')
-        check('TOP 1%' in card.upper() and '100,0' not in card, f'{size}: percentile standing, no 100 marker ({card[:90]!r})')
+        check(len(pg.query_selector_all('.mr-card .stars')) == 4 and '100,0' not in card, f'{size}: stars (since 0.9.7), no 100 marker ({card[:90]!r})')
         check(len(pg.query_selector_all('.mr-parts .mr-part')) == 3, f'{size}: three parts in a row')
         top = pg.evaluate("(() => { const r = document.querySelector('.top-row'); return r ? [r.children.length, Math.round(r.getBoundingClientRect().height)] : null; })()")
         check(top and top[0] == 2 and top[1] < 60, f'{size}: Compare on the back-button line ({top})')

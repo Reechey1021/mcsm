@@ -34,7 +34,8 @@ with sync_playwright() as p:
           db.entries.mcsm31[uid] = { uid, type: 'driver', status: 'entered', approved: true, order: 1, snapshot: { firstName: u.firstName, lastName: u.lastName, psn: u.psn, psnLower: u.psnLower, raceNumber: u.raceNumber, dr: u.dr, sr: u.sr, teamId: u.teamId || null }, availability: [], absences: [] };
           db.race.mcsm31.rounds['1'].lobbies.A.push(uid); localStorage.setItem(k, JSON.stringify(db)); }""")
         # round page: started round shows the red button; header has no big gap
-        go(pg, '/szezonok/mcsm31/fordulo/1', 'pilota')
+        # round 1's results are final (the button gives way to the summary); round 2's window is open
+        go(pg, '/szezonok/mcsm31/fordulo/2', 'pilota')
         check(pg.query_selector('a.protest-btn') is not None and 'Óvás indítása' in text(pg), f'{size}: red protest button after the start')
         gap = pg.evaluate("(() => { const r = document.querySelector('.round-head-row'); if (!r) return 999; const a = r.children[0].getBoundingClientRect(), b = r.children[1].getBoundingClientRect(); return b.top >= a.bottom - 4 ? Math.round(b.left - a.left) : Math.round(b.left - a.right); })()")
         check(0 <= gap <= 30, f'{size}: status right after the title, or left-aligned under it ({gap}px)')
@@ -43,7 +44,7 @@ with sync_playwright() as p:
         pg.click('a.protest-btn'); pg.wait_for_timeout(2000)
         v = text(pg)
         lob = len(pg.query_selector_all('.form .f-row:first-child .seg button'))
-        check(('lezárult' in v.lower() or 'zárva' in v.lower() or 'nem nyújtható' in v.lower()) or lob == 1, f'{size}: driver: own lobby only (or window closed) ({lob})')
+        check(lob >= 1 and 'Kanyar / Időpont' in v, f'{size}: driver form: any lobby of the season (since 0.9.8) ({lob})')
         go(pg, '/szezonok/mcsm31/fordulo/1/ovas', 'owner')
         check('Kanyar / Időpont' in text(pg) and 'Pl. T4 / Hajtű / 12:36.000' in pg.content() and pg.query_selector('.toggle-row:has-text("Hivatalos")') is not None or 'Kanyar / Időpont' in text(pg), f'{size}: admin form: corner/time, official case option')
         # stewards: a way out

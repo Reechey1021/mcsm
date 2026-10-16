@@ -1,6 +1,7 @@
 // ui/tower.js
 // The timing tower: championship standings with position deltas, team stripes,
 // count-up points and FLIP reordering between rounds.
+import { normName } from '../model/name-match.js';
 import { publicRatings, lobbyAverages, fmtRating } from '../services/mcsm-rating.js';
 import { h, frag } from '../core/dom.js';
 import { flip, countUp, fmtInt, moveThumb } from '../core/motion.js';
@@ -53,6 +54,18 @@ export function towerEl(ctx, kind, upTo, opts = {}) {
   return { el: h('div', { class: 'tower-wrap' }, head, ol), rows };
 }
 
+// Who was in which lobby in a round. Imported old-site rounds only stored round 1's lobbies, so for
+// MCSM25–30 the per-round lobbies come from the results history (matched by PSN ID).
+function roundLobbies(ctx, rd, HISTORY) {
+  const has = Object.values(rd.lobbies || {}).some((l) => (l || []).length);
+  if (has) return rd.lobbies;
+  const byPsn = {};
+  Object.entries(ctx.snaps).forEach(([uid, p]) => { if (p && p.psn) byPsn[normName(p.psn)] = uid; });
+  const out = { A: [], B: [], C: [] };
+  HISTORY.filter((r) => r[0] === ctx.season.no && r[1] === rd.n).forEach((r) => { const uid = byPsn[normName(r[3])]; if (uid && out[r[2]] && !out[r[2]].includes(uid)) out[r[2]].push(uid); });
+  return out;
+}
+
 // Full interactive standings block: championship tabs, round scrubber, replay.
 export function standingsBlock(ctx, ui, segFn) {
   const done = ctx.built.length;
@@ -63,9 +76,9 @@ export function standingsBlock(ctx, ui, segFn) {
   if (ui.sid !== ctx.season.id || !ui.upTo || ui.upTo > done) { ui.sid = ctx.season.id; ui.upTo = done; ui.final = finished; }
   if (!finished) ui.final = false;
   const avgRow = h('div', { class: 'lobby-avgs' });
-  const drawAvgs = () => publicRatings().then((P) => {
+  const drawAvgs = () => Promise.all([publicRatings(), import('../data/history-s25-30.js').catch(() => ({ HISTORY: [] }))]).then(([P, { HISTORY }]) => {
     const rd = ctx.built[ui.upTo - 1];
-    const av = rd ? lobbyAverages(P, rd.lobbies, ctx.season.no, rd.n) : {};
+    const av = rd ? lobbyAverages(P, roundLobbies(ctx, rd, HISTORY), ctx.season.no, rd.n) : {};
     const Ls = ['A', 'B', 'C'].filter((L) => av[L]);
     avgRow.replaceChildren(...(Ls.length ? [h('span', { class: 'k' }, t('lobbyAvgShort')), ...Ls.map((L) => h('span', { class: 'la' }, h('span', { class: 'lobby ' + L }, L), h('span', { class: 'mr-pill', title: t('lobbyAvgOf', { n: av[L].ranked, m: av[L].total }) }, fmtRating(av[L].avg))))] : []));
   }).catch(() => avgRow.replaceChildren());

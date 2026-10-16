@@ -2,7 +2,7 @@
 // Protests from both sides: drivers file and follow their cases, everyone reads published
 // decisions, and the Versenybíróság works its cases (panel, votes, notes, decision,
 // publishing the penalty, which then reorders the results by itself).
-import { goBack } from '../core/nav.js';
+import { goBack, backLabel } from '../core/nav.js';
 import { penaltyLines } from '../model/protest.js';
 import { toggle } from '../ui/controls.js';
 import { h, frag } from '../core/dom.js';
@@ -243,7 +243,7 @@ export function screenJudges() {
     rows.sort((a, b) => (b.p.createdAt || 0) - (a.p.createdAt || 0));
     draw();
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
-  const back = h('button', { class: 'back', type: 'button', onclick: () => goBack('#/') }, icon('chevL'), t('back'));
+  const back = h('button', { class: 'back', type: 'button', onclick: () => goBack('#/') }, icon('chevL'), backLabel() || t('back'));
   return frag(back, pageTitle(t('judgesArea'), t('judgesSub')), h('div', { style: 'margin-bottom:14px' }, filterSeg), box);
 }
 

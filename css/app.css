@@ -1184,3 +1184,8 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
 .lobby-avgs{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--ink-3); font-weight:700; }
 .lobby-avgs:empty{ display:none; }
 .lobby-avgs .la{ display:inline-flex; align-items:center; gap:5px; }
+
+/* team cards: the average pill sits beside the name, sized to its text (wraps under it if tight) */
+.team-card .nm .mr-pill.team-pill{ display:inline-flex; width:auto; flex:0 0 auto; margin-left:8px; color:var(--accent-text); font-size:11.5px; font-weight:850; white-space:nowrap; overflow:visible; line-height:1.5; align-self:center; }
+.team-grid .team-card .nm b{ row-gap:4px; }
+.back-link .back-txt{ max-width:58vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

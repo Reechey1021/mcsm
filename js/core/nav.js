@@ -8,3 +8,17 @@ export function goBack(fallback) {
   if (fallback) location.hash = fallback.startsWith('#') ? fallback : '#' + fallback;
   return false;
 }
+
+// Titles of the pages in this visit, by history position (kept for the tab's lifetime).
+const KEY = 'mcsm:navTitles';
+const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || '{}'); } catch { return {}; } };
+export function rememberTitle(idx, title) {
+  if (idx == null || !title) return;
+  const m = read(); m[idx] = title;
+  try { sessionStorage.setItem(KEY, JSON.stringify(m)); } catch { /* storage full or blocked */ }
+}
+// The title of the page a back press would return to, or null.
+export function backLabel() {
+  if (!canGoBack()) return null;
+  return read()[history.state.mcsmIdx - 1] || null;
+}

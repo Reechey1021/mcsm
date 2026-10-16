@@ -1,6 +1,6 @@
 // ui/parts.js
 // Small shared pieces: avatars, rating badges, page headings, empty states, banners.
-import { canGoBack, goBack } from '../core/nav.js';
+import { canGoBack, goBack, backLabel } from '../core/nav.js';
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { initials } from '../model/profile.js';
@@ -34,7 +34,7 @@ export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class:
 export const pageTitle = (title, sub) => [h('h1', { class: 'display page-title' }, title), sub ? h('p', { class: 'page-sub' }, sub) : null];
 export const secHead = (title, linkLabel, href) => h('div', { class: 'sec-head' }, h('h2', { class: 'display' }, title), linkLabel ? h('a', { class: 'link', href }, linkLabel) : null);
 export const empty = (msg, extra) => h('div', { class: 'empty' }, msg, extra ? h('div', { style: 'margin-top:14px' }, extra) : null);
-export const backLink = (label, href) => h('a', { class: 'btn small tap back-link', href, style: 'margin-bottom:14px', onclick: (e) => { if (canGoBack()) { e.preventDefault(); goBack(); } } }, icon('chevL'), label);
+export const backLink = (label, href) => h('a', { class: 'btn small tap back-link', href, title: backLabel() || label, style: 'margin-bottom:14px', onclick: (e) => { if (canGoBack()) { e.preventDefault(); goBack(); } } }, icon('chevL'), h('span', { class: 'back-txt' }, backLabel() || label));
 export const loading = () => h('div', { class: 'boot', role: 'status' }, h('span', { class: 'spin', 'aria-label': t('loading') }));
 export function formError(msg) { return msg ? h('div', { class: 'form-error', role: 'alert' }, icon('alert'), h('span', null, msg)) : h('div'); }
 export const skelRows = (n, hgt = 64) => h('div', { class: 'stack', style: 'gap:8px' }, Array.from({ length: n }, (_, i) => h('div', { class: 'skel', style: `height:${hgt}px;opacity:${Math.max(0.3, 1 - i * 0.08)}` })));

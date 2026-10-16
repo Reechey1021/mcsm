@@ -52,6 +52,31 @@ with sync_playwright() as p:
         check(len(pg.query_selector_all('.lobby-avgs .mr-pill')) >= 2, f'{size}: lobby averages on Results')
         pg.click('.seg button:has-text("1. forduló után")'); pg.wait_for_timeout(800)
         check('Végeredmény' not in pg.evaluate("[...document.querySelectorAll('.seg button[aria-pressed=\"true\"]')].map(b => b.innerText).join('|')"), f'{size}: rounds still selectable')
+        # 5. team pill: sized to its text, neon green, beside the name
+        pg.goto(BASE + '?fakecloud&v=6#/csapatok'); pg.wait_for_timeout(2400)
+        pill = pg.evaluate("(() => { const p = document.querySelector('.team-card .mr-pill'); if (!p) return null; const cs = getComputedStyle(p); return [Math.round(p.getBoundingClientRect().width), cs.color, cs.display, !!p.closest('b')]; })()")
+        check(pill and pill[0] < 80 and pill[2] in ('inline-flex', 'flex') and pill[3] and (lambda c: c[1] > c[0] and c[1] > c[2])([int(x) for x in pill[1][4:-1].split(',')[:3]]), f'{size}: team pill fits its text, beside the name ({pill})')
+        # 6. back button says where it goes
+        pg.goto(BASE + '?fakecloud&v=7#/eredmenyek/mcsm31'); pg.wait_for_timeout(2600)
+        pg.query_selector_all('.tower a.trow[href*="#/pilotak/"]')[0].click(); pg.wait_for_timeout(2200)
+        lab = pg.inner_text('a.back-link').strip()
+        check(lab == 'Eredmények', f'{size}: back button names where it returns ({lab!r})')
+        pg.click('a.back-link'); pg.wait_for_timeout(1800)
+        check('#/eredmenyek' in pg.url, f'{size}: and goes there ({pg.url})')
+        # 7. imported season: lobby averages for rounds 2 and 3 too (lobbies from the results history)
+        names = ["ACTA_Szabi", "Adam18_26", "Dacka007", "F1HL_Atesz", "GTHH_Speede", "GTHL_Beni", "HRT_Robi", "IGTSH_Batman_146", "IGTSH_Buldo", "IGTSH_Dixen", "IGTSH_MARADONA", "IGTSH_Saby", "IGTSH_Smnmr", "IGTSH_Tordinho", "IGTSH_iamDomi", "IGTSH_mozzzsi", "JoMckur", "Libalak", "MGTK_ATESZ", "MGTK_Andor", "MGTK_B3like", "MGTK_Baboca96", "MGTK_Banderas", "MGTK_Bandesz79"]
+        db(pg, """(db) => { const names = """ + json.dumps(names) + """; const ids = Object.keys(db.users).slice(0, names.length);
+          const s = db.seasons.mcsm30; s.state = 'finished'; s.rounds = [1, 2, 3].map((n) => ({ ...(s.rounds && s.rounds[0] || {}), n, date: Date.now() - (40 - n) * 86400000 }));
+          db.race.mcsm30 = { rounds: {}, sheets: {}, pq: {}, protests: {}, votes: {}, notes: {}, penalties: {} };
+          [1, 2, 3].forEach((n) => { db.race.mcsm30.rounds[String(n)] = { n, lobbies: { A: [], B: [], C: [] }, lobbiesPublished: true, resultsState: 'final', legacy: { rows: ids.map((id, i) => ({ id, pos: i + 1, points: 500 - i * 10, status: 'OK' })) } }; });
+          db.entries.mcsm30 = Object.fromEntries(ids.map((id, i) => [id, { uid: id, type: 'driver', status: 'entered', approved: true, order: i + 1, snapshot: { firstName: 'A', lastName: 'B' + i, psn: names[i], raceNumber: i + 1 } }]));
+          delete (db.content || {})['summary-mcsm30']; }""")
+        pg.goto(BASE + '?fakecloud&fakeuser=owner&v=8#/eredmenyek/mcsm30'); pg.wait_for_timeout(2800)
+        for n in (2, 3):
+            pg.click(f'.seg button:has-text("{n}. forduló után")'); pg.wait_for_timeout(900)
+            check(len(pg.query_selector_all('.lobby-avgs .mr-pill')) >= 1, f'{size}: lobby averages after round {n}')
+        pg.click('.seg button:has-text("Végeredmény")'); pg.wait_for_timeout(900)
+        check(len(pg.query_selector_all('.lobby-avgs .mr-pill')) >= 1, f'{size}: lobby averages on Végeredmény')
         ctx.close()
     b.close()
 print(json.dumps({'passed': passes, 'failed': fails, 'errors': real(errs)}, ensure_ascii=False, indent=1))

@@ -1,6 +1,7 @@
 // router.js
 // Hash routes (#/pilotak/igtsh_dixen), guards (sign-in, admin), direction-aware
 // view transitions and per-page scroll memory.
+import { rememberTitle } from './core/nav.js';
 import { $, h } from './core/dom.js';
 import { on, emit } from './core/bus.js';
 import { reduced } from './core/motion.js';
@@ -130,10 +131,23 @@ function render(r) {
 }
 
 let curIdx = null;
+const SECTION = { '': 'navHome', szezonok: 'navSeasons', eredmenyek: 'navResults', pilotak: 'navDrivers', csapatok: 'navTeams', sajat: 'navMe', admin: 'admin', birosag: 'judgesArea', szabalyzat: 'rules', osszevetes: 'compareTitle' };
+function pageTitleOf(route) {
+  // main tabs go by their tab name (the home page's hero heading isn't a page name); deeper pages
+  // by their heading (a driver, a team, a round), else their section
+  const parts = String(route.path || '').split('/').filter(Boolean);
+  const seg = parts[0] || '';
+  const section = SECTION[seg] ? t(SECTION[seg]) : '';
+  const h1 = document.querySelector('#view h1');
+  let txt = parts.length <= 1 && section ? section : (h1 ? h1.textContent.replace(/\s+/g, ' ').trim() : '');
+  if (!txt) txt = section;
+  return txt.length > 26 ? txt.slice(0, 25).trim() + '…' : txt;
+}
 export function navigate() {
   const r = parse(location.hash);
   const prev = current;
   if (prev && prev.path === r.path && prev.query.toString() === r.query.toString()) return;
+  if (prev) rememberTitle(curIdx, pageTitleOf(prev));
   current = r;
   // where this entry sits in the visit (new entries get the next number; going back finds theirs)
   const st = history.state;

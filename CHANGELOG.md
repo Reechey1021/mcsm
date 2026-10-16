@@ -9,6 +9,13 @@
   each driver's rating as it stood after that round.
 - Results: finished seasons get a "Végeredmény" (final) round, selected by default, showing the final
   standings without movement arrows; the per-round views are unchanged.
+- Team cards: the average is a pill beside the team name, sized to its text (wraps under the name when
+  tight), like the lobby tabs.
+- Back buttons say where they go ("< Eredmények" when you came from Results): the router remembers each
+  page's title as you leave it (tab name for main tabs, heading for deeper pages).
+- Lobby averages on Results for every round and Végeredmény; imported seasons (MCSM25–30) take each
+  round's lobbies from the results history, since the old site only stored round 1's.
+- MCSM Rating "?" explanation rewritten (text kept in js/ui/mcsm-rating.js, EXPLAIN).
 
 ## v1.0.1
 

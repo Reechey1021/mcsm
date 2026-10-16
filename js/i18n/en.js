@@ -307,4 +307,5 @@ export const en = {
   gtHasMembers: 'Move everyone out of the GT team first ({n} drivers in it).', teamsMcsm: 'MCSM teams', teamsGt: 'GT teams', driversShort: 'DRIVERS', noGtTeams: 'No GT teams yet.',
   finalStandings: 'Final', lobbyAvgShort: 'Lobby average:',
   dotrTitle: 'Driver of the round', dotrSub: 'biggest MCSM Rating gain', mgtkTitles: 'MGTK titles', mgtkChampionN: '{n}× MGTK champion', hofMgtkTable: 'MGTK medal table',
+  hofMore: 'More ({n})',
 };

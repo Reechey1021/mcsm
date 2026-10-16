@@ -21,7 +21,7 @@ export function screenCompare({ a, b }) {
     const A = us.find((u) => u.psnLower === a.toLowerCase()), B = us.find((u) => u.psnLower === b.toLowerCase());
     if (!A || !B) { box.replaceChildren(empty(t('notFound'))); return; }
     const mr = (u) => { const x = (P.drivers || {})[u.uid]; return x && x.e ? x : null; };
-    const med = (u) => (H ? medalsForUser(H.people, u) : null) || { medals: [0, 0, 0] };
+    const med = (u) => (H ? medalsForUser(H.people, u, us) : null) || { medals: [0, 0, 0] };
     const head = (u) => h('a', { class: 'cmp-who', href: '#/pilotak/' + encodeURIComponent(u.psnLower) }, avatar(u, tm[u.teamId], 'lg'), h('b', null, fullName(u)),
       h('span', null, '#' + (u.raceNumber ?? ''), ' · ', u.psn), tm[u.teamId] ? h('span', { class: 'pd-team' }, teamBadge(tm[u.teamId], 14), tm[u.teamId].name) : h('span', null, ' '));
     // one row: value A | label | value B. diff: show "▼ −x" under the lower one (numbers only)

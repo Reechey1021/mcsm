@@ -59,11 +59,33 @@ export function teamMedals(seasons) {
   }));
   return teams.sort((a, b) => b.medals[0] - a.medals[0] || b.medals[1] - a.medals[1] || b.medals[2] - a.medals[2]);
 }
-// A site user's medals: match by uid (new seasons), name, or PSN core.
-export function medalsForUser(people, u) {
+// How strongly a podium entry (person) points at an account: same uid or exact PSN beats a name match,
+// which beats a PSN without its team prefix. The prefix-less match only counts when the two full names
+// don't contradict (MGTK_Atesz "Birgès Attila" is not F1HL_ATESZ "Konkoly Attila").
+const words2 = (s) => String(s || '').trim().split(/\s+/).filter(Boolean);
+export function linkScore(p, u) {
+  if (!p || !u) return 0;
+  if (p.uid && u.uid && p.uid === u.uid) return 4;
+  if (p.psn && u.psn && compact(p.psn) === compact(u.psn)) return 3;
+  const uname = `${u.lastName || ''} ${u.firstName || ''}`.trim();
+  if (p.name && uname && sameName(p.name, uname)) return 2;
+  const conflict = words2(p.name).length >= 2 && words2(uname).length >= 2 && !sameName(p.name, uname);
+  if (!conflict && samePerson({ psn: p.psn }, { psn: u.psn })) return 1;
+  return 0;
+}
+// The account a podium entry belongs to (the strongest link), or null.
+export function bestUser(p, users) {
+  let best = null, bs = 0;
+  for (const u of users || []) { const sc = linkScore(p, u); if (sc > bs) { bs = sc; best = u; } }
+  return best;
+}
+// A site user's medals. With the full user list, an entry only counts for the account it links to best.
+export function medalsForUser(people, u, users = null) {
   if (!u) return null;
   const me = { uid: u.uid, name: `${u.lastName || ''} ${u.firstName || ''}`.trim(), psn: u.psn };
-  const hits = people.filter((p) => (p.uid && p.uid === u.uid) || samePerson({ name: p.name, psn: p.psn }, { name: me.name, psn: me.psn }));
+  const hits = people.filter((p) => (users
+    ? ((b) => b && b.uid === u.uid)(bestUser(p, users))
+    : (p.uid && p.uid === u.uid) || (linkScore(p, u) > 0 && samePerson({ name: p.name, psn: p.psn }, { name: me.name, psn: me.psn }))));
   if (!hits.length) return null;
   const out = { medals: [0, 0, 0], seasons: [[], [], []] };
   hits.forEach((p) => [0, 1, 2].forEach((i) => { out.medals[i] += p.medals[i]; out.seasons[i].push(...p.seasons[i]); }));

@@ -1237,3 +1237,5 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
 .medals.outline .medal.m0 .trophy{ color:#F2C14E !important; }
 .medals.outline .medal.m1 .trophy{ color:#C9D2E3 !important; }
 .medals.outline .medal.m2 .trophy{ color:#D4884A !important; }
+.mt-more{ margin-top:6px; }
+.mt-more > summary{ font-size:13px; }

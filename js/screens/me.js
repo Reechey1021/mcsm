@@ -10,7 +10,7 @@ import { t, fmtDate } from '../i18n/index.js';
 import { backend, errorKey } from '../services/backend.js';
 import { session, isAdmin, roles, profileComplete } from '../services/session.js';
 import { fullName, ROLE_KEYS } from '../model/profile.js';
-import { teamMap, gtTeams } from '../core/data.js';
+import { teamMap, gtTeams, publicDriverDirectory, users } from '../core/data.js';
 import { verifyBanner } from './banners.js';
 import { fmtInt } from '../core/motion.js';
 import { ratingPanel } from '../ui/rating.js';
@@ -45,17 +45,20 @@ export function profileHead(p, team, opts = {}) {
 // Titles next to the name in the profile header (filled in once the honours are loaded).
 function headTitles(p, opts) {
   const el = h('span', { class: 'head-titles' });
-  honours().then((H) => { const m = medalsForUser(H.people, { ...p, uid: p.uid || opts.uid }); if (m && m.medals[0]) el.replaceChildren(trophyCount(m.medals[0], 0, 18)); }).catch(() => {});
+  Promise.all([honours(), linkUsers()]).then(([H, us]) => { const m = medalsForUser(H.people, { ...p, uid: p.uid || opts.uid }, us); if (m && m.medals[0]) el.replaceChildren(trophyCount(m.medals[0], 0, 18)); }).catch(() => {});
   return el;
 }
 
 // Championship titles from the hall of fame and finished seasons (overall drivers' title only;
 // the MGTK table lives on the hall of fame page).
+// Everyone (for deciding which account a podium entry belongs to); the shared driver list when available.
+const linkUsers = () => publicDriverDirectory().catch(() => users()).catch(() => null);
+
 function titlesBox(p) {
   const box = h('section', { style: 'margin-top:12px' });
-  honours().then((H) => {
-    const m = medalsForUser(H.people, p);
-    const mg = medalsForUser(H.mgtk || [], p) || (p.gtTeamId === 'MGTK' ? { medals: [0, 0, 0], seasons: [[], [], []] } : null);
+  Promise.all([honours(), linkUsers()]).then(([H, us]) => {
+    const m = medalsForUser(H.people, p, us);
+    const mg = medalsForUser(H.mgtk || [], p, us) || (p.gtTeamId === 'MGTK' ? { medals: [0, 0, 0], seasons: [[], [], []] } : null);
     if (!m && !mg) { box.remove(); return; }
     box.replaceChildren(
       m ? h('div', { class: 'panel pad' }, h('div', { class: 'row-between', style: 'margin-bottom:10px' }, h('span', { class: 'label' }, t('titlesTitle')), m.medals[0] ? h('span', { class: 'status champ' }, trophy(0, 14), t('championN', { n: m.medals[0] })) : null), medalRow(m, { seasons: true })) : null,

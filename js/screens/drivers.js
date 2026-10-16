@@ -84,7 +84,7 @@ export function screenDrivers() {
   Promise.all([publicDriverDirectory(), teamMap(), gtTeams(), honours().catch(() => null), publicRatings()]).then(([us, tm, gts, H, P]) => {
     mr = (P && P.drivers) || {};
     data = us.filter(isComplete); tmap = tm;
-    if (H) data.forEach((u) => { const m = medalsForUser(H.people, u); if (m) medals[u.uid] = m; });
+    if (H) data.forEach((u) => { const m = medalsForUser(H.people, u, data); if (m) medals[u.uid] = m; });
     const filters = [['all', t('all')], ['wheel', t('wheel')], ['pad', t('pad')], ...gts.map((g) => ['gt:' + g.id, g.tag])];
     chips.replaceChildren(...filters.map(([v, l]) => {
       const c = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(ui.filter === v) }, l);

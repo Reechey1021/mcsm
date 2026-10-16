@@ -323,4 +323,5 @@ export const hu = {
   gtHasMembers: 'Előbb mindenkit ki kell venni a GT csapatból ({n} pilóta van benne).', teamsMcsm: 'MCSM csapatok', teamsGt: 'GT csapatok', driversShort: 'PILÓTA', noGtTeams: 'Még nincs GT csapat.',
   finalStandings: 'Végeredmény', lobbyAvgShort: 'Lobby átlag:',
   dotrTitle: 'A forduló pilótája', dotrSub: 'legnagyobb MCSM Rating növekedés', mgtkTitles: 'MGTK címek', mgtkChampionN: '{n}× MGTK bajnok', hofMgtkTable: 'MGTK éremtáblázat',
+  hofMore: 'Továbbiak ({n})',
 };

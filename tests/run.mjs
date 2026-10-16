@@ -675,6 +675,19 @@ await test('stars: 5 for the top 11.1%, half a star less per 11.1%, never below 
   eq([pushAllowed(null, 'live'), pushAllowed(null, 'results'), pushAllowed({ live: true }, 'live'), pushAllowed({ results: false }, 'results')], [false, true, true, false], 'live streams off by default');
   eq(PUSH_CATS.flatMap((c) => c.types).length, new Set(PUSH_CATS.flatMap((c) => c.types)).size, 'each type in one category');
 });
+await test('honours: podium entries link to the right account (exact PSN beats prefix-less PSN)', async () => {
+  const HM = await import('../js/model/honours.js');
+  const konkoly = { uid: 'k', psn: 'F1HL_ATESZ', lastName: 'Konkoly', firstName: 'Attila' };
+  const birges = { uid: 'b', psn: 'MGTK_ATESZ', lastName: 'Birgés', firstName: 'Attila' };
+  const atesz = { psn: 'MGTK_Atesz', name: 'Birgès Attila', medals: [2, 2, 2], seasons: [[21, 22], [17, 24], [23, 28]] };
+  eq(HM.bestUser(atesz, [konkoly, birges]).uid, 'b', 'MGTK_Atesz -> MGTK_ATESZ, not F1HL_ATESZ');
+  eq(HM.bestUser(atesz, [konkoly]), null, 'different full names: never linked by the PSN core alone');
+  eq([HM.medalsForUser([atesz], konkoly, [konkoly, birges]), HM.medalsForUser([atesz], birges, [konkoly, birges]).medals[0]], [null, 2], 'titles shown on the right profile only');
+  // genuine matches still work: same person, PSN prefix changed or name spelt differently
+  eq(HM.bestUser({ psn: 'MGTK_Mormarka', name: 'Moròcz Marcell' }, [konkoly, { uid: 'm', psn: 'IGTSH_Mormarka', lastName: 'Morócz', firstName: 'Marcell' }]).uid, 'm', 'Mormarka by name');
+  eq(HM.bestUser({ psn: 'MGTK_Maradona', name: 'Kàtai Gàbor' }, [{ uid: 'g', psn: 'MGTK_Maradona', lastName: 'Kátai', firstName: 'Gábor' }]).uid, 'g', 'Maradona by exact PSN');
+  eq(HM.bestUser({ psn: 'MGTK_Baboca', name: 'Kindò Tamàs' }, [{ uid: 't', psn: 'MGTK_Baboca96', lastName: 'Kindó', firstName: 'Tamás' }]).uid, 't', 'Baboca by name');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

@@ -321,4 +321,5 @@ export const hu = {
   oldResultsRange: 'MCSM{a}–{b} eredmények',
   devTools: 'Fejlesztői eszközök', devToolsHint: 'Egyszeri és technikai eszközök. Csak tulajdonosoknak; a napi munkához nem kellenek.', settingsSubDev: 'Felhőfüggvény, push kulcs, AI modell, GridStats token', summariesTitle: 'Szezon-összefoglalók', summariesSub: 'A lezárt szezonok mentett összesítője (gyorsabb, kevesebb olvasás). Lezáráskor magától frissül.', summariesRebuild: 'Újraépítés', summariesDone: '{n} szezon összefoglalója frissítve', gsTokenMissing: 'Nincs GridStats token. A tulajdonos a Fejlesztői eszközök → Kapcsolatok oldalon adhatja meg.',
   gtHasMembers: 'Előbb mindenkit ki kell venni a GT csapatból ({n} pilóta van benne).', teamsMcsm: 'MCSM csapatok', teamsGt: 'GT csapatok', driversShort: 'PILÓTA', noGtTeams: 'Még nincs GT csapat.',
+  finalStandings: 'Végeredmény', lobbyAvgShort: 'Lobby átlag:',
 };

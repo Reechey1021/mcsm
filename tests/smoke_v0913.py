@@ -47,7 +47,8 @@ with sync_playwright() as p:
         snap(pg, f'v913_final_{size}')
         # lobby average on the line-up
         pg.click('.seg button:has-text("Névsor")'); pg.wait_for_timeout(800)
-        check('Lobby átlag' in text(pg, '.lobby-avg'), f'{size}: lobby average on the line-up')
+        # since v1.0.2 the lobby average is a pill in the lobby tabs
+        check(pg.query_selector('.seg .seg-lab .mr-pill:not([style*="none"])') is not None, f'{size}: lobby average in the lobby tabs')
         # owner files a protest: PSN on the chips; then decides it with two penalties
         go(pg, '/szezonok/mcsm31/fordulo/2/ovas', 'owner')
         chip = pg.query_selector('.chip-driver small')

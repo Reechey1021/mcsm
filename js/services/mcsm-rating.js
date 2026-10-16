@@ -67,3 +67,24 @@ export async function computeAndPublish() {
   return { rounds: rounds.length, established, audit: res.audit };
 }
 export const publicRatings = () => cached('mcsmRatings', () => backend.content.get('ratings').then((d) => d || { drivers: {} }).catch(() => ({ drivers: {} })));
+
+// A ranked driver's MCSM Rating as it stood after round n of season no (their last value at or
+// before then; the MCSM25–30 import counts as the start). null if they weren't ranked yet.
+const histKey = (l) => { const m = /MCSM(\d+)\s*\/\s*(\d+)/.exec(String(l)); return m ? +m[1] * 1000 + +m[2] : /MCSM25/.test(String(l)) ? 0 : null; };
+export function ratingAt(x, no, n) {
+  if (!x || !x.e) return null;
+  const target = no * 1000 + n;
+  let best = null;
+  (x.h || []).forEach((e) => { const p = Array.isArray(e) ? { l: e[0], r: e[1] } : e; const k = histKey(p.l); if (k != null && k <= target && (!best || k >= best.k)) best = { k, r: p.r }; });
+  return best ? best.r : null;
+}
+// { A: { avg, ranked, total } ... } for the lobbies of one round (ranked drivers only).
+export function lobbyAverages(P, lobbies, no, n) {
+  const out = {};
+  Object.entries(lobbies || {}).forEach(([L, ids]) => {
+    const vals = (ids || []).map((u) => ratingAt((P.drivers || {})[u], no, n)).filter((v) => v != null);
+    if (vals.length) out[L] = { avg: vals.reduce((a, b) => a + b, 0) / vals.length, ranked: vals.length, total: ids.length };
+  });
+  return out;
+}
+export const fmtRating = (v) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');

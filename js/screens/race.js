@@ -5,7 +5,7 @@
 import { windowState } from '../model/protest.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { flip, reduced, haptic } from '../core/motion.js';
+import { flip, reduced, haptic, moveThumb } from '../core/motion.js';
 import { seg, busy, field } from '../ui/controls.js';
 import { avatar, ratingEl, empty, backLink, formError, secHead, skelRows, pageTitle } from '../ui/parts.js';
 import { openSheet, toast } from '../ui/sheet.js';
@@ -15,7 +15,7 @@ import { session, isAdmin, isStaff } from '../services/session.js';
 import { loadRace } from '../core/race-data.js';
 import { fullName } from '../model/profile.js';
 import { LOBBIES, sessionPoints, flHolder, gpGrid, promoteRelegate, roundTotals, driverStandings, teamStandings } from '../engine/scoring.js';
-import { publicRatings } from '../services/mcsm-rating.js';
+import { publicRatings, lobbyAverages, fmtRating } from '../services/mcsm-rating.js';
 import { SESSIONS, sheetId, lobbyOf, pqProposal, pqConflicts, noShows, fmtLap, fmtRace, parseLap } from '../model/race.js';
 import { roundTitle } from '../data/tracks.js';
 import { roundProtests } from './protests.js';
@@ -136,8 +136,15 @@ function roundView(ctx, n, reload) {
     body.replaceChildren(roundBody(ctx, n, rui.L, rui.S, built));
     if (anim && !reduced()) body.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
   };
+  const pills = Object.fromEntries(lobbies.map((L) => [L, h('span', { class: 'mr-pill', style: 'display:none' })]));
+  const lobbySeg = seg(lobbies.map((L) => ({ value: L, label: h('span', { class: 'seg-lab' }, h('span', null, t('lobbyX', { l: L }) + (L === myL ? ' •' : '')), pills[L]) })), rui.L, (v) => { rui.L = v; draw(true); }, { label: t('lobby') });
+  publicRatings().then((P) => {
+    const av = lobbyAverages(P, doc.lobbies, ctx.season.no, n);
+    lobbies.forEach((L) => { if (av[L]) { pills[L].textContent = fmtRating(av[L].avg); pills[L].title = t('lobbyAvgOf', { n: av[L].ranked, m: av[L].total }); pills[L].style.display = ''; } });
+    const on = lobbySeg.querySelector('[aria-pressed="true"]'); if (on) moveThumb(lobbySeg, on, lobbySeg.querySelector('.thumb'), { instant: true });
+  }).catch(() => {});
   const tools = lobbies.length ? h('div', { class: 'stack', style: 'gap:10px;margin-bottom:14px' },
-    seg(lobbies.map((L) => ({ value: L, label: t('lobbyX', { l: L }) + (L === myL ? ' •' : '') })), rui.L, (v) => { rui.L = v; draw(true); }, { label: t('lobby') }),
+    lobbySeg,
     seg(sessions.map(([value, label]) => ({ value, label })), rui.S, (v) => { rui.S = v; draw(true); }, { scroll: true, label: t('session') })) : null;
   if (lobbies.length) draw(); else body.replaceChildren(empty(t('noLobbiesYet')));
   const started = (info.date && Date.now() >= info.date) || windowState(info, doc) === 'open';
@@ -162,7 +169,7 @@ function roundBody(ctx, n, L, S, built) {
   const me = session.user && session.user.uid;
   if (S === 'ROSTER') {
     const absent = new Set(ctx.entries.filter((e) => (e.absences || []).includes(n)).map((e) => e.uid));
-    return h('div', { class: 'stack', style: 'gap:8px' }, lobbyAverage(ids), ...ids.map((uid) => {
+    return h('div', { class: 'stack', style: 'gap:8px' }, ...ids.map((uid) => {
       const p = ctx.person(uid), tm = ctx.tmap[p.teamId];
       return h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(p.psnLower || ''), style: uid === me ? 'border-color:var(--accent-text)' : '' }, avatar(p, tm),
         h('span', { class: 'nm' }, h('b', null, fullName(p)), h('span', null, h('span', { class: 'rnum' }, '#' + (p.raceNumber ?? '')), p.psn ? h('span', { class: 'psn-tag' }, p.psn) : null, '  ', tm ? tm.name : t('noTeam'), absent.has(uid) ? '  ' + t('cantComeTag') : '')), ratingEl(p));
@@ -262,8 +269,7 @@ function lobbyEditor(ctx, n, reload) {
   const draw = (animate) => {
     totals.textContent = t('lobbyTotals', { a: lobbies.A.length, b: lobbies.B.length, c: lobbies.C.length });
     const build = () => wrap.replaceChildren(...LOBBIES.map((L) => h('section', null,
-      h('div', { class: 'row-between', style: 'margin-bottom:8px' }, h('div', { style: 'display:flex;gap:10px;align-items:center' }, lobbyBadge(L), h('b', { style: 'font-size:17px' }, t('lobbyX', { l: L }))), h('span', { class: 'faint', style: lobbies[L].length > sz[L] ? 'color:var(--red);font-weight:700' : '' }, `${lobbies[L].length} / ${sz[L]}`, lobbyHost(s, L) ? ` · host: ${fullName(ctx.person(lobbyHost(s, L))) || '?'}` : '')),
-      lobbies[L].length ? lobbyAverage(lobbies[L]) : null,
+      h('div', { class: 'row-between', style: 'margin-bottom:8px' }, h('div', { style: 'display:flex;gap:10px;align-items:center' }, lobbyBadge(L), h('b', { style: 'font-size:17px' }, t('lobbyX', { l: L })), lobbies[L].length ? lobbyAverage(lobbies[L]) : null), h('span', { class: 'faint', style: lobbies[L].length > sz[L] ? 'color:var(--red);font-weight:700' : '' }, `${lobbies[L].length} / ${sz[L]}`, lobbyHost(s, L) ? ` · host: ${fullName(ctx.person(lobbyHost(s, L))) || '?'}` : '')),
       h('div', { class: 'stack', style: 'gap:6px' }, lobbies[L].length ? lobbies[L].map((uid) => rowEl(uid, L)) : [h('div', { class: 'empty', style: 'padding:14px' }, t('emptyLobby'))])),
     ), (() => { const rest = pool(); return rest.length ? h('section', null, h('div', { class: 'label', style: 'margin-bottom:8px' }, t('notInLobby', { n: rest.length })), h('div', { class: 'stack', style: 'gap:6px' }, rest.map((e) => rowEl(e.uid, null)))) : null; })());
     animate ? flip(wrap, build, { stagger: 6 }) : build();
@@ -373,13 +379,11 @@ export function screenPqEntry({ sid, pq }) {
 
 // The average MCSM Rating of the ranked drivers in a lobby (filled in once the ratings load).
 function lobbyAverage(ids) {
-  const el = h('div', { class: 'lobby-avg', style: 'display:none' });
+  const el = h('span', { class: 'mr-pill', style: 'display:none' });
   publicRatings().then((P) => {
     const vals = ids.map((u) => (P.drivers || {})[u]).filter((x) => x && x.e).map((x) => x.r);
     if (!vals.length) return;
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    el.replaceChildren(h('span', null, t('lobbyAvg')), h('b', null, (Math.round(avg * 10) / 10).toFixed(1).replace('.', ',')), h('small', null, t('lobbyAvgOf', { n: vals.length, m: ids.length })));
-    el.style.display = '';
+    el.textContent = fmtRating(vals.reduce((a, b) => a + b, 0) / vals.length); el.title = t('lobbyAvgOf', { n: vals.length, m: ids.length }); el.style.display = '';
   }).catch(() => {});
   return el;
 }

@@ -1,6 +1,7 @@
 // ui/tower.js
 // The timing tower: championship standings with position deltas, team stripes,
 // count-up points and FLIP reordering between rounds.
+import { publicRatings, lobbyAverages, fmtRating } from '../services/mcsm-rating.js';
 import { h, frag } from '../core/dom.js';
 import { flip, countUp, fmtInt, moveThumb } from '../core/motion.js';
 import { t } from '../i18n/index.js';
@@ -44,7 +45,7 @@ function row(ctx, r, upTo, prevPos, oldTotal) {
 }
 
 export function towerEl(ctx, kind, upTo, opts = {}) {
-  const prev = upTo > 1 ? Object.fromEntries(standingsRows(ctx, kind, upTo - 1).map((r) => [r.id, r.pos])) : null;
+  const prev = upTo > 1 && !opts.noDelta ? Object.fromEntries(standingsRows(ctx, kind, upTo - 1).map((r) => [r.id, r.pos])) : null;
   const rows = standingsRows(ctx, kind, upTo).slice(0, opts.limit || 999);
   const head = h('div', { class: 'tower-head' }, h('span', { class: 'p' }, t('posShort')), h('span'), h('span', null, kind === 'teams' ? t('team') : t('driver')), h('span', { class: 'pt' }, t('points')),
     h('span', { class: 'cols' }, ctx.season.rounds.map((rd) => h('span', null, t('rShort', { n: rd.n })))));
@@ -58,14 +59,24 @@ export function standingsBlock(ctx, ui, segFn) {
   if (!done) return h('div', { class: 'empty' }, t('noResultsYet'));
   const kinds = championshipKinds(ctx);
   if (!kinds.some(([k]) => k === ui.kind)) ui.kind = 'drivers';
-  if (ui.sid !== ctx.season.id || !ui.upTo || ui.upTo > done) { ui.sid = ctx.season.id; ui.upTo = done; }
+  const finished = ['finished', 'archived'].includes(ctx.season.state);
+  if (ui.sid !== ctx.season.id || !ui.upTo || ui.upTo > done) { ui.sid = ctx.season.id; ui.upTo = done; ui.final = finished; }
+  if (!finished) ui.final = false;
+  const avgRow = h('div', { class: 'lobby-avgs' });
+  const drawAvgs = () => publicRatings().then((P) => {
+    const rd = ctx.built[ui.upTo - 1];
+    const av = rd ? lobbyAverages(P, rd.lobbies, ctx.season.no, rd.n) : {};
+    const Ls = ['A', 'B', 'C'].filter((L) => av[L]);
+    avgRow.replaceChildren(...(Ls.length ? [h('span', { class: 'k' }, t('lobbyAvgShort')), ...Ls.map((L) => h('span', { class: 'la' }, h('span', { class: 'lobby ' + L }, L), h('span', { class: 'mr-pill', title: t('lobbyAvgOf', { n: av[L].ranked, m: av[L].total }) }, fmtRating(av[L].avg))))] : []));
+  }).catch(() => avgRow.replaceChildren());
   const box = h('div');
   const note = h('span', { class: 'status' });
   let current = null;
   const draw = (animate, extra = {}) => {
     const oldTotals = current && current.kind === ui.kind ? Object.fromEntries(current.rows.map((r) => [r.id, r.total])) : null;
     const build = () => {
-      const tw = towerEl(ctx, ui.kind, ui.upTo, { oldTotals: animate ? oldTotals : null });
+      const tw = towerEl(ctx, ui.kind, ui.upTo, { oldTotals: animate ? oldTotals : null, noDelta: ui.final });
+      drawAvgs();
       box.replaceChildren(tw.el);
       current = { kind: ui.kind, rows: tw.rows };
       const st = ctx.built[ui.upTo - 1].state;
@@ -74,13 +85,15 @@ export function standingsBlock(ctx, ui, segFn) {
     animate ? flip(box, build, { stagger: extra.stagger || 10, extra: extra.extra || 0 }) : build();
   };
   const tabs = segFn(kinds.map(([value, label]) => ({ value, label })), ui.kind, (v) => { ui.kind = v; draw(true); }, { label: t('championships') });
-  const rounds = segFn(ctx.built.map((r) => ({ value: r.n, label: t('afterRound', { n: r.n }) })), ui.upTo, (v) => { ui.upTo = ctx.built.findIndex((r) => r.n === v) + 1; draw(true); }, { scroll: true, label: t('afterRoundLabel') });
+  // value 0 = the final standings (no movement arrows); shown once the season is over
+  const rounds = segFn([...ctx.built.map((r) => ({ value: r.n, label: t('afterRound', { n: r.n }) })), ...(finished ? [{ value: 0, label: t('finalStandings') }] : [])], ui.final ? 0 : ctx.built[ui.upTo - 1].n,
+    (v) => { if (v === 0) { ui.final = true; ui.upTo = done; } else { ui.final = false; ui.upTo = ctx.built.findIndex((r) => r.n === v) + 1; } draw(true); }, { scroll: true, label: t('afterRoundLabel') });
   const replay = h('button', { class: 'btn small', type: 'button', 'data-haptic': '', 'aria-label': t('replay'), title: t('replay'), disabled: done < 2 }, h('span', { 'aria-hidden': 'true' }, '▶'), h('span', { class: 'hide-sm' }, t('replay')));
   const pressRound = (n) => { rounds.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === n))); moveThumb(rounds, rounds.querySelector('[aria-pressed="true"]'), rounds.querySelector('.thumb')); };
   replay.addEventListener('click', () => {
-    ui.upTo = done - 1; pressRound(ctx.built[done - 2].n); draw(false);
+    ui.final = false; ui.upTo = done - 1; pressRound(ctx.built[done - 2].n); draw(false);
     setTimeout(() => { ui.upTo = done; pressRound(ctx.built[done - 1].n); draw(true, { stagger: 14, extra: 260 }); }, 650);
   });
   draw(false);
-  return frag(h('div', { class: 'tower-tools' }, tabs, h('div', { style: 'display:flex;gap:8px;align-items:center;max-width:100%' }, rounds, replay)), h('div', { style: 'margin:-4px 0 10px' }, note), box);
+  return frag(h('div', { class: 'tower-tools' }, tabs, h('div', { style: 'display:flex;gap:8px;align-items:center;max-width:100%' }, rounds, replay)), h('div', { class: 'tower-meta' }, note, avgRow), box);
 }

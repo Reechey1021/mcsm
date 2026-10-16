@@ -129,16 +129,23 @@ function render(r) {
   return true;
 }
 
+let curIdx = null;
 export function navigate() {
   const r = parse(location.hash);
   const prev = current;
   if (prev && prev.path === r.path && prev.query.toString() === r.query.toString()) return;
   current = r;
+  // where this entry sits in the visit (new entries get the next number; going back finds theirs)
+  const st = history.state;
+  if (!st || st.mcsmIdx == null) { curIdx = curIdx == null ? 0 : curIdx + 1; try { history.replaceState({ ...(st || {}), mcsmIdx: curIdx }, ''); } catch { /* */ } }
+  else curIdx = st.mcsmIdx;
+  const backPress = !!window.__mcsmBack; window.__mcsmBack = false;
   let dir = 'fade';
   if (prev) {
     const a = r.route.tab, b = prev.route.tab;
     if (a != null && b != null && a !== b && depth(r.path) <= 1 && depth(prev.path) <= 1) dir = a > b ? 'fwd' : 'back';
     else { const dd = depth(r.path) - depth(prev.path); dir = dd > 0 ? 'fwd' : dd < 0 ? 'back' : 'fade'; }
+    if (backPress) dir = 'back';
     scrollMem[prev.path] = scrollY;
   }
   closeAllSheets();

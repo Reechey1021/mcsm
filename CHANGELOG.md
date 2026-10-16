@@ -1,3 +1,21 @@
+## v1.0.2
+
+- Back buttons (top left) return to the page you came from: open a profile from round results and
+  "back" takes you to the round again. Opened directly (a link, a refresh), they go to the page's
+  usual parent as before. The router stamps each history entry with its place in the visit.
+- MCSM Rating averages as green pills: on MCSM and GT team cards (replacing "Átlag MCSM …"), next to
+  each lobby name in a round's lobby tabs (under the name on phones; the separate bar is gone), next
+  to the lobby titles in the lobby editor, and on Results ("Lobby átlag") for the chosen round, using
+  each driver's rating as it stood after that round.
+- Results: finished seasons get a "Végeredmény" (final) round, selected by default, showing the final
+  standings without movement arrows; the per-round views are unchanged.
+
+## v1.0.1
+
+- Fixed: the profile picture in the header (top right) showed as a narrow strip. The photo fade-in
+  marked loaded images with the class "in", which also matched the header's ".app-header .in" layout
+  rule; it now uses its own class (img-loaded).
+
 ## v1.0.0 — MCSM v1
 
 - MCSM Rating V3.3 (calibration per the revised spec): drivers are ranked after 3 completed rounds

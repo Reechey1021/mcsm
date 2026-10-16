@@ -305,4 +305,5 @@ export const en = {
   oldResultsRange: 'MCSM{a}–{b} results',
   devTools: 'Developer tools', devToolsHint: 'One-off and technical tools. Owners only; not needed for everyday work.', settingsSubDev: 'Cloud function, push key, AI model, GridStats token', summariesTitle: 'Season summaries', summariesSub: 'A saved summary of finished seasons (faster, fewer reads). Updated automatically when a season finishes.', summariesRebuild: 'Rebuild', summariesDone: '{n} season summaries updated', gsTokenMissing: 'No GridStats token. The owner can add it under Developer tools → Connections.',
   gtHasMembers: 'Move everyone out of the GT team first ({n} drivers in it).', teamsMcsm: 'MCSM teams', teamsGt: 'GT teams', driversShort: 'DRIVERS', noGtTeams: 'No GT teams yet.',
+  finalStandings: 'Final', lobbyAvgShort: 'Lobby average:',
 };

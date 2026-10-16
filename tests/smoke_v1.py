@@ -57,10 +57,10 @@ with sync_playwright() as p:
         go(pg, '/eredmenyek/mcsm30', None, 3000)
         chips = pg.evaluate("[...document.querySelectorAll('.seg button')].map(b => b.innerText).filter(x => /ut[áa]n/.test(x))")
         check(len(chips) == 3, f'{size}: visitors see all three rounds of an imported season ({chips})')
-        check('3.' in pg.evaluate(pressed), f'{size}: opens on the last round ({pg.evaluate(pressed)})')
+        check('Végeredmény' in pg.evaluate(pressed), f'{size}: finished season opens on the final standings ({pg.evaluate(pressed)})')
         # photos fade in, never stay hidden
         go(pg, '/pilotak', None, 3500)
-        hidden = pg.evaluate("[...document.querySelectorAll('.avatar img.gt7')].filter(i => !i.classList.contains('in')).length")
+        hidden = pg.evaluate("[...document.querySelectorAll('.avatar img.gt7')].filter(i => !i.classList.contains('img-loaded')).length")
         check(hidden == 0, f'{size}: no photo left hidden ({hidden})')
         # GT teams: switch on Csapatok, cards, their own page, editing with colours, delete needs an empty team
         go(pg, '/csapatok', None)

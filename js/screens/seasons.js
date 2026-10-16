@@ -70,7 +70,7 @@ export function screenSeason({ id, tab }) {
     const s = state.season;
     const tabs = seg(TABS.map((k) => ({ value: k, label: t('tab_' + k) })), curTab, (k) => {
       const dir = TABS.indexOf(k) > TABS.indexOf(curTab) ? 1 : -1; curTab = k;
-      history.replaceState(null, '', `#/szezonok/${id}/${k}`);
+      history.replaceState(history.state, '', `#/szezonok/${id}/${k}`);
       paintTab(dir);
     }, { scroll: true, label: t('seasonSections') });
     paintTab();

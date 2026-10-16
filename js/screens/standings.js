@@ -16,7 +16,7 @@ const RESULT_STATES = ['pq', 'running', 'finished', 'archived'];
 
 export function screenStandings({ sid }, query) {
   if (query && query.get('nezet') === 'dicsosegfal') ui.view = 'hall';
-  const viewSeg = seg([{ value: 'table', label: t('standings') }, { value: 'hall', label: t('hallOfFame') }], ui.view, (v) => { ui.view = v; history.replaceState(null, '', v === 'hall' ? '#/eredmenyek?nezet=dicsosegfal' : '#/eredmenyek'); paintView(true); });
+  const viewSeg = seg([{ value: 'table', label: t('standings') }, { value: 'hall', label: t('hallOfFame') }], ui.view, (v) => { ui.view = v; history.replaceState(history.state, '', v === 'hall' ? '#/eredmenyek?nezet=dicsosegfal' : '#/eredmenyek'); paintView(true); });
   const head = h('div');
   const box = h('div', null, skelRows(10, 54));
   const wrap = h('div');

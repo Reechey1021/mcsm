@@ -1,5 +1,6 @@
 // ui/parts.js
 // Small shared pieces: avatars, rating badges, page headings, empty states, banners.
+import { canGoBack, goBack } from '../core/nav.js';
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { initials } from '../model/profile.js';
@@ -11,8 +12,8 @@ export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); re
 export function avatar(p, team, cls = '') {
   const bg = '#36405F';
   const url = avatarUrl(p);
-  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: 'gt7', onerror: (e) => e.target.remove(), onload: (e) => e.target.classList.add('in') }) : null;
-  if (photo) setTimeout(() => photo.classList.add('in'), 2500);   // never leave a photo hidden
+  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: 'gt7', onerror: (e) => e.target.remove(), onload: (e) => e.target.classList.add('img-loaded') }) : null;
+  if (photo) setTimeout(() => photo.classList.add('img-loaded'), 2500);   // never leave a photo hidden
   return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
 // A team's logo, or its colour as a small rounded square when there's no logo yet.
@@ -33,7 +34,7 @@ export const ratingEl = (p) => h('span', { class: 'rating' }, h('span', { class:
 export const pageTitle = (title, sub) => [h('h1', { class: 'display page-title' }, title), sub ? h('p', { class: 'page-sub' }, sub) : null];
 export const secHead = (title, linkLabel, href) => h('div', { class: 'sec-head' }, h('h2', { class: 'display' }, title), linkLabel ? h('a', { class: 'link', href }, linkLabel) : null);
 export const empty = (msg, extra) => h('div', { class: 'empty' }, msg, extra ? h('div', { style: 'margin-top:14px' }, extra) : null);
-export const backLink = (label, href) => h('a', { class: 'btn small tap', href, style: 'margin-bottom:14px' }, icon('chevL'), label);
+export const backLink = (label, href) => h('a', { class: 'btn small tap back-link', href, style: 'margin-bottom:14px', onclick: (e) => { if (canGoBack()) { e.preventDefault(); goBack(); } } }, icon('chevL'), label);
 export const loading = () => h('div', { class: 'boot', role: 'status' }, h('span', { class: 'spin', 'aria-label': t('loading') }));
 export function formError(msg) { return msg ? h('div', { class: 'form-error', role: 'alert' }, icon('alert'), h('span', null, msg)) : h('div'); }
 export const skelRows = (n, hgt = 64) => h('div', { class: 'stack', style: 'gap:8px' }, Array.from({ length: n }, (_, i) => h('div', { class: 'skel', style: `height:${hgt}px;opacity:${Math.max(0.3, 1 - i * 0.08)}` })));

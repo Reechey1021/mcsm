@@ -45,7 +45,7 @@ const tui = { kind: 'mcsm' };
 export function screenTeams(_p, query) {
   if (query && query.get('gt') === '1') tui.kind = 'gt';
   const switcher = seg([{ value: 'mcsm', label: t('teamsMcsm') }, { value: 'gt', label: t('teamsGt') }], tui.kind, (v) => {
-    tui.kind = v; history.replaceState(null, '', v === 'gt' ? '#/csapatok?gt=1' : '#/csapatok'); body.replaceChildren(v === 'gt' ? gtGrid() : mcsmGrid()); swapIn(body);
+    tui.kind = v; history.replaceState(history.state, '', v === 'gt' ? '#/csapatok?gt=1' : '#/csapatok'); body.replaceChildren(v === 'gt' ? gtGrid() : mcsmGrid()); swapIn(body);
   });
   const body = h('div', null, tui.kind === 'gt' ? gtGrid() : mcsmGrid());
   return frag(pageTitle(t('teams'), t('teamsSub')), h('div', { style: 'margin-bottom:14px' }, switcher), body);
@@ -60,7 +60,7 @@ function gtGrid() {
     grid.replaceChildren(...(shown.length ? shown.map((g) => h('a', { class: 'panel team-card', href: '#/csapatok/gt/' + encodeURIComponent(g.id) }, teamBadge(gtBadge(g), 44),
       h('span', { class: 'nm' }, h('b', null, g.tag, g.name && g.name !== g.tag ? h('span', { class: 'faint', style: 'font-weight:600' }, ' · ' + g.name) : null),
         h('span', null, members(g.id).map((u) => (u.lastName || '').toLocaleUpperCase('hu')).join(', ') || t('noMembers')),
-        (() => { const a = teamAverage(members(g.id), P); return a ? h('span', { class: 'team-avg' }, t('teamAvgShort', { r: f1(a.avg) })) : null; })()),
+        (() => { const a = teamAverage(members(g.id), P); return a ? h('span', { class: 'team-avg' }, h('span', { class: 'mr-pill', title: t('teamAvgTitle') }, f1(a.avg))) : null; })()),
       h('span', { class: 'sort-fig' }, h('b', null, members(g.id).length), h('small', null, t('driversShort'))))) : [empty(t('noGtTeams'))]));
     reveal(grid);
   }).catch(() => grid.replaceChildren(empty(t('loadFailed'))));
@@ -76,7 +76,7 @@ function mcsmGrid() {
     const shown = tms.filter((x) => x.status !== 'retired').map((tm) => ({ tm, m: H ? medalsForTeam(H.teams, tm) : null }))
       .sort((a, b) => ((b.m && b.m.medals[0]) || 0) - ((a.m && a.m.medals[0]) || 0) || a.tm.name.localeCompare(b.tm.name, 'hu'));
     grid.replaceChildren(...(shown.length ? shown.map(({ tm, m }) => h('a', { class: 'panel team-card', href: '#/csapatok/' + tm.id }, teamBadge(tm, 44),
-      h('span', { class: 'nm' }, h('b', null, tm.name), h('span', null, members(tm.id).map((u) => (u.lastName || '').toLocaleUpperCase('hu')).join(', ') || t('noMembers')), (() => { const a = teamAverage(members(tm.id), P); return a ? h('span', { class: 'team-avg' }, t('teamAvgShort', { r: f1(a.avg) })) : null; })()), m && m.medals[0] ? h('span', { class: 'sort-fig' }, trophyCount(m.medals[0], 0, 16)) : null)) : [empty(t('noTeams'))]));
+      h('span', { class: 'nm' }, h('b', null, tm.name), h('span', null, members(tm.id).map((u) => (u.lastName || '').toLocaleUpperCase('hu')).join(', ') || t('noMembers')), (() => { const a = teamAverage(members(tm.id), P); return a ? h('span', { class: 'team-avg' }, h('span', { class: 'mr-pill', title: t('teamAvgTitle') }, f1(a.avg))) : null; })()), m && m.medals[0] ? h('span', { class: 'sort-fig' }, trophyCount(m.medals[0], 0, 16)) : null)) : [empty(t('noTeams'))]));
     reveal(grid);
   }).catch(() => grid.replaceChildren(empty(t('loadFailed'))));
   return grid;

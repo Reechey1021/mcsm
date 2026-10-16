@@ -7,7 +7,7 @@ import { icon } from '../core/icons.js';
 import { seg } from './controls.js';
 import { starsFor, starRow } from './stars.js';
 import { openSheet } from './sheet.js';
-import { t } from '../i18n/index.js';
+import { t, LANG } from '../i18n/index.js';
 import { publicRatings } from '../services/mcsm-rating.js';
 import { RATING_CFG } from '../engine/rating.js';
 
@@ -88,16 +88,45 @@ export function mcsmRatingCard(uid) {
   return card;
 }
 
+// The "?" explanation on the MCSM Rating card. Edit the text here: each entry is a heading (h),
+// a paragraph (p) or the formula box (f). Hungarian is shown by default, English when chosen.
+const EXPLAIN = {
+  hu: [
+    { p: 'Az MCSM Rating egy teljesítményalapú értékelési rendszer, amely megmutatja, hogyan teljesítesz a többi MCSM-pilótához képest. Minél jobb eredményeket érsz el, különösen erősebb ellenfelekkel szemben, annál magasabb lehet az értékelésed.' },
+    { p: 'A rendszer kizárólag a kvalifikáción, a sprinten és a Gran Prix-n elért helyezéseidet veszi figyelembe.' },
+    { f: 'MCSM Rating = 20% Kvalifikáció + 40% Sprint + 40% Gran Prix' },
+    { h: 'Hogyan változik a Rating?' },
+    { p: 'Minden forduló után összehasonlítjuk az eredményedet az ellenfeleidével, figyelembe véve az ő értékelésüket is.' },
+    { p: 'Ha egy nálad erősebb pilótát győzöl le, többet nyerhetsz, míg egy gyengébb ellenfél legyőzése kevesebbet ér. Ugyanez fordítva is igaz: ha a vártnál gyengébben teljesítesz, csökkenhet az értékelésed.' },
+    { p: 'A rendszer az A, B és C lobbik eredményeit is egymáshoz viszonyítja, így minden pilóta ugyanazon a skálán szerepel.' },
+    { h: 'Az első 3 forduló – Kalibráció' },
+    { p: 'Új pilótaként az első három teljesített fordulódban a Ratinged még rejtett.' },
+    { p: 'A rendszer minden fordulóban megbecsüli, milyen erős teljesítményt nyújtottál az adott mezőnyben. Ezek az eredmények már a többi pilóta értékelésére is hatással vannak.' },
+    { p: 'A harmadik fordulód után a három teljesítményed átlagából megkapod az első hivatalos MCSM Ratingedet. Ettől kezdve az értékelésed minden további forduló után a megszokott módon változik.' },
+    { h: 'Előzmények és a skála' },
+    { p: 'A korábbi pilóták kezdőértékelését az MCSM25–30 eredményei alapján számoltuk ki. Az MCSM31-től kezdve a Rating minden lezárt forduló után frissül. Ha nem versenyzel, az értékelésed nem változik.' },
+  ],
+  en: [
+    { p: 'The MCSM Rating is a performance-based rating that shows how you perform compared with the other MCSM drivers. The better your results, especially against stronger opponents, the higher your rating can be.' },
+    { p: 'It only takes your finishing positions in qualifying, the sprint and the Grand Prix into account.' },
+    { f: 'MCSM Rating = 20% Qualifying + 40% Sprint + 40% Grand Prix' },
+    { h: 'How does the rating change?' },
+    { p: "After every round your result is compared with your opponents', taking their ratings into account too." },
+    { p: 'Beating a stronger driver can gain you more, while beating a weaker one is worth less. It works the other way too: if you do worse than expected, your rating can drop.' },
+    { p: 'Results from lobbies A, B and C are compared with each other, so every driver is on the same scale.' },
+    { h: 'The first 3 rounds – calibration' },
+    { p: 'As a new driver, your rating stays hidden for your first three completed rounds.' },
+    { p: 'Each round, the system estimates how strong your performance was in that field. These results already count towards the other drivers\' ratings.' },
+    { p: 'After your third round, the average of those three performances becomes your first official MCSM Rating. From then on it changes after every round as normal.' },
+    { h: 'History and the scale' },
+    { p: "Returning drivers' starting ratings were calculated from the MCSM25–30 results. From MCSM31 the rating updates after every finished round. If you don't race, your rating doesn't change." },
+  ],
+};
+
 export function explainRating() {
-  const c = RATING_CFG;
-  const p = (k, v) => h('p', null, t(k, v));
+  const blocks = EXPLAIN[LANG] || EXPLAIN.hu;
   openSheet({ title: t('mrHowTitle'), body: h('div', { class: 'md mr-explain' },
-    p('mr3X1'), h('div', { class: 'mr-formula' }, "MCSM Rating = 0,20 × Kvalifikáció + 0,40 × Sprint + 0,40 × Gran'Prix"),
-    h('h3', null, t('mr3H2')), p('mr3X2'),
-    h('h3', null, t('mr3H3')), p('mr3X3'),
-    h('h3', null, t('mr3H4')), p('mr3X4'),
-    h('h3', null, t('mrUnranked')), p('mr3X5', { n: c.provisionalRounds }),
-    h('h3', null, t('mr3H6')), p('mr3X6')) });
+    blocks.map((b) => (b.h ? h('h3', null, b.h) : b.f ? h('div', { class: 'mr-formula' }, b.f) : h('p', null, b.p)))) });
 }
 
 // Rating history: one point per round raced as an established driver, newest last.

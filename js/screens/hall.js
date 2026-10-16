@@ -39,7 +39,7 @@ export function hallView() {
       h('div', { class: 'hof' }, H.seasons.map((s) => h('article', { class: 'panel hof-card' },
         h('div', { class: 'hof-head' }, h('b', { class: 'display' }, 'MCSM' + s.no), h('span', null, [s.date, s.title].filter(Boolean).join(' · '))),
         h('div', { class: 'hof-cols' },
-          h('div', { class: 'hof-col' }, h('div', { class: 'label' }, t('champDrivers')), (s.drivers || []).map(pod)),
+          h('div', { class: 'hof-col' }, h('div', { class: 'label' }, t('champDrivers')), (s.drivers || []).map((d, i) => pod(d, i))),
           h('div', { class: 'hof-col' }, h('div', { class: 'label' }, t('champTeams')), (s.teams || []).some(Boolean) ? s.teams.map(teamPod) : h('p', { class: 'note', style: 'margin:0' }, t('hofNoTeams')))),
         (s.mgtk || []).some(Boolean) ? h('details', null, h('summary', null, t('hofMgtk')), h('div', { style: 'margin-top:6px' }, s.mgtk.map((d, i) => pod(d, i, true)))) : null))));
     void medalsForUser;

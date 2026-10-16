@@ -1,3 +1,16 @@
+## v1.0.3 (addition) — "Besorolva!" rank reveal
+
+- When a driver completes calibration (their 3rd round), the ratings publish that runs as results are
+  marked final leaves a note on their own profile (rating, parts, "#rank of total"). Next time they open
+  the site (or live, if online) a full-screen reveal plays once: "Besorolva!", the dial sweeps up with the
+  number counting, stars pop in, Q / Sprint / Gran'Prix, "#4 a 62 besorolt pilóta közül". Tap to skip
+  ahead; Continue / See my profile; closing clears the note. Shown before anything else: the news
+  carousel waits until it's closed. Still under reduced motion. Preview: ?rankdemo.
+- Zero extra reads for drivers (their profile is already loaded); the publish step reads the previous
+  ratings once and writes one note per newly ranked driver. Never on the first publish, never for drivers
+  ranked from the MCSM25–30 import.
+- Firestore rules: new profile field rankReveal (publish the rules).
+
 ## v1.0.3
 
 - Round pages: "A forduló pilótája" between your round summary and the lobby tabs: the ranked driver who

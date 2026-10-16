@@ -688,6 +688,16 @@ await test('honours: podium entries link to the right account (exact PSN beats p
   eq(HM.bestUser({ psn: 'MGTK_Maradona', name: 'Kàtai Gàbor' }, [{ uid: 'g', psn: 'MGTK_Maradona', lastName: 'Kátai', firstName: 'Gábor' }]).uid, 'g', 'Maradona by exact PSN');
   eq(HM.bestUser({ psn: 'MGTK_Baboca', name: 'Kindò Tamàs' }, [{ uid: 't', psn: 'MGTK_Baboca96', lastName: 'Kindó', firstName: 'Tamás' }]).uid, 't', 'Baboca by name');
 });
+await test('rank reveal: only drivers who have just completed calibration get the note', async () => {
+  const RT2 = await import('../js/engine/rating.js');
+  const next = { a: { e: 1, r: 150, q: 1, s: 1, g: 1 }, b: { e: 1, r: 120, q: 1, s: 1, g: 1 }, c: { e: 1, r: 130, q: 1, s: 1, g: 1 }, d: { e: 0, n: 2 } };
+  const states = { a: { graduatedAt: null, history: [] }, b: { graduatedAt: 'r3', history: [{ graduation: true, label: 'MCSM32 / 3' }] }, c: { graduatedAt: 'r1', history: [] }, d: {} };
+  eq(RT2.newlyRanked(null, next, states), [], 'never on the very first publish');
+  const prev = { a: { e: 1 }, b: { e: 0, n: 2 }, c: { e: 1 }, d: { e: 0, n: 1 } };
+  const got = RT2.newlyRanked(prev, next, states);
+  eq(got.map((x) => [x.uid, x.rank, x.total, x.label]), [['b', 3, 3, 'MCSM32 / 3']], 'b only: was unranked, now ranked through calibration; rank among ranked drivers');
+  eq(RT2.newlyRanked({ a: { e: 0 } }, { a: { e: 1, r: 140 } }, { a: { graduatedAt: null } }), [], 'ranked from the historical import: no reveal');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

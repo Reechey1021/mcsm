@@ -21,7 +21,7 @@ service cloud.firestore {
     function selfKeys() {
       return ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view',
               'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang',
-              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn', 'pushPrefs'];
+              'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn', 'pushPrefs', 'rankReveal'];
     }
     function adminKeys() { return selfKeys().concat(['roles', 'judgeScope', 'suspendedUntil', 'suspendNote', 'drPoints', 'ratingsSyncedAt', 'gtStats', 'imported', 'legacyId', 'claimedBy', 'gt7Guid', 'gt7Nick', 'gt7Avatar', 'gt7Cover', 'psnSynced']); }
 

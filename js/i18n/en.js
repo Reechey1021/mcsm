@@ -308,4 +308,5 @@ export const en = {
   finalStandings: 'Final', lobbyAvgShort: 'Lobby average:',
   dotrTitle: 'Driver of the round', dotrSub: 'biggest MCSM Rating gain', mgtkTitles: 'MGTK titles', mgtkChampionN: '{n}× MGTK champion', hofMgtkTable: 'MGTK medal table',
   hofMore: 'More ({n})',
+  rrTitle: 'Ranked!', rrSub: "You've completed calibration. Here's your first official MCSM Rating.", rrOfTotal: 'of {n} ranked drivers', rrContinue: 'Continue', rrProfile: 'See my profile',
 };

@@ -55,6 +55,8 @@ async function boot() {
   // The notification listener receives Firestore changes directly, regardless of push permission.
   // News carousel: once per visit, after the first screen and again right after signing in.
   let wasIn = null;
+  // "Besorolva" (just ranked) comes before anything else; it also arrives live if published meanwhile
+  on('session', () => { if (session.ready && (session.profile || /[?&]rankdemo/.test(location.search))) import('./ui/rank-reveal.js').then((m) => setTimeout(() => m.maybeShowRankReveal(), 500)).catch(() => {}); });
   on('session', () => { if (!session.ready) return; const nowIn = !!session.user; const force = wasIn === false && nowIn; wasIn = nowIn; if (!nowIn) return; setTimeout(() => import('./ui/news.js').then((m) => m.showWelcomeNews(force)), force ? 900 : 1600); });
   on('session', () => { if (session_ready()) listenForeground(); });
   // Admins: make sure the public copy of the function address exists (used for the Twitch live list).

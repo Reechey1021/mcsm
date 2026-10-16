@@ -5,7 +5,7 @@
 import { backend } from './backend.js';
 import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
-import { computeRatings, overallOf, publicOf, publicEntry, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
+import { computeRatings, overallOf, publicOf, publicEntry, newlyRanked, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
 import { normName } from '../model/name-match.js';
 export const LIVE_FROM_SEASON = 31;
 const ALIASES = { 'tdrenkovics': 'mgtknothingtomi' };
@@ -47,7 +47,7 @@ export function startFrom(boot, users) {
 }
 export async function computeAndPublish() {
   invalidate('users'); invalidate();
-  const [boot, users, rounds] = await Promise.all([loadBootstrap(), loadUsers(), collectRounds()]);
+  const [boot, users, rounds, prevDoc] = await Promise.all([loadBootstrap(), loadUsers(), collectRounds(), backend.content.get('ratings').catch(() => null)]);
   const start = startFrom(boot, users);
   const res = computeRatings(rounds, start);
   const drivers = {};
@@ -62,6 +62,14 @@ export async function computeAndPublish() {
   }
   const out = { version: RATING_VERSION, computedAt: Date.now(), rounds: rounds.length, established, drivers };
   await backend.content.save('ratings', out);
+  // "You're now ranked": a note on the profile of each driver who has just completed calibration
+  // (they see the reveal once; their profile is already loaded, so it costs them no reads)
+  const known = new Set(users.map((u) => u.uid));
+  for (const n of newlyRanked(prevDoc && prevDoc.drivers, drivers, res.drivers)) {
+    if (!known.has(n.uid)) continue;
+    const { uid, ...note } = n;
+    await backend.users.save(uid, { rankReveal: { ...note, at: Date.now() } }).catch((e) => console.warn('rank reveal note', uid, e));
+  }
   if (boot) await saveBootstrap({ ...boot, lastRun: { at: Date.now(), rounds: rounds.length, established } });
   invalidate('mcsmRatings');
   return { rounds: rounds.length, established, audit: res.audit };

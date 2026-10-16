@@ -66,7 +66,7 @@ with sync_playwright() as p:
         box = text(pg, '.mr-card')
         check('Besorolatlan' in box and 'FORDULÓ A BESOROLÁSIG' in box.upper() and pg.query_selector('.mr-big') is None and pg.query_selector('.mr-avg') is None, f'{size}: unranked, no number, no average marker ({box[:60]!r})')
         pg.click('.mr-card .mr-help'); pg.wait_for_timeout(600)
-        check('0,20 × Kvalifikáció' in text(pg, '.sheet'), f'{size}: explanation popup')
+        check('20% Kvalifikáció' in text(pg, '.sheet'), f'{size}: explanation popup')
         pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         # an established driver (published data injected) shows the full box and sorts first
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(300)

@@ -83,6 +83,8 @@ function editNews(a, items) {
 let shownThisVisit = false;
 export async function showWelcomeNews(force = false) {
   if (!isSignedIn()) return;
+  // the "just ranked" reveal always goes first; news waits until it's closed
+  try { await (await import('./rank-reveal.js')).revealSettled(); } catch { /* */ }
   if (shownThisVisit && !force) return;
   try { if (sessionStorage.getItem('mcsm:newsShown') && !force) return; } catch { /* private mode */ }
   const items = (await loadNews()).filter((a) => a.carousel && !seenIds().has(a.id + ':' + (a.carouselAt || a.at))).sort((a, b) => a.at - b.at);

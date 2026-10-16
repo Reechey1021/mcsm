@@ -324,4 +324,5 @@ export const hu = {
   finalStandings: 'Végeredmény', lobbyAvgShort: 'Lobby átlag:',
   dotrTitle: 'A forduló pilótája', dotrSub: 'legnagyobb MCSM Rating növekedés', mgtkTitles: 'MGTK címek', mgtkChampionN: '{n}× MGTK bajnok', hofMgtkTable: 'MGTK éremtáblázat',
   hofMore: 'Továbbiak ({n})',
+  rrTitle: 'Besorolva!', rrSub: 'Teljesítetted a kalibrációt. Íme az első hivatalos MCSM Ratinged.', rrOfTotal: 'a {n} besorolt pilóta közül', rrContinue: 'Tovább', rrProfile: 'Megnézem a profilomat',
 };

@@ -208,4 +208,19 @@ export function publicEntry(st, { baseline = null } = {}) {
   };
 }
 
+// Drivers who have just become ranked: unranked (or absent) in the previously published ratings, ranked
+// now, and ranked through calibration (not the historical import). Nothing on the very first publish.
+// Returns [{ uid, rank, total, r, q, s, g, label }] with their position among all ranked drivers.
+export function newlyRanked(prevDrivers, nextDrivers, states) {
+  if (!prevDrivers) return [];
+  const ranked = Object.entries(nextDrivers).filter(([, x]) => x && x.e).sort((a, b) => b[1].r - a[1].r || (a[0] < b[0] ? -1 : 1));
+  const total = ranked.length;
+  return ranked.map(([uid, x], i) => ({ uid, x, rank: i + 1 }))
+    .filter(({ uid }) => !(prevDrivers[uid] && prevDrivers[uid].e) && states[uid] && states[uid].graduatedAt)
+    .map(({ uid, x, rank }) => {
+      const grad = (states[uid].history || []).find((hh) => hh.graduation);
+      return { uid, rank, total, r: x.r, q: x.q, s: x.s, g: x.g, label: grad ? grad.label : null };
+    });
+}
+
 export const isEstablished = (st) => !!st && st.established;

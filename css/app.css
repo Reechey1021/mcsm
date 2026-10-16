@@ -1239,3 +1239,28 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
 .medals.outline .medal.m2 .trophy{ color:#D4884A !important; }
 .mt-more{ margin-top:6px; }
 .mt-more > summary{ font-size:13px; }
+
+/* "Besorolva" rank reveal: above everything (news carousel is z-index 200) */
+.rr-overlay{ position:fixed; inset:0; z-index:400; display:grid; place-items:center; padding:20px; background:rgba(5,8,18,.84); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+.rr-card{ width:min(420px, 100%); max-height:calc(100dvh - 40px); overflow:auto; text-align:center; padding:24px 22px 20px; border-radius:24px;
+  background:radial-gradient(120% 80% at 50% 0%, rgba(182,240,60,.12), transparent 60%), var(--bg-2); border:1px solid rgba(182,240,60,.3); box-shadow:0 30px 80px rgba(0,0,0,.5); }
+.rr-kicker{ font-size:11.5px; font-weight:900; letter-spacing:.22em; color:var(--accent-text); }
+.rr-title{ font-size:clamp(40px, 13vw, 54px); line-height:1; margin:6px 0 6px; }
+.rr-sub{ margin:0 auto 10px; max-width:30ch; font-size:14px; color:var(--ink-2); }
+.rr-dialwrap{ position:relative; width:min(230px, 70%); aspect-ratio:1 / 1; margin:0 auto; }
+.rr-dial{ width:100%; height:100%; display:block; }
+.rr-center{ position:absolute; inset:0; display:grid; place-items:center; }
+.rr-num{ font-size:clamp(46px, 14vw, 60px); color:var(--accent-text); font-variant-numeric:tabular-nums; }
+.rr-stars{ display:flex; justify-content:center; margin:-22px 0 14px; }
+.rr-stars .star{ width:24px; height:23px; }
+.rr-parts{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-bottom:14px; }
+.rr-part{ display:grid; gap:2px; padding:9px 6px; border-radius:12px; background:var(--bg-3); }
+.rr-part small{ font-size:10px; font-weight:850; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rr-part b{ font-size:17px; font-variant-numeric:tabular-nums; }
+.rr-rank{ display:flex; align-items:baseline; justify-content:center; gap:10px; margin-bottom:16px; }
+.rr-rank b{ font-size:44px; line-height:1; color:var(--accent-text); }
+.rr-rank span{ font-size:14px; color:var(--ink-2); font-weight:650; }
+.rr-actions{ display:grid; gap:8px; }
+@media (prefers-reduced-motion: reduce){ .rr-overlay{ -webkit-backdrop-filter:none; backdrop-filter:none; } }
+.rr-part small{ font-size:9.5px; letter-spacing:.03em; }
+.rr-part small{ text-transform:none; letter-spacing:0; font-size:11px; }

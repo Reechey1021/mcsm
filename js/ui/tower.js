@@ -58,7 +58,7 @@ export function standingsBlock(ctx, ui, segFn) {
   if (!done) return h('div', { class: 'empty' }, t('noResultsYet'));
   const kinds = championshipKinds(ctx);
   if (!kinds.some(([k]) => k === ui.kind)) ui.kind = 'drivers';
-  if (!ui.upTo || ui.upTo > done) ui.upTo = done;
+  if (ui.sid !== ctx.season.id || !ui.upTo || ui.upTo > done) { ui.sid = ctx.season.id; ui.upTo = done; }
   const box = h('div');
   const note = h('span', { class: 'status' });
   let current = null;

@@ -103,3 +103,51 @@ export function moveThumb(container, btn, thumb, opts = {}) {
   thumb.style.transform = `translateX(${x}px)`;
 }
 
+
+/* ---------- v1 polish ---------- */
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+
+// Collapsible sections (<details>) open and close smoothly instead of snapping.
+// Height animates on the details element; content fades in. Opt out with data-noanim.
+export function initDetails() {
+  document.addEventListener('click', (e) => {
+    const sum = e.target.closest('summary');
+    const d = sum && sum.parentElement;
+    if (!d || d.tagName !== 'DETAILS' || sum !== d.querySelector(':scope > summary') || d.hasAttribute('data-noanim') || reduced()) return;
+    if (e.target.closest('a, button, input, select, textarea') && e.target.closest('a, button, input, select, textarea') !== sum) return;
+    e.preventDefault();
+    if (d._anim) { d._anim.cancel(); d._anim = null; }
+    const closing = d.open;
+    const from = d.getBoundingClientRect().height;
+    d.open = !closing;
+    const to = d.getBoundingClientRect().height;
+    if (closing) d.open = true;   // keep content visible while it folds away
+    d.style.overflow = 'hidden';
+    const dur = Math.min(340, Math.max(200, Math.abs(to - from) * 0.6));
+    const a = d.animate([{ height: from + 'px' }, { height: to + 'px' }], { duration: dur, easing: EASE });
+    d._anim = a;
+    if (!closing) {
+      [...d.children].filter((c) => c !== sum).forEach((c) => c.animate([{ opacity: 0, transform: 'translateY(-4px)' }, { opacity: 1, transform: 'none' }], { duration: dur, easing: EASE }));
+    }
+    const done = () => { if (d._anim !== a) return; d._anim = null; d.style.overflow = ''; if (closing) d.open = false; };
+    a.onfinish = done; a.oncancel = () => { d.style.overflow = ''; };
+  });
+}
+
+// First paint of a list: children rise in with a short stagger (only the first dozen are delayed).
+export function reveal(container, { max = 12, step = 22 } = {}) {
+  if (!container || reduced()) return container;
+  [...container.children].forEach((c, i) => { if (c.nodeType === 1) c.style.setProperty('--ri', String(Math.min(i, max))); });
+  container.style.setProperty('--rstep', step + 'ms');
+  container.classList.remove('reveal'); void container.offsetWidth;
+  container.classList.add('reveal');
+  clearTimeout(container._rv);
+  container._rv = setTimeout(() => container.classList.remove('reveal'), 420 + max * step);
+  return container;
+}
+
+// Swapped-in content (a tab or view change) eases in rather than snapping.
+export function swapIn(el, dir = 0) {
+  if (!el || reduced()) return;
+  el.animate([{ opacity: 0, transform: dir ? `translateX(${dir * 18}px)` : 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE });
+}

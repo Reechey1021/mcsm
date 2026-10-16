@@ -85,7 +85,7 @@ with sync_playwright() as p:
         go(pg, '/admin', 'owner')
         pg.click('details.dev-tools summary'); pg.wait_for_timeout(300)
         pg.click('details.dev-tools button:has-text("Újraépítés")'); pg.wait_for_timeout(4000)
-        saved = db(pg, "(db) => !!(db.content && db.content['summary-mcsm31'] && db.content['summary-mcsm31'].v === 1)")
+        saved = db(pg, "(db) => !!(db.content && db.content['summary-mcsm31'] && db.content['summary-mcsm31'].v >= 1)")
         check(saved, f'{size}: summary saved')
         db(pg, "(db) => { db.race.mcsm31.sheets = {}; }")   # live results gone: visitors must still see them
         pg.evaluate("() => { Object.keys(sessionStorage).filter(k => k.includes('fakeuid')).forEach(k => sessionStorage.removeItem(k)); }")   # sign out

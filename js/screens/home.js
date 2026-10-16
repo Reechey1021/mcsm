@@ -4,7 +4,7 @@
 // seasons in a strip, your entries, and who's already here.
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { countUp, reduced, SPRING } from '../core/motion.js';
+import { countUp, reduced, SPRING, reveal } from '../core/motion.js';
 import { store } from '../core/storage.js';
 import { emit } from '../core/bus.js';
 import { t, fmtDate } from '../i18n/index.js';
@@ -58,6 +58,7 @@ export function screenHome() {
     nums.replaceChildren(sv(stats.driverCount, t('statDrivers')), sv(tms.length, t('statTeams')), sv(stats.wheelCount, t('statWheels')));
     latest.replaceChildren(h('div', { class: 'stack', style: 'gap:8px' }, stats.recent.map((u) => h('a', { class: 'drv-card', href: '#/pilotak/' + encodeURIComponent(u.psnLower) }, avatar(u, tmap[u.teamId]),
       h('span', { class: 'nm' }, h('b', null, fullName(u)), h('span', null, h('span', { class: 'rnum' }, '#' + u.raceNumber), '  ', u.psn)), ratingEl(u)))));
+    reveal(latest.firstChild);
   }).catch(() => latest.replaceChildren(h('div', { class: 'empty' }, t('loadFailed'))));
   const links = h('div', { class: 'tiles', style: 'margin-top:4px' },
     [['flag', 'navSeasons', '#/szezonok'], ['users', 'navDrivers', '#/pilotak'], ['grid', 'teams', '#/csapatok'], ['book', 'rules', '#/szabalyzat']].map(([ic, k, href]) => h('a', { class: 'tile', href }, icon(ic), h('b', null, t(k)))));

@@ -7,18 +7,20 @@ import { backend } from './backend.js';
 import { seasons as loadSeasons, invalidate } from '../core/data.js';
 import { isAdmin } from './session.js';
 
-export const SUMMARY_VERSION = 1;
+export const SUMMARY_VERSION = 2;
 export const FINISHED_STATES = ['finished', 'archived'];
 const key = (sid) => 'summary-' + sid;
 const clean = (x) => JSON.parse(JSON.stringify(x));   // Firestore refuses undefined values
 
 export async function buildSummary(sid) {
   const [season, entries, roundDocs, sheets, pqDocs, penalties] = await Promise.all([
-    backend.seasons.get(sid), backend.entries.list(sid), backend.race.roundsList(sid, { staff: false }),
+    backend.seasons.get(sid), backend.entries.list(sid), backend.race.roundsList(sid, { staff: true }),
     backend.race.sheetsList(sid, { staff: false }), backend.race.pqList(sid), backend.penalties.list(sid),
   ]);
   if (!season || !FINISHED_STATES.includes(season.state)) return false;
-  const doc = clean({ v: SUMMARY_VERSION, sid, savedAt: Date.now(), season, entries, roundDocs, sheets, pqDocs, penalties });
+  // only what visitors may see: rounds with published lobbies or results (incl. imported ones)
+  const visible = roundDocs.filter((r) => r.lobbiesPublished || ['provisional', 'final'].includes(r.resultsState) || (r.legacy && r.legacy.rows && r.legacy.rows.length));
+  const doc = clean({ v: SUMMARY_VERSION, sid, savedAt: Date.now(), season, entries, roundDocs: visible, sheets, pqDocs, penalties });
   if (JSON.stringify(doc).length > 900000) throw new Error('Season summary too large: ' + sid);
   await backend.content.save(key(sid), doc);
   return true;
@@ -45,4 +47,16 @@ export function touchSummary(sid) {
     try { const s = (await loadSeasons()).find((x) => x.id === sid); if (s && FINISHED_STATES.includes(s.state)) await buildSummary(sid); }
     catch (e) { console.warn('season summary not refreshed', sid, e); }
   }, 2500);
+}
+
+// Admins: make sure every finished season has an up-to-date summary (quietly, once per visit).
+let ensured = false;
+export async function ensureSummaries() {
+  if (ensured || !isAdmin()) return 0;
+  ensured = true;
+  let n = 0;
+  for (const s of (await loadSeasons()).filter((x) => FINISHED_STATES.includes(x.state))) {
+    if (!(await readSummary(s.id))) { try { if (await buildSummary(s.id)) n++; } catch (e) { console.warn('summary', s.id, e); } }
+  }
+  return n;
 }

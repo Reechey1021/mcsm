@@ -58,7 +58,15 @@ with sync_playwright() as p:
         pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         # GT7 page: options
         go(pg, '/admin/gt7', 'owner')
-        check('Csak akiknek nincs adata' in text(pg) and 'Naponta automatikusan' in text(pg) and 'Csak akiknek még nincs képe' in text(pg), f'{size}: sync options')
+        check('Csak akiknek nincs adata' in text(pg) and 'Naponta automatikusan' in text(pg), f'{size}: sync options')
+        # the "only missing pictures" option lives in the picture wizard (since 0.7.x)
+        btn = pg.query_selector('button:has-text("Profilok szinkronizálása")')
+        if btn:
+            btn.click(); pg.wait_for_timeout(700)
+            nx = pg.query_selector('.sheet .gt7-pics-wizard .btn.primary')
+            if nx: nx.click(); pg.wait_for_timeout(600)   # step 2 of the wizard holds the option
+        check(btn is not None and pg.query_selector('.sheet .gt7-pics-wizard') is not None, f'{size}: picture wizard opens')
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         pg.click('button:has-text("Frissítés mindenkinek")'); pg.wait_for_timeout(5000)
         check('frissítve' in text(pg, 'body'), f'{size}: refresh of drivers without data')
         ow = pg.evaluate('document.documentElement.scrollWidth - innerWidth')

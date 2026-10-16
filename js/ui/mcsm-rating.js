@@ -77,7 +77,7 @@ export function mcsmRatingCard(uid) {
       const s2 = opts.noStanding ? null : ranked ? standing(opts.k, v) : null;
       return h('div', { class: 'mr-part' },
         h('div', { class: 'mr-ring' }, dial({ size: 64, r: 26, stroke: 5, value: ranked ? v : null, color, marker: false, lo: opts.lo, hi: opts.hi }), h('b', null, ranked ? (opts.fmt || f1)(v) : '–')),
-        h('span', { class: 'mr-pname', style: `color:${color}` }, label), ranked && s2 ? starRow(s2, 'sm') : h('span', { class: 'mr-pstat' }, t('mrHidden')));
+        h('span', { class: 'mr-pname', style: `color:${color}` }, label), ranked && s2 ? starRow(s2, 'sm') : h('span', { class: 'mr-pstat' }, t('mrHidden', { n: RATING_CFG.provisionalRounds })));
     };
     const parts = h('div', { class: 'mr-parts' },
       part(t('quali'), x && x.q, '#38BDF8', { k: 'q' }), part('Sprint', x && x.s, 'var(--accent)', { k: 's' }), part("Gran'Prix", x && x.g, '#A584FF', { k: 'g' }));

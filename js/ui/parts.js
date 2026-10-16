@@ -11,7 +11,8 @@ export function teamHue(tm) { const m = tm && /hsl\((\d+)/.exec(tm.c1 || ''); re
 export function avatar(p, team, cls = '') {
   const bg = '#36405F';
   const url = avatarUrl(p);
-  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: 'gt7', onerror: (e) => e.target.remove() }) : null;
+  const photo = url ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async', class: 'gt7', onerror: (e) => e.target.remove(), onload: (e) => e.target.classList.add('in') }) : null;
+  if (photo) setTimeout(() => photo.classList.add('in'), 2500);   // never leave a photo hidden
   return h('span', { class: 'avatar ' + cls + (photo ? ' has-photo' : ''), vars: { background: bg, '--t2': team ? team.c1 : 'transparent' }, 'aria-hidden': 'true' }, initials(p), photo);
 }
 // A team's logo, or its colour as a small rounded square when there's no logo yet.

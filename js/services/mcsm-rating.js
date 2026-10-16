@@ -5,7 +5,7 @@
 import { backend } from './backend.js';
 import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
-import { computeRatings, overallOf, publicOf, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
+import { computeRatings, overallOf, publicOf, publicEntry, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
 import { normName } from '../model/name-match.js';
 export const LIVE_FROM_SEASON = 31;
 const ALIASES = { 'tdrenkovics': 'mgtknothingtomi' };
@@ -54,17 +54,11 @@ export async function computeAndPublish() {
   let established = 0;
   const f3 = (v) => +v.toFixed(3);
   for (const [uid, st] of Object.entries(res.drivers)) {
-    if (st.established) {
-      established++;
-      const last = st.history[st.history.length - 1];
-      const base = start[uid] && start[uid].established ? [{ l: 'MCSM25–30', r: f3(overallOf(st.prior)), q: f3(publicOf(st.prior.q)), s: f3(publicOf(st.prior.s)), g: f3(publicOf(st.prior.g)) }] : [];
-      drivers[uid] = {
-        e: 1, r: overallOf(st.lat), q: publicOf(st.lat.q), s: publicOf(st.lat.s), g: publicOf(st.lat.g), n: st.n, hi: st.highest,
-        dl: last ? last.delta : 0,
-        // only rounds raced as an established driver (no provisional numbers are published)
-        h: [...base, ...st.history.filter((x) => !x.provisional).map((x) => ({ l: x.label, r: f3(x.after), q: f3(x.q), s: f3(x.s), g: f3(x.g) }))],
-      };
-    } else drivers[uid] = { e: 0, n: st.n };
+    // drivers established from the historical import start their history at MCSM25–30
+    const baseline = start[uid] && (start[uid].established || (start[uid].n || 0) >= RATING_CFG.provisionalRounds)
+      ? { l: 'MCSM25–30', r: f3(overallOf(st.prior)), q: f3(publicOf(st.prior.q)), s: f3(publicOf(st.prior.s)), g: f3(publicOf(st.prior.g)) } : null;
+    drivers[uid] = publicEntry(st, { baseline });
+    if (drivers[uid].e) established++;
   }
   const out = { version: RATING_VERSION, computedAt: Date.now(), rounds: rounds.length, established, drivers };
   await backend.content.save('ratings', out);

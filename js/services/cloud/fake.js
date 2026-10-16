@@ -316,7 +316,7 @@ export function createFakeBackend() {
       async save(tm) {
         await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied');
         const id = tm.tag.trim().toUpperCase();
-        db.gtTeams[id] = { id, tag: id, name: tm.name.trim(), logoUrl: tm.logoUrl || null }; persist(); return id;
+        db.gtTeams[id] = { id, tag: id, name: tm.name.trim(), logoUrl: tm.logoUrl || null, c1: tm.c1 || null, c2: tm.c2 || null }; persist(); return id;
       },
       async remove(id) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); delete db.gtTeams[id]; persist(); },
     },

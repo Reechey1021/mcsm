@@ -1117,3 +1117,60 @@ details.adv .round-item, .stack > .round-item{ box-sizing:border-box; max-width:
 .pod{ min-width:0; }
 .pod a, .pod span.n{ flex:1 1 auto; }
 .pod small{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* =====================================================================
+   v1.0 polish: calm, quick, consistent motion. Nothing waits on animation;
+   everything is off under prefers-reduced-motion.
+   ===================================================================== */
+:root{ --ease-out:cubic-bezier(.2,.8,.2,1); --t-fast:.16s; }
+::selection{ background:var(--accent-soft); color:inherit; }
+
+/* state changes fade instead of snapping */
+.btn, .chip, .icon-btn, .select, .seg button, .switch, .tabbar a, .menu-item,
+.drv-card, .team-card, .round-item, .row-card, .tile, .season-card, .live-card, .notif, .entry-row, .lobby-row,
+.panel, details.adv, .lobby-sec, .pen-line, .fs-cell, .cmp-v, .rtable tbody tr{
+  transition: background-color var(--t-fast) ease, border-color var(--t-fast) ease, color var(--t-fast) ease,
+              box-shadow var(--t-fast) ease, opacity var(--t-fast) ease, translate .22s var(--ease-out), filter var(--t-fast) ease;
+}
+.btn[disabled], .btn:disabled{ opacity:.5; }
+
+/* desktop hover: a quiet lift and a firmer edge (touch screens never see it) */
+@media (hover:hover) and (pointer:fine){
+  .drv-card:hover, .team-card:hover, .round-item:hover, .season-card:hover, .tile:hover, .live-card:hover, .notif:hover,
+  a.row-card:hover, button.row-card:hover, .entry-row:hover, .grid-slot:hover{ translate:0 -1px; border-color:var(--line-2); }
+  .btn:not([disabled]):hover{ filter:brightness(1.07); }
+  .chip:hover, .seg button:not([aria-pressed="true"]):hover{ color:var(--ink); }
+  details.adv > summary:hover .chev, .lobby-sec > summary:hover .chev{ color:var(--ink); }
+  .rtable tbody tr:hover{ background:color-mix(in srgb, var(--bg-3) 55%, transparent); }
+}
+
+/* collapsible chevrons turn with the same curve as the section */
+details > summary .chev{ transition:transform .28s var(--ease-out), color var(--t-fast) ease; }
+
+/* photos fade in over the initials once loaded */
+.avatar img.gt7{ opacity:0; transition:opacity .3s ease; }
+.avatar img.gt7.in{ opacity:1; }
+
+/* lists rise in on first paint (a short stagger, capped) */
+@keyframes rise{ from{ opacity:0; transform:translateY(8px) scale(.995); } to{ opacity:1; transform:none; } }
+.reveal > *{ animation:rise .38s var(--ease-out) both; animation-delay:calc(var(--ri, 0) * var(--rstep, 22ms)); }
+
+/* calmer, consistent skeleton shimmer */
+.skel{ animation-duration:1.4s; }
+
+/* thin, quiet scrollbars on desktop */
+@media (hover:hover) and (pointer:fine){
+  html{ scrollbar-color:var(--line-2) transparent; scrollbar-width:thin; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:10px; border:3px solid transparent; background-clip:content-box; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+}
+
+/* number changes don't make text jump */
+.num, .display.num, .rtable td, .fs-cell b, .cmp-v b, .sort-fig b{ font-variant-numeric:tabular-nums; }
+
+@media (prefers-reduced-motion: reduce){
+  .reveal > *{ animation:none !important; }
+  .avatar img.gt7{ opacity:1; transition:none; }
+  .drv-card, .team-card, .round-item, .season-card, .tile, .live-card, .notif, .row-card, .entry-row, .grid-slot{ translate:none !important; }
+}

@@ -10,7 +10,7 @@ import { openSheet, toast } from '../../ui/sheet.js';
 import { t, fmtDate } from '../../i18n/index.js';
 import { backend, errorKey } from '../../services/backend.js';
 import { session, isOwner, isAdmin, grantableRoles } from '../../services/session.js';
-import { users, teams, invalidate } from '../../core/data.js';
+import { users, teams, gtTeams, invalidate } from '../../core/data.js';
 import { fullName, isComplete, ROLE_KEYS, DR_OPTS, SR_OPTS, validate, psnKey } from '../../model/profile.js';
 import { emit } from '../../core/bus.js';
 import { notifyUsers } from '../../services/notify.js';
@@ -69,6 +69,9 @@ function editPerson(u, tms, reload) {
   const last = txt('lastName', t('lastName')), first = txt('firstName', t('firstName')), psn = txt('psn', t('psnId'), { autocapitalize: 'off' }), num = txt('raceNumber', t('raceNumber'), { inputmode: 'numeric' });
   const teamSel = h('select', { class: 'select', style: 'width:100%' }, h('option', { value: '' }, t('noTeam')), tms.map((tm) => h('option', { value: tm.id, selected: draft.teamId === tm.id }, tm.name)));
   teamSel.addEventListener('change', () => { draft.teamId = teamSel.value || null; if (draft.teamRequest === draft.teamId) draft.teamRequest = null; });
+  const gtSel = h('select', { class: 'select', style: 'width:100%' }, h('option', { value: '' }, t('none')));
+  gtTeams().then((gl) => gl.forEach((g) => gtSel.append(h('option', { value: g.id, selected: draft.gtTeamId === g.id }, g.tag + (g.name && g.name !== g.tag ? ' – ' + g.name : ''))))).catch(() => {});
+  gtSel.addEventListener('change', () => { draft.gtTeamId = gtSel.value || null; });
   const req = u.teamRequest ? tms.find((x) => x.id === u.teamRequest) : null;
   const reqBox = req ? h('div', { class: 'callout' }, icon('clock'), h('span', { style: 'flex:1' }, t('requestFor', { team: req.name })),
     h('button', { class: 'btn small', type: 'button', onclick: () => { draft.teamId = req.id; draft.teamRequest = null; teamSel.value = req.id; reqBox.remove(); toast(t('requestApprovedDraft')); } }, t('approve')),
@@ -100,7 +103,8 @@ function editPerson(u, tms, reload) {
     h('div', { class: 'form' }, last.row, first.row, psn.row, num.row,
       h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, 'DR'), choice(DR_OPTS.map((v) => ({ value: v, label: v })), draft.dr, (v) => { draft.dr = v; })),
       h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, 'SR'), choice(SR_OPTS.map((v) => ({ value: v, label: v })), draft.sr, (v) => { draft.sr = v; })),
-      h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), teamSel)),
+      h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('mcsmTeam')), teamSel),
+      h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('gtTeam')), gtSel)),
     h('h3', { class: 'display', style: 'font-size:22px;margin:22px 0 4px' }, t('rolesTitle')), roleRows, scopeRow,
     h('h3', { class: 'display', style: 'font-size:22px;margin:22px 0 8px' }, t('suspension')),
     h('div', { class: 'form' }, field(t('suspendedUntil'), until).row, field(t('suspendNote'), note).row, field(t('reason'), reason, { hint: t('reasonHint') }).row, save),
@@ -121,7 +125,7 @@ function editPerson(u, tms, reload) {
     const bad = [['lastName', last], ['firstName', first], ['psn', psn]].find(([k]) => draft[k] && validate[k === 'psn' ? 'psn' : 'name'](draft[k]));
     if (bad) { bad[1].setError(t(validate[bad[0] === 'psn' ? 'psn' : 'name'](draft[bad[0]]))); return; }
     if (draft.raceNumber != null && (!Number.isInteger(draft.raceNumber) || draft.raceNumber < 1 || draft.raceNumber > 999)) { num.setError(t('errNumber')); return; }
-    const keys = ['firstName', 'lastName', 'psn', 'raceNumber', 'dr', 'sr', 'teamId', 'teamRequest', 'roles', 'judgeScope', 'suspendedUntil', 'suspendNote'];
+    const keys = ['firstName', 'lastName', 'psn', 'raceNumber', 'dr', 'sr', 'teamId', 'gtTeamId', 'teamRequest', 'roles', 'judgeScope', 'suspendedUntil', 'suspendNote'];
     const patch = {}, before = {}, after = {};
     keys.forEach((k) => { if (JSON.stringify(draft[k] ?? null) !== JSON.stringify(u[k] ?? null)) { patch[k] = draft[k] ?? null; before[k] = u[k] ?? null; after[k] = draft[k] ?? null; } });
     if (!Object.keys(patch).length) { sh.close(true); return; }

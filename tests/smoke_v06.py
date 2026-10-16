@@ -95,7 +95,8 @@ with sync_playwright() as p:
             with pg.expect_file_chooser() as fc:
                 pg.click('.sheet button:has-text("Kép kiválasztása")')
             fc.value.set_files('/tmp/mcsm-photo.png'); pg.wait_for_timeout(2000)
-        check(pg.query_selector('.profile-head .avatar img') is not None, f'{size}: profile photo shown')
+        # own photo uploads were retired in 0.9.6 (GT7 pictures only)
+        check(pg.query_selector('.avatar-edit') is None, f'{size}: no own photo upload')
         snap(pg, f'v6_photo_{size}')
         # 0.6.1: advanced section, settings, phone notifications switch, cover drop zone, date fields
         go(pg, '/admin', 'owner')
@@ -103,9 +104,12 @@ with sync_playwright() as p:
         go(pg, '/admin/beallitasok', 'owner')
         check('Web Push' in text(pg), f'{size}: settings page')
         go(pg, '/sajat', 'owner', 2000)
-        sw = pg.query_selector('.toggle-row:has-text("Telefonos értesítések") .switch')
+        # since 0.9.7: Telefonos értesítések -> Beállítás -> this device + categories
+        pg.click('button:has-text("Beállítás")'); pg.wait_for_timeout(600)
+        sw = pg.query_selector('.sheet .toggle-row:has-text("Ezen az eszközön") .switch')
         if sw: sw.click(); pg.wait_for_timeout(900)
-        check('Bekapcsolva ezen az eszközön' in text(pg), f'{size}: push switch turns on (test mode)')
+        check('Bekapcsolva ezen az eszközön' in text(pg, '.sheet'), f'{size}: push switch turns on (test mode)')
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         go(pg, '/admin/szezon/uj', 'owner', 1800)
         check(pg.query_selector('.dropzone') is not None and 'Borítókép linkje' not in text(pg), f'{size}: cover drop zone, no link field')
         pg.click('.seg button:has-text("Nevezés")'); pg.wait_for_timeout(600)

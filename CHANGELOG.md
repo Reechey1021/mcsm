@@ -1,3 +1,25 @@
+## v1.0.0 — MCSM v1
+
+- MCSM Rating V3.3 (calibration per the revised spec): drivers are ranked after 3 completed rounds
+  (was 5). While calibrating, each round's performance is estimated from that round alone
+  (regularised fit against established drivers' frozen ratings; prior 100, SD 55) and established
+  drivers' Elo is calculated against that round performance over the full eligible field (N − 1).
+  The starting rating is the arithmetic mean of the 3 rounds' public component performances
+  (imported 1–2 round histories count with their weight), shown with no change; normal Elo from
+  round 4. Imported drivers with 3+ historical rounds are established from MCSM31. Provisional
+  drivers still publish only their round count. Established-vs-established Elo, K, scale, floor,
+  weights, positions and the MCSM25–30 bootstrap are unchanged.
+- GT teams work like MCSM teams: Csapatok has an MCSM / GT switch (MCSM first); GT team cards and
+  pages (drivers, average MCSM Rating, past drivers); GT teams have two colours; a GT team can
+  only be deleted once empty; admins can set or remove a driver's GT team in the user editor.
+  GT championships in the season wizard already follow the GT teams that exist.
+- Results: imported old-site rounds 2–3 (never "lobbies published") are now visible to visitors
+  through the season summary (v2, rebuilt automatically by an admin's browser); Results opens on
+  the last round of the chosen season.
+- Polish: collapsible sections open and fold smoothly; lists rise in on first load; photos fade in;
+  quiet hover lift on desktop; eased state changes; calmer skeletons; thin desktop scrollbars;
+  everything off under reduced motion.
+
 ## v0.9.14 — Protest complainants, true lobby positions, season summaries
 
 - Protests: the official-case switch is gone. A "Panaszos" picker chooses who the complaint is

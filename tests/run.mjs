@@ -575,24 +575,75 @@ await test('rating v3.2: established Elo is zero-sum per component, no forced me
   const one = RT.computeRatings([round('a', ids16)], est(ids16));
   ok(one.drivers.d01.lat.q > 100 && one.drivers.d16.lat.q < 100, 'qualifying moves with qualifying results');
 });
-await test('rating v3.2: newcomers never move established drivers; graduate after five rounds', () => {
-  const vets = ids16.slice(0, 15), rookie = 'new';
-  const field = ['new', ...vets];   // the newcomer wins every session
-  const rounds = Array.from({ length: 6 }, (_, k) => round('r' + k, field));
-  const withNew = RT.computeRatings(rounds.slice(0, 1), est(vets));
+await test('rating v3.3: a newcomer affects established drivers from their first round, at that round\'s performance', () => {
+  const vets = ids16.slice(0, 15);
+  const withNew = RT.computeRatings([round('r0', ['new', ...vets])], est(vets));
   const without = RT.computeRatings([round('r0', vets)], est(vets));
-  ok(vets.every((u) => ['q', 's', 'g'].every((c) => Math.abs(withNew.drivers[u].lat[c] - without.drivers[u].lat[c]) < 1e-9)), 'established ratings identical with or without the newcomer');
-  ok(withNew.drivers.new.lat.q > 120 && !withNew.drivers.new.established, `dominant newcomer gets a strong provisional estimate (${withNew.drivers.new.lat.q.toFixed(1)})`);
-  const all = RT.computeRatings(rounds, est(vets));
-  eq([all.drivers.new.n, all.drivers.new.established, all.drivers.new.graduatedAt], [6, true, 'r4'], 'graduates after round five');
-  const six = all.audit[5];
-  ok(six.zeroSum.every((v) => Math.abs(v) < 1e-9), 'joins zero-sum Elo from round six');
+  ok(vets.some((u) => Math.abs(withNew.drivers[u].lat.q - without.drivers[u].lat.q) > 1e-6), 'established ratings move when a newcomer races');
+  const a = withNew.audit[0];
+  ok(a.perf.new && a.perf.new.q > 120 && !withNew.drivers.new.established, `the round winner gets a strong round performance (${a.perf.new.q.toFixed(1)})`);
+  // every established delta equals the Elo formula over the full field (N-1), the newcomer at their round performance
+  const N = 16, K = RT.RATING_CFG.K, field = ['new', ...vets];
+  const rating = (u) => (u === 'new' ? a.perf.new.q : a.pre[u].lat.q);
+  const expectD = (u) => field.filter((v) => v !== u).reduce((acc, v) => { const y = field.indexOf(u) < field.indexOf(v) ? 1 : 0; return acc + (K / (N - 1)) * (y - RT.expected(RT.RATING_CFG.eloScale * (rating(u) - rating(v)))); }, 0);
+  ok(vets.every((u) => Math.abs(a.delta[u].q - expectD(u)) < 1e-9), 'established deltas use the round performance and N-1');
 });
-await test('rating v3.2: imported provisional keeps its estimate; DNS is not an observation; deterministic', () => {
+await test('rating v3.3: round two is judged against round two\'s performance, not the running average', () => {
+  const vets = ids16.slice(0, 15);
+  const r1 = round('r1', ['bob', ...vets]);                       // Bob wins
+  const r2 = round('r2', [...vets.slice(0, 7), 'bob', ...vets.slice(7)]);   // Bob 8th
+  const res = RT.computeRatings([r1, r2], est(vets));
+  const a2 = res.audit[1];
+  const runningLat = RT.latentOf((RT.publicOf(res.audit[0].perf.bob.q) + RT.publicOf(a2.perf.bob.q)) / 2);
+  ok(Math.abs(a2.perf.bob.q - runningLat) > 1, 'the two values differ, so the check means something');
+  const field = r2.results.A.Q.map((r) => r.id), N = field.length, K = RT.RATING_CFG.K;
+  const rating = (u) => (u === 'bob' ? a2.perf.bob.q : a2.pre[u].lat.q);
+  const d = (u) => field.filter((v) => v !== u).reduce((acc, v) => acc + (K / (N - 1)) * ((field.indexOf(u) < field.indexOf(v) ? 1 : 0) - RT.expected(RT.RATING_CFG.eloScale * (rating(u) - rating(v)))), 0);
+  ok(vets.every((u) => Math.abs(a2.delta[u].q - d(u)) < 1e-9), 'opponents measured against Bob\'s round-2 performance');
+});
+await test('rating v3.3: Bob 140 / 120 / 100 starts at exactly 120; ranked after round 3, normal Elo from round 4', () => {
+  // the averaging itself: public component performances averaged, converted back with latentOf
+  ok([50.5, 77, 100, 140, 188.3].every((y) => Math.abs(RT.publicOf(RT.latentOf(y)) - y) < 1e-9), 'latentOf inverts publicOf');
+  const mean = (140 + 120 + 100) / 3;
+  ok(Math.abs(RT.overallOf({ q: RT.latentOf(mean), s: RT.latentOf(mean), g: RT.latentOf(mean) }) - 120) < 1e-9, 'average 120 in public units, not a latent approximation');
+  // through the engine: the first official rating is the mean of the three recorded round performances
+  const vets = ids16.slice(0, 15);
+  const rounds = [round('r0', ['bob', ...vets]), round('r1', [...vets.slice(0, 5), 'bob', ...vets.slice(5)]), round('r2', [...vets.slice(0, 10), 'bob', ...vets.slice(10)]), round('r3', vets.concat(['bob']))];
+  const res = RT.computeRatings(rounds.slice(0, 3), est(vets));
+  const b = res.drivers.bob;
+  const avg = (c) => b.perfs.reduce((a, x) => a + x[c], 0) / b.perfs.length;
+  eq([b.n, b.established, b.graduatedAt, b.perfs.length], [3, true, 'r2', 3], 'established after the third completed round');
+  ok(Math.abs(RT.overallOf(b.lat) - (0.2 * avg('q') + 0.4 * avg('s') + 0.4 * avg('g'))) < 1e-9, 'starting rating = arithmetic mean of the three rounds');
+  const gradEntry = b.history[2];
+  eq([gradEntry.graduation, gradEntry.delta], [true, null], 'no change on the graduation round');
+  const pub = RT.publicEntry(b);
+  eq([pub.e, pub.dl, pub.h.length], [1, null, 1], 'first published rating: no delta, one baseline point');
+  ok(!('perfs' in pub) && Math.abs(pub.h[0].r - RT.overallOf(b.lat)) < 1e-3, 'no hidden calibration values published');
+  const res4 = RT.computeRatings(rounds, est(vets));
+  ok(res4.audit[3].pre.bob.est && Math.abs(res4.audit[3].delta.bob.q) > 0, 'round 4: normal Elo for Bob');
+  ok(res4.audit[3].zeroSum.every((v) => Math.abs(v) < 1e-9), 'all established again: zero-sum as before');
+  const p4 = RT.publicEntry(res4.drivers.bob);
+  ok(p4.dl != null && p4.h.length === 2, 'from round 4 the change shows again');
+  eq(RT.publicEntry({ established: false, n: 2, perfs: [{ q: 130 }], history: [] }), { e: 0, n: 2 }, 'provisional: round count only');
+});
+await test('rating v3.3: imported history: 3+ rounds established from the start, 1-2 rounds weighted into the mean', () => {
+  const vets = ids16.slice(0, 15);
+  const imp = { ...est(vets), three: { q: 130, s: 130, g: 130, n: 3, established: false }, two: { q: 125, s: 125, g: 125, n: 2, established: false } };
+  const res = RT.computeRatings([round('r0', ['two', ...vets])], imp);
+  eq([res.drivers.three.established, res.drivers.three.lat.q], [true, 130], 'three imported rounds: established, imported value unchanged');
+  const t = res.drivers.two;
+  eq([t.n, t.established], [3, true], 'two imported + one live = ranked');
+  const live = t.perfs[0];
+  const m = (c) => (RT.publicOf(125) * 2 + live[c]) / 3;
+  ok(Math.abs(RT.overallOf(t.lat) - (0.2 * m('q') + 0.4 * m('s') + 0.4 * m('g'))) < 1e-9, 'imported aggregate counts as two rounds of the mean');
+  const again = RT.computeRatings([round('r0', ['two', ...vets])], imp);
+  eq(JSON.stringify(again.drivers), JSON.stringify(res.drivers), 'deterministic, nothing stacks on a re-run');
+});
+await test('rating v3.3: imported driver keeps their estimate; DNS is not an observation; deterministic', () => {
   const start = { ...est(ids16.slice(0, 15)), p: { q: 140, s: 130, g: 135, n: 3, established: false } };
   const field = [...ids16.slice(0, 15)];
   const r = RT.computeRatings([round('x', field)], start);
-  eq([r.drivers.p.lat.q, r.drivers.p.n, r.drivers.p.established], [140, 3, false], 'did not race: unchanged, not reset to 100');
+  eq([r.drivers.p.lat.q, r.drivers.p.n, r.drivers.p.established], [140, 3, true], 'did not race: unchanged; 3 imported rounds = established (3-round rule)');
   const r2 = RT.computeRatings([round('y', ['p', ...field], { S: rowsOf(['p', ...field], (id) => (id === 'p' ? { status: 'DNS' } : {})), GP: rowsOf(['p', ...field], (id) => (id === 'p' ? { status: 'DNS' } : {})) })], start);
   eq(r2.drivers.p.n, 3, 'qualifying only (both races DNS) does not count as a round');
   const a = JSON.stringify(RT.computeRatings([round('z', ids16)], est(ids16)).drivers), b = JSON.stringify(RT.computeRatings([round('z', ids16)], est(ids16)).drivers);

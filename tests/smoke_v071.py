@@ -75,7 +75,7 @@ with sync_playwright() as p:
         pg.click('button:has-text("Gyakorlószoba beállítások")'); pg.wait_for_timeout(700)
         sheet = text(pg, '.sheet')
         full = pg.evaluate("document.querySelector('.sheet').textContent")
-        check('BOP / Tuning Prohibited • ON' in full and '25 kör' in full and 'Tyre Wear • 4X' in full and 'C02, R02' in full, f'{size}: practice room sheet shows the settings')
+        check('BOP / Tuning Prohibited • ON' in full and '25 kör' in full and 'Tyre Wear • 4X' in full and 'C02 → R02' in full, f'{size}: practice room sheet shows the settings')
         snap(pg, f'v71_practice_{size}')
         pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
         # delete the season

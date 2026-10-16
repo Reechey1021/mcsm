@@ -86,6 +86,8 @@ export function screenAdminGt() {
 }
 
 export function editGt(g, reload) {
+  const cols = { c1: (g && g.c1) || '#B6F03C', c2: (g && g.c2) || '#38BDF8' };
+  const colIn = (k) => { const i = h('input', { class: 'color-in', type: 'color', value: hslToHex(cols[k]), 'aria-label': t(k === 'c1' ? 'color1' : 'color2') }); i.addEventListener('input', () => { cols[k] = i.value; }); return i; };
   const tag = h('input', { class: 'input', value: g ? g.tag : '', maxlength: 12, autocapitalize: 'characters', disabled: !!g });
   const name = h('input', { class: 'input', value: g ? g.name : '', maxlength: 60 });
   const tf = field(t('gtTag'), tag, { hint: t('gtTagHint') }), nf = field(t('gtName'), name);
@@ -96,15 +98,18 @@ export function editGt(g, reload) {
   const err = h('div');
   const save = h('button', { class: 'btn primary block', type: 'button' }, icon('check'), t('save'));
   const del = g ? h('button', { class: 'btn danger block', type: 'button' }, icon('trash'), t('delete')) : null;
-  const sh = openSheet({ title: g ? g.tag : t('newGt'), body: h('div', { class: 'form' }, err, tf.row, nf.row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('teamLogo')), h('div', { style: 'display:flex;gap:12px;align-items:center' }, logoPrev, logoBtn)), save, del) });
+  const sh = openSheet({ title: g ? g.tag : t('newGt'), body: h('div', { class: 'form' }, err, tf.row, nf.row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('colors')), h('div', { style: 'display:flex;gap:10px' }, colIn('c1'), colIn('c2'))), h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('teamLogo')), h('div', { style: 'display:flex;gap:12px;align-items:center' }, logoPrev, logoBtn)), save, del) });
   save.addEventListener('click', () => busy(save, async () => {
     const tg = tag.value.trim(), nm = name.value.trim();
     tf.setError(/^[A-Za-z0-9_-]{1,12}$/.test(tg) ? '' : t('errGtTag')); nf.setError(nm ? '' : t('errRequired'));
     if (!/^[A-Za-z0-9_-]{1,12}$/.test(tg) || !nm) return;
-    try { const id = await backend.gtTeams.save({ tag: tg, name: nm, logoUrl }); await backend.audit.add({ action: g ? 'gt.update' : 'gt.create', target: id, targetName: nm, before: g || null, after: { tag: tg, name: nm }, reason: null }); sh.close(true); toast(t('saved')); reload(); }
+    try { const id = await backend.gtTeams.save({ tag: tg, name: nm, logoUrl, c1: cols.c1, c2: cols.c2 }); await backend.audit.add({ action: g ? 'gt.update' : 'gt.create', target: id, targetName: nm, before: g || null, after: { tag: tg, name: nm }, reason: null }); sh.close(true); toast(t('saved')); reload(); }
     catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   }));
   if (del) del.addEventListener('click', () => busy(del, async () => {
+    // like MCSM teams: everyone has to leave the GT team first
+    const left = (await users()).filter((u) => u.gtTeamId === g.id).length;
+    if (left) { err.replaceChildren(formError(t('gtHasMembers', { n: left }))); return; }
     try { await backend.gtTeams.remove(g.id); await backend.audit.add({ action: 'gt.delete', target: g.id, targetName: g.name, before: g, after: null, reason: null }); sh.close(true); toast(t('deleted')); reload(); }
     catch (e) { err.replaceChildren(formError(t(errorKey(e)))); }
   }));

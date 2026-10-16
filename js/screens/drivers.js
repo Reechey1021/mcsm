@@ -2,7 +2,7 @@
 // The public driver directory and driver profiles.
 import { session } from '../services/session.js';
 import { backend } from '../services/backend.js';
-import { fmtInt } from '../core/motion.js';
+import { fmtInt, reveal } from '../core/motion.js';
 import { normName } from '../model/name-match.js';
 import { openSheet } from '../ui/sheet.js';
 import { h, frag } from '../core/dom.js';
@@ -92,6 +92,7 @@ export function screenDrivers() {
       return c;
     }));
     update(false);
+    reveal(grid);
   }).catch(() => grid.replaceChildren(empty(t('loadFailed'))));
   return frag(pageTitle(t('drivers'), t('driversSub')),
     h('div', { class: 'toolbar' }, h('label', { class: 'field' }, icon('search'), input), chips, h('div', { class: 'row' }, count, sort)), grid);

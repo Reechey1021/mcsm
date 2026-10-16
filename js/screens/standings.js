@@ -1,5 +1,6 @@
 // screens/standings.js
 // Eredmények: championship standings for any season with results.
+import { swapIn } from '../core/motion.js';
 import { h, frag } from '../core/dom.js';
 import { seg } from '../ui/controls.js';
 import { empty, skelRows, pageTitle } from '../ui/parts.js';
@@ -15,11 +16,11 @@ const RESULT_STATES = ['pq', 'running', 'finished', 'archived'];
 
 export function screenStandings({ sid }, query) {
   if (query && query.get('nezet') === 'dicsosegfal') ui.view = 'hall';
-  const viewSeg = seg([{ value: 'table', label: t('standings') }, { value: 'hall', label: t('hallOfFame') }], ui.view, (v) => { ui.view = v; history.replaceState(null, '', v === 'hall' ? '#/eredmenyek?nezet=dicsosegfal' : '#/eredmenyek'); paintView(); });
+  const viewSeg = seg([{ value: 'table', label: t('standings') }, { value: 'hall', label: t('hallOfFame') }], ui.view, (v) => { ui.view = v; history.replaceState(null, '', v === 'hall' ? '#/eredmenyek?nezet=dicsosegfal' : '#/eredmenyek'); paintView(true); });
   const head = h('div');
   const box = h('div', null, skelRows(10, 54));
   const wrap = h('div');
-  const paintView = () => wrap.replaceChildren(...(ui.view === 'hall' ? [hallView()] : [head, box]));
+  const paintView = (anim) => { wrap.replaceChildren(...(ui.view === 'hall' ? [hallView()] : [head, box])); if (anim) swapIn(wrap); };
   loadSeasons().then(async (all) => {
     const list = all.filter((s) => RESULT_STATES.includes(s.state)).sort((a, b) => (a.state === 'running' ? -1 : 0) - (b.state === 'running' ? -1 : 0) || b.no - a.no);
     if (!list.length) { box.replaceChildren(empty(t('noResultsYet'))); return; }

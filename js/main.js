@@ -3,7 +3,7 @@
 import { backend } from './services/backend.js';
 import { h } from './core/dom.js';
 import { on } from './core/bus.js';
-import { initPress } from './core/motion.js';
+import { initPress, initDetails } from './core/motion.js';
 import { store } from './core/storage.js';
 import { LANG, t } from './i18n/index.js';
 import { createBackend } from './services/backend.js';
@@ -49,6 +49,7 @@ async function boot() {
   watchVerification(backend);
   initRouter();
   initPress();
+  initDetails();
   initNotes();
   initKeyboard();
   // The notification listener receives Firestore changes directly, regardless of push permission.
@@ -59,6 +60,9 @@ async function boot() {
   // Admins: make sure the public copy of the function address exists (used for the Twitch live list).
   let epDone = false;
   on('session', () => { if (epDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; epDone = true; backend.content.get('endpoints').then((ep) => (ep && ep.fn ? null : backend.admin.functionsConfig().then((c) => (c && c.url && !String(c.url).startsWith('fake:') ? backend.content.save('endpoints', { fn: c.url }) : null)))).catch(() => {}); });
+  // Admins quietly keep finished seasons' summaries up to date.
+  let sumDone = false;
+  on('session', () => { if (sumDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; sumDone = true; setTimeout(() => import('./services/season-summary.js').then((m) => m.ensureSummaries()).catch(() => {}), 4000); });
   // Once a day, the first admin to open the site refreshes DR/SR quietly in the background.
   let autoDone = false;
   on('session', () => { if (!autoDone && session_ready() && session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true)) { autoDone = true; setTimeout(() => import('./services/ratings.js').then((m) => m.autoDailySync()), 8000); } });

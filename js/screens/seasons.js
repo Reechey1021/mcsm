@@ -5,7 +5,7 @@
 import { publicDriverDirectory } from '../core/data.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { flip, reduced, countUp, haptic } from '../core/motion.js';
+import { flip, reduced, countUp, haptic, reveal } from '../core/motion.js';
 import { seg, toggle, busy, choice } from '../ui/controls.js';
 import { avatar, ratingEl, pageTitle, skelRows, empty, backLink, formError, secHead } from '../ui/parts.js';
 import { seasonCover, seasonPill, seasonCard, seasonTitle, carLine, roundRow } from '../ui/season-parts.js';
@@ -41,6 +41,7 @@ export function screenSeasons() {
       drafts.length ? frag(secHead(t('drafts')), h('div', { class: 'season-list' }, drafts.map((s) => seasonCard(s, null, cat)))) : null,
       past.length ? frag(secHead(t('archive')), h('div', { class: 'season-list' }, past.map((s) => seasonCard(s, null, cat)))) : null,
     ].filter(Boolean));
+    box.querySelectorAll('.season-list').forEach((l) => reveal(l));
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
   return frag(pageTitle(t('seasons'), t('seasonsSub')), box);
 }

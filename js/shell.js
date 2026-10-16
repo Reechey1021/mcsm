@@ -4,7 +4,7 @@ import { APP_VERSION } from './version.js';
 import { $, h, frag } from './core/dom.js';
 import { on, emit } from './core/bus.js';
 import { icon } from './core/icons.js';
-import { moveThumb } from './core/motion.js';
+import { moveThumb, reveal } from './core/motion.js';
 import { store } from './core/storage.js';
 import { openSheet, toast } from './ui/sheet.js';
 import { seg } from './ui/controls.js';
@@ -70,6 +70,7 @@ function openNotes() {
     h('span', null, h('b', null, t('nt_' + n.type, n.params || {})), n.params && n.params.title ? h('span', null, n.params.title) : null, h('time', null, n.synthetic ? t('today') : relTime(n.at)))))
     : [h('div', { class: 'empty' }, t(notes.error ? 'loadFailed' : 'noNotifications'))]));
   draw();
+  reveal(list, { max: 8 });
   const stopRedraw = on('notes', draw);
   const markBtn = h('button', { class: 'btn small block', type: 'button' }, icon('check'), t('markAllRead'));
   markBtn.addEventListener('click', async () => { await markAllRead(); draw(); });

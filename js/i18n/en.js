@@ -309,4 +309,5 @@ export const en = {
   dotrTitle: 'Driver of the round', dotrSub: 'biggest MCSM Rating gain', mgtkTitles: 'MGTK titles', mgtkChampionN: '{n}× MGTK champion', hofMgtkTable: 'MGTK medal table',
   hofMore: 'More ({n})',
   rrTitle: 'Ranked!', rrSub: "You've completed calibration. Here's your first official MCSM Rating.", rrOfTotal: 'of {n} ranked drivers', rrContinue: 'Continue', rrProfile: 'See my profile',
+  rcTitle: 'Your results', rcSub: "MCSM{no} round {n} results are in. Here's your performance.", rcSubRanked: "MCSM{no} round {n} completed your calibration. Here's your first MCSM Rating.", rcHigh: 'New high!', rcCalib: 'Calibration', rcCalibNote: '{n} more round(s) until you are ranked.', rcChampNow: "You're {p}. in the championship", rcChampUp: "place(s) up in the championship · now {p}.", rcChampDown: 'place(s) down in the championship · now {p}.', rcChampSame: "Still {p}. in the championship", rcFull: 'View full results', recapBtn: 'View recap',
 };

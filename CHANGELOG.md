@@ -1,3 +1,25 @@
+## v1.1.0 — Round recap
+
+- "Eredményeid": when an admin marks a round's results final, every driver in it gets a recap note on their
+  own profile and a full-screen recap the next time they open the site (or straight away if online),
+  before anything else; shown once. Places (Kvalifikáció / Sprint / Gran'Prix, or DNF/DNS/DSQ), then:
+  ranked drivers: the ring sweeps from the old rating to the new one, ▲/▼ change, stars, "Új csúcs!" on a
+  new personal best; newly ranked: "Besorolva!" with the first rating and "#rank of total" (one combined
+  screen, no change shown); calibrating: a three-segment ring filling to 1/3 or 2/3 with no numbers.
+  Championship line: places gained / lost / unchanged. "Teljes eredmények" opens the round; "Bezárás".
+- Round page: the "Az eredmények véglegesek" box has a clearer header and an "Összefoglaló" button to
+  replay your recap any time.
+- Fits phones down to 360×640 without scrolling inside the card. Previews (nothing saved):
+  ?resultsdemo=up · ?resultsdemo=down · ?resultsdemo=ranked · ?resultsdemo=calib (and ?rankdemo).
+- The preview flags work before or after the # in the address.
+- Cost: the finalise step writes one small note per driver in the round (≈45); drivers read nothing extra.
+- Firestore rules: new profile field roundRecap (publish the rules).
+
+## v1.0.4
+
+- Rank reveal preview works with the flag before or after the # (…/?rankdemo#/ or …/#/?rankdemo), and the
+  reveal check also runs once after start-up and when the address asks for the preview, not only on sign-in.
+
 ## v1.0.3 (addition) — "Besorolva!" rank reveal
 
 - When a driver completes calibration (their 3rd round), the ratings publish that runs as results are

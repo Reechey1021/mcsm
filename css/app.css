@@ -1264,3 +1264,50 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
 @media (prefers-reduced-motion: reduce){ .rr-overlay{ -webkit-backdrop-filter:none; backdrop-filter:none; } }
 .rr-part small{ font-size:9.5px; letter-spacing:.03em; }
 .rr-part small{ text-transform:none; letter-spacing:0; font-size:11px; }
+
+/* round recap ("Eredményeid") */
+.rr-card{ --calib:#38BDF8; }
+.rr-recap .rr-title{ font-size:clamp(36px, 11vw, 48px); }
+.rr-recap .rr-sub{ margin-bottom:12px; }
+.rr-recap .rr-dialwrap{ width:min(210px, 56vw, 30dvh); }
+.rr-places{ margin-bottom:6px; }
+.rr-places .rr-part b{ font-size:20px; }
+.rr-chips{ display:flex; justify-content:center; align-items:center; gap:8px; margin:-6px 0 12px; }
+.rr-delta{ display:inline-flex; align-items:center; padding:3px 12px; border-radius:999px; font-weight:900; font-size:16px; font-variant-numeric:tabular-nums; }
+.rr-delta.up{ background:rgba(34,197,94,.16); color:#4ADE80; }
+.rr-delta.down{ background:rgba(229,72,77,.16); color:#ff6b6f; }
+.rr-high{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:900; font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; }
+.rr-calc{ display:grid; justify-items:center; gap:2px; }
+.rr-calnum{ color:var(--calib) !important; }
+.rr-calc small{ font-size:11px; font-weight:850; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }
+.rr-calnote{ margin:-8px auto 12px; font-size:13px; color:var(--ink-2); }
+.rr-champ{ margin:2px 0 16px; font-size:14px; color:var(--ink-2); font-weight:650; }
+.rr-champ b{ font-weight:900; }
+.rr-champ.up b{ color:#4ADE80; } .rr-champ.down b{ color:#ff6b6f; }
+.rr-recap .rr-stars{ margin:-18px 0 10px; }
+/* short phones: everything fits without scrolling inside the card */
+@media (max-height:700px){ .rr-card{ padding:18px 18px 16px; } .rr-title{ margin:2px 0 4px; } .rr-sub{ font-size:13px; margin-bottom:8px; } .rr-actions .btn{ min-height:42px; } }
+/* "results are final" box: a clearer header with the recap button */
+.final-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; color:inherit; }
+.fh-ic{ flex:0 0 auto; display:grid; place-items:center; width:34px; height:34px; border-radius:11px; background:var(--accent-soft); color:var(--accent-text); }
+.fh-ic svg{ width:18px; height:18px; }
+.fh-txt{ display:grid; min-width:0; flex:1 1 auto; }
+.fh-txt b{ color:var(--accent-text); font-size:15px; }
+.fh-txt small{ color:var(--ink-3); font-size:12px; font-weight:650; }
+.fh-recap{ flex:0 0 auto; }
+.final-box:not(:has(.fs-who)) .final-head{ margin-bottom:0; }
+/* recap: one line for the label; tighter on short phones so nothing scrolls inside the card */
+.rr-kicker{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rr-recap .rr-kicker{ font-size:10.5px; letter-spacing:.14em; }
+.rr-recap .rr-sub{ max-width:36ch; }
+@media (max-height:700px){
+  .rr-recap .rr-sub{ font-size:12.5px; line-height:1.35; margin-bottom:8px; }
+  .rr-recap .rr-dialwrap{ width:min(200px, 52vw, 26dvh); }
+  .rr-recap .rr-num{ font-size:clamp(38px, 11vw, 50px); }
+  .rr-recap .rr-part{ padding:6px 4px; }
+  .rr-recap .rr-places .rr-part b{ font-size:18px; }
+  .rr-recap .rr-champ{ font-size:12.5px; margin-bottom:12px; line-height:1.35; }
+  .rr-recap .rr-stars{ margin:-16px 0 8px; }
+  .rr-recap .rr-actions{ gap:6px; }
+  .rr-recap .rr-actions .btn{ min-height:40px; padding-top:8px; padding-bottom:8px; }
+}

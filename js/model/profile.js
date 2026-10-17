@@ -73,7 +73,7 @@ export const fullName = (p) => (p && p.lastName ? `${p.lastName.toLocaleUpperCas
 export const initials = (p) => ((p && p.firstName ? p.firstName[0] : '') + (p && p.lastName ? p.lastName[0] : '')).toUpperCase() || '?';
 
 // Only these keys may be written by a driver to their own profile (mirrors firestore.rules).
-export const SELF_KEYS = ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view', 'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang', 'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn', 'pushPrefs', 'rankReveal'];
+export const SELF_KEYS = ['firstName', 'lastName', 'psn', 'psnLower', 'input', 'wheelBrand', 'wheelOther', 'view', 'raceNumber', 'dr', 'sr', 'gtTeamId', 'teamId', 'teamRequest', 'streamUrl', 'lang', 'complete', 'updatedAt', 'createdAt', 'notifReadAt', 'photoUrl', 'claimedAt', 'pushOn', 'pushPrefs', 'rankReveal', 'roundRecap'];
 
 export function clean(p) {
   const out = {};

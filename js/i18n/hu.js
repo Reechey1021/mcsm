@@ -325,4 +325,5 @@ export const hu = {
   dotrTitle: 'A forduló pilótája', dotrSub: 'legnagyobb MCSM Rating növekedés', mgtkTitles: 'MGTK címek', mgtkChampionN: '{n}× MGTK bajnok', hofMgtkTable: 'MGTK éremtáblázat',
   hofMore: 'Továbbiak ({n})',
   rrTitle: 'Besorolva!', rrSub: 'Teljesítetted a kalibrációt. Íme az első hivatalos MCSM Ratinged.', rrOfTotal: 'a {n} besorolt pilóta közül', rrContinue: 'Tovább', rrProfile: 'Megnézem a profilomat',
+  rcTitle: 'Eredményeid', rcSub: 'Megérkeztek az MCSM{no} {n}. fordulójának eredményei. Íme a teljesítményed.', rcSubRanked: 'Az MCSM{no} {n}. fordulójával teljesítetted a kalibrációt. Íme az első MCSM Ratinged.', rcHigh: 'Új csúcs!', rcCalib: 'Kalibráció', rcCalibNote: 'Még {n} forduló a besorolásig.', rcChampNow: '{p}. vagy a bajnokságban', rcChampUp: 'helyet léptél előre a bajnokságban · most {p}. vagy', rcChampDown: 'helyet estél vissza a bajnokságban · most {p}. vagy', rcChampSame: 'Továbbra is {p}. vagy a bajnokságban', rcFull: 'Teljes eredmények', recapBtn: 'Összefoglaló',
 };

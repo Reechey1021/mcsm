@@ -7,6 +7,7 @@ import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '
 import { loadRace } from '../core/race-data.js';
 import { computeRatings, overallOf, publicOf, publicEntry, newlyRanked, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
 import { normName } from '../model/name-match.js';
+import { buildRecap } from '../model/recap.js';
 export const LIVE_FROM_SEASON = 31;
 const ALIASES = { 'tdrenkovics': 'mgtknothingtomi' };
 // Finished live rounds (MCSM31 onwards) with session results; imported old rounds only have totals.
@@ -45,7 +46,8 @@ export function startFrom(boot, users) {
   });
   return start;
 }
-export async function computeAndPublish() {
+// opts.recap = { sid, n }: the round whose results were just made final; its drivers get a round recap.
+export async function computeAndPublish(opts = {}) {
   invalidate('users'); invalidate();
   const [boot, users, rounds, prevDoc] = await Promise.all([loadBootstrap(), loadUsers(), collectRounds(), backend.content.get('ratings').catch(() => null)]);
   const start = startFrom(boot, users);
@@ -62,11 +64,27 @@ export async function computeAndPublish() {
   }
   const out = { version: RATING_VERSION, computedAt: Date.now(), rounds: rounds.length, established, drivers };
   await backend.content.save('ratings', out);
-  // "You're now ranked": a note on the profile of each driver who has just completed calibration
-  // (they see the reveal once; their profile is already loaded, so it costs them no reads)
   const known = new Set(users.map((u) => u.uid));
+  // Round recap ("Eredményeid"): every driver of the round that was just made final gets a note on their
+  // own profile (positions, rating before/after or calibration progress, championship place). Shown once.
+  const recapped = new Set();
+  if (opts.recap && opts.recap.sid) {
+    try {
+      invalidate('race:' + opts.recap.sid);
+      const ctx = await loadRace(opts.recap.sid, { staff: true, includeUsers: false });
+      const rd = ctx && ctx.built.find((r) => r.n === opts.recap.n);
+      const racers = rd ? [...new Set(Object.values(rd.results || {}).flatMap((res) => Object.values(res).flatMap((rows) => (rows || []).map((r) => r.id))))] : [];
+      const notes = racers.filter((u) => known.has(u)).map((u) => [u, buildRecap(ctx, opts.recap.n, u, out, { calibRounds: RATING_CFG.provisionalRounds })]).filter(([, note]) => note);
+      for (let i = 0; i < notes.length; i += 10) {
+        await Promise.all(notes.slice(i, i + 10).map(([u, note]) => backend.users.save(u, { roundRecap: note }).then(() => { if (note.mode === 'ranked') recapped.add(u); }).catch((e) => console.warn('round recap note', u, e))));
+      }
+    } catch (e) { console.warn('round recaps not written', e); }
+  }
+  // "You're now ranked": a note on the profile of each driver who has just completed calibration
+  // (they see the reveal once; their profile is already loaded, so it costs them no reads).
+  // Not needed when their round recap already is the "Besorolva!" screen.
   for (const n of newlyRanked(prevDoc && prevDoc.drivers, drivers, res.drivers)) {
-    if (!known.has(n.uid)) continue;
+    if (!known.has(n.uid) || recapped.has(n.uid)) continue;
     const { uid, ...note } = n;
     await backend.users.save(uid, { rankReveal: { ...note, at: Date.now() } }).catch((e) => console.warn('rank reveal note', uid, e));
   }

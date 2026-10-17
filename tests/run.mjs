@@ -698,6 +698,24 @@ await test('rank reveal: only drivers who have just completed calibration get th
   eq(got.map((x) => [x.uid, x.rank, x.total, x.label]), [['b', 3, 3, 'MCSM32 / 3']], 'b only: was unranked, now ranked through calibration; rank among ranked drivers');
   eq(RT2.newlyRanked({ a: { e: 0 } }, { a: { e: 1, r: 140 } }, { a: { graduatedAt: null } }), [], 'ranked from the historical import: no reveal');
 });
+await test('round recap: rated (up/down, new high), ranked, calibrating, championship movement', async () => {
+  const { buildRecap } = await import('../js/model/recap.js');
+  const row = (id, pos, status = 'OK') => ({ id, pos, status });
+  const mk = (n, order) => ({ n, lobbies: { A: order }, results: { A: { Q: order.map((u, i) => row(u, i + 1)), S: order.map((u, i) => row(u, i + 1)), GP: order.map((u, i) => row(u, i + 1, u === 'c' && n === 2 ? 'DNF' : 'OK')) } } });
+  const ctx = { season: { id: 'mcsm31', no: 31 }, ids: ['a', 'b', 'c'], built: [mk(1, ['a', 'b', 'c']), mk(2, ['b', 'c', 'a'])] };
+  const P = { drivers: {
+    a: { e: 1, r: 102, h: [{ l: 'MCSM25–30', r: 100 }, { l: 'MCSM31 / 1', r: 104 }, { l: 'MCSM31 / 2', r: 102 }] },
+    b: { e: 1, r: 110, h: [{ l: 'MCSM31 / 2', r: 110 }] },
+    c: { e: 0, n: 2 } } };
+  const a1 = buildRecap(ctx, 1, 'a', P), a2 = buildRecap(ctx, 2, 'a', P);
+  eq([a1.mode, Math.round(a1.delta * 10) / 10, a1.high, a1.cards.g.pos], ['rated', 4, true, 1], 'round 1: up, new high, P1');
+  eq([a2.mode, Math.round(a2.delta * 10) / 10, a2.high, a2.champ], ['rated', -2, false, { now: 2, prev: 1 }], 'round 2: down, dropped a place in the championship');
+  const b2 = buildRecap(ctx, 2, 'b', P);
+  eq([b2.mode, b2.after, b2.rank, b2.total, 'delta' in b2], ['ranked', 110, 1, 2, false], 'first rating: no change, rank among ranked drivers');
+  const c1 = buildRecap(ctx, 1, 'c', P), c2 = buildRecap(ctx, 2, 'c', P);
+  eq([c1.mode, c1.done, c2.done, c2.cards.g.st, 'after' in c2], ['calib', 1, 2, 'DNF', false], 'calibrating: 1/3 then 2/3, no rating exposed');
+  eq(buildRecap(ctx, 2, 'nobody', P), null, 'did not race: no recap');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

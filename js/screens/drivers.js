@@ -18,6 +18,8 @@ import { honours } from '../services/honours.js';
 import { medalsForUser } from '../model/honours.js';
 import { trophyCount } from '../ui/trophy.js';
 import { publicRatings } from '../services/mcsm-rating.js';
+import { starsForRating } from '../ui/mcsm-rating.js';
+import { starRow } from '../ui/stars.js';
 import { seasons as loadSeasons } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
 import { roundTotals } from '../engine/scoring.js';
@@ -37,7 +39,7 @@ export function screenDrivers() {
   const sortFigure = (d, m) => {
     if (ui.sort === 'dr' && d.dr === 'S') return h('span', { class: 'sort-fig' }, h('b', null, '★'), h('small', null, t('drStarShort')));
     if (ui.sort === 'dr') return d.drPoints != null ? h('span', { class: 'sort-fig' }, h('b', null, fmtInt(d.drPoints)), h('small', null, 'DR')) : d.dr ? h('span', { class: 'sort-fig' }, h('b', null, d.dr), h('small', null, 'DR')) : null;
-    if (ui.sort === 'mcsm') return mrOf(d) != null ? h('span', { class: 'sort-fig' }, h('b', null, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')), h('small', null, 'MCSM')) : h('span', { class: 'sort-fig dim' }, h('small', null, t('mrUnranked')));
+    if (ui.sort === 'mcsm') return mrOf(d) != null ? h('span', { class: 'sort-fig' }, h('b', null, (Math.round(mrOf(d) * 10) / 10).toFixed(1).replace('.', ',')), starRow(starsForRating(mrOf(d)), 'xs')) : h('span', { class: 'sort-fig dim' }, h('small', null, t('mrUnranked')));
     if (ui.sort === 'titles') return m && m.medals[0] ? h('span', { class: 'sort-fig' }, trophyCount(m.medals[0], 0, 16)) : null;
     return null;
   };

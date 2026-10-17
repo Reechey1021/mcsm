@@ -1311,3 +1311,8 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
   .rr-recap .rr-actions{ gap:6px; }
   .rr-recap .rr-actions .btn{ min-height:40px; padding-top:8px; padding-bottom:8px; }
 }
+
+/* drivers list (MCSM sort): small stars under the rating */
+.stars-xs{ gap:2px; }
+.stars-xs .star{ width:10px; height:10px; }
+.sort-fig .stars{ margin:3px 0 2px; }

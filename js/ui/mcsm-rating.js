@@ -114,6 +114,9 @@ const EXPLAIN = {
     { p: 'A harmadik fordulód után a három teljesítményed átlagából megkapod az első hivatalos MCSM Ratingedet. Ettől kezdve az értékelésed minden további forduló után a megszokott módon változik.' },
     { h: 'Előzmények és a skála' },
     { p: 'A korábbi pilóták kezdőértékelését az MCSM25–30 eredményei alapján számoltuk ki. Az MCSM31-től kezdve a Rating minden lezárt forduló után frissül. Ha nem versenyzel, az értékelésed nem változik.' },
+    { h: 'Csillagok' },
+    { stars: ['Csillagérték', 'Összpontszám'] },
+    { note: 'Ugyanez a skála vonatkozik a Kvalifikáció, a Sprint és a Gran\'Prix értékére is.' },
   ],
   en: [
     { p: 'The MCSM Rating is a performance-based rating that shows how you perform compared with the other MCSM drivers. The better your results, especially against stronger opponents, the higher your rating can be.' },
@@ -129,13 +132,28 @@ const EXPLAIN = {
     { p: 'After your third round, the average of those three performances becomes your first official MCSM Rating. From then on it changes after every round as normal.' },
     { h: 'History and the scale' },
     { p: "Returning drivers' starting ratings were calculated from the MCSM25–30 results. From MCSM31 the rating updates after every finished round. If you don't race, your rating doesn't change." },
+    { h: 'Stars' },
+    { stars: ['Star rating', 'Rating'] },
+    { note: "The same scale applies to the Qualifying, Sprint and Gran'Prix values." },
   ],
 };
+
+// The star bands as a small table: value, the stars themselves, and the rating needed.
+function starTable([colStars, colRating]) {
+  const bands = [[5, 140], [4.5, 130], [4, 120], [3.5, 110], [3, 100], [2.5, 90], [2, 80], [1.5, 70], [1, 60], [0.5, 50]];
+  const cell = 'display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;padding:8px 12px';
+  return h('div', { style: 'border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:6px 0 0' },
+    h('div', { style: cell + ';background:var(--bg-3);font-size:11.5px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)' }, h('span', { style: 'grid-column:1 / 3' }, colStars), h('span', null, colRating)),
+    ...bands.map(([v, min], i) => h('div', { style: cell + (i ? ';border-top:1px solid var(--line)' : '') },
+      h('b', { style: 'font-variant-numeric:tabular-nums' }, v.toFixed(1).replace('.', ',')),
+      starRow(v, 'sm'),
+      h('b', { style: 'font-variant-numeric:tabular-nums;color:var(--accent-text)' }, min + '+'))));
+}
 
 export function explainRating() {
   const blocks = EXPLAIN[LANG] || EXPLAIN.hu;
   openSheet({ title: t('mrHowTitle'), body: h('div', { class: 'md mr-explain' },
-    blocks.map((b) => (b.h ? h('h3', null, b.h) : b.f ? h('div', { class: 'mr-formula' }, b.f) : h('p', null, b.p)))) });
+    blocks.map((b) => (b.h ? h('h3', null, b.h) : b.f ? h('div', { class: 'mr-formula' }, b.f) : b.stars ? starTable(b.stars) : b.note ? h('p', { style: 'font-size:13px;color:var(--ink-3);margin-top:8px' }, b.note) : h('p', null, b.p)))) });
 }
 
 // Rating history: one point per round raced as an established driver, newest last.

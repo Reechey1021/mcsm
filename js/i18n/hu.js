@@ -328,4 +328,5 @@ export const hu = {
   rcTitle: 'Eredményeid', rcSub: 'Megérkeztek az MCSM{no} {n}. fordulójának eredményei. Íme a teljesítményed.', rcSubRanked: 'Az MCSM{no} {n}. fordulójával teljesítetted a kalibrációt. Íme az első MCSM Ratinged.', rcHigh: 'Új csúcs!', rcCalib: 'Kalibráció', rcCalibNote: 'Még {n} forduló a besorolásig.', rcChampNow: '{p}. vagy a bajnokságban', rcChampUp: 'helyet léptél előre a bajnokságban · most {p}. vagy', rcChampDown: 'helyet estél vissza a bajnokságban · most {p}. vagy', rcChampSame: 'Továbbra is {p}. vagy a bajnokságban', rcFull: 'Teljes eredmények', recapBtn: 'Összefoglaló',
   modeChamp: 'Bajnokság', modeRound: 'Forduló', standingsMode: 'Nézet', roundOnly: 'Forduló', roundDetails: 'Forduló részletei', qualiShort: 'Kv.',
   caseNo: '{n}. számú ügy',
+  roundTotalTab: 'Összesítés',
 };

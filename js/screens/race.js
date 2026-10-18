@@ -2,6 +2,7 @@
 // Race screens: the season's PQ tab, the round page (results, grid, line-ups),
 // the lobby editor (PQ proposal for round 1, promotion/relegation after that),
 // round publishing, and PQ time entry.
+import { towerEl } from '../ui/tower.js';
 import { windowState } from '../model/protest.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
@@ -131,7 +132,7 @@ function roundView(ctx, n, reload) {
     h('div', { style: 'display:flex;gap:8px;align-items:center;font-weight:650;font-size:16px' }, info.cc ? h('span', { class: 'cc' }, info.cc) : null, roundTitle(info)),
     h('p', { class: 'page-sub', style: 'margin-top:4px' }, fmtDate(info.date, true), info.car ? ' · ' + info.car : '')]);
   const body = h('div');
-  const sessions = showResults ? [['Q', t('quali')], ['S', 'Sprint'], ['GP', "Gran'Prix"], ['GRID', t('gpGrid')], ['ROSTER', t('roster')]] : [['ROSTER', t('roster')]];
+  const sessions = showResults ? [['Q', t('quali')], ['S', 'Sprint'], ['GP', "Gran'Prix"], ['TOTAL', t('roundTotalTab')], ['GRID', t('gpGrid')], ['ROSTER', t('roster')]] : [['ROSTER', t('roster')]];
   if (!sessions.some(([k]) => k === rui.S)) rui.S = sessions[0][0];
   const draw = (anim) => {
     body.replaceChildren(roundBody(ctx, n, rui.L, rui.S, built));
@@ -168,6 +169,15 @@ function roundBody(ctx, n, L, S, built) {
   const doc = ctx.roundDoc(n) || {};
   const ids = (doc.lobbies || {})[L] || [];
   const me = session.user && session.user.uid;
+  if (S === 'TOTAL') {
+    // the lobby's drivers ranked by the points they scored in this round (Kv. / Sprint / GP / FL);
+    // built already includes published protest decisions, so this follows the final results
+    if (!built || !built.results || !built.results[L]) return empty(t('noResultsYet'));
+    const gpPos = (uid) => { const r = (built.results[L].GP || []).find((x) => x.id === uid); return r && r.status === 'OK' ? r.pos : 99; };
+    const lobbyIds = ids.length ? ids : [...new Set(Object.values(built.results[L]).flatMap((rows) => (rows || []).map((r) => r.id)))];
+    const one = { ...ctx, built: [built], ids: lobbyIds, season: { ...ctx.season, rounds: ctx.season.rounds.filter((x) => x.n === n) } };
+    return towerEl(one, 'drivers', 1, { noDelta: true, noLobby: true, breakdown: roundTotals(built, ctx.points), sort: (a, b) => b.total - a.total || gpPos(a.id) - gpPos(b.id) }).el;
+  }
   if (S === 'ROSTER') {
     const absent = new Set(ctx.entries.filter((e) => (e.absences || []).includes(n)).map((e) => e.uid));
     return h('div', { class: 'stack', style: 'gap:8px' }, ...ids.map((uid) => {

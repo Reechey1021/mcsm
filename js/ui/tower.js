@@ -25,7 +25,7 @@ export function standingsRows(ctx, kind, upTo) {
 
 const delta = (d) => (d == null ? h('span', { class: 'delta' }) : d > 0 ? h('span', { class: 'delta up', title: t('up', { n: d }) }, '▲' + d) : d < 0 ? h('span', { class: 'delta down', title: t('down', { n: -d }) }, '▼' + -d) : h('span', { class: 'delta same' }, '–'));
 
-function row(ctx, r, upTo, prevPos, oldTotal, bd = null) {
+function row(ctx, r, upTo, prevPos, oldTotal, bd = null, opts = {}) {
   const posCls = 'pos' + (r.pos <= 3 ? ' p' + r.pos : '');
   // one round's breakdown (Forduló view) or the points of each round (Bajnokság view)
   const b = bd ? bd[r.id] || {} : null;
@@ -41,7 +41,7 @@ function row(ctx, r, upTo, prevPos, oldTotal, bd = null) {
   } else {
     const tm = ctx.tmap[r.p.teamId];
     const last = ctx.built[upTo - 1];
-    lobby = last ? lobbyOf(last.lobbies, r.id) : null;
+    lobby = last && !opts.noLobby ? lobbyOf(last.lobbies, r.id) : null;
     who = h('span', { class: 'who' }, h('span', { class: 'stripe', vars: { '--t1': tm ? tm.c1 : 'var(--line-2)' } }), h('span', { class: 'nm' }, h('b', null, fullName(r.p)), h('span', null, h('span', { class: 'rnum' }, '#' + (r.p.raceNumber ?? '–')), r.p.psn ? h('span', { class: 'psn-tag' }, r.p.psn) : null, tm ? '  · ' + tm.name : '')));
     href = '#/pilotak/' + encodeURIComponent(r.p.psnLower || ''); me = session.user && r.id === session.user.uid;
   }
@@ -52,13 +52,14 @@ function row(ctx, r, upTo, prevPos, oldTotal, bd = null) {
 
 export function towerEl(ctx, kind, upTo, opts = {}) {
   const prev = upTo > 1 && !opts.noDelta ? Object.fromEntries(standingsRows(ctx, kind, upTo - 1).map((r) => [r.id, r.pos])) : null;
-  const rows = standingsRows(ctx, kind, upTo).slice(0, opts.limit || 999);
+  let rows = standingsRows(ctx, kind, upTo).slice(0, opts.limit || 999);
+  if (opts.sort) rows = rows.slice().sort(opts.sort).map((r, i) => ({ ...r, pos: i + 1 }));
   // opts.breakdown: { uid: { q, s, gp, fl } } for one round's points per session; false = no columns
   const bd = opts.breakdown === undefined ? null : opts.breakdown;
   const headCols = bd === false ? [] : bd ? [t('qualiShort'), 'Sprint', 'GP', 'FL'] : ctx.season.rounds.map((rd) => t('rShort', { n: rd.n }));
   const head = h('div', { class: 'tower-head' }, h('span', { class: 'p' }, t('posShort')), h('span'), h('span', null, kind === 'teams' ? t('team') : t('driver')), h('span', { class: 'pt' }, t('points')),
     h('span', { class: 'cols' }, headCols.map((x) => h('span', null, x))));
-  const ol = h('ol', { class: 'tower' }, rows.map((r) => row(ctx, r, upTo, prev ? prev[r.id] : null, opts.oldTotals ? opts.oldTotals[r.id] : null, bd)));
+  const ol = h('ol', { class: 'tower' }, rows.map((r) => row(ctx, r, upTo, prev ? prev[r.id] : null, opts.oldTotals ? opts.oldTotals[r.id] : null, bd, opts)));
   return { el: h('div', { class: 'tower-wrap' }, head, ol), rows };
 }
 

@@ -10,6 +10,9 @@
   cards, the stewards' list and the case page. New protests take the next number in one transaction;
   older ones are numbered once, oldest first, the next time an admin opens the site.
 - Firestore rules: the protest counter (counters/protests) and the number on new protests (publish).
+- Round page: an "Összesítés" tab after Gran'Prix: the selected lobby's drivers ranked by the points they
+  scored in that round (Kv. / Sprint / GP / FL, a compact line on phones; better GP finish breaks ties).
+  It includes published protest decisions, so it follows the final results.
 
 ## v1.1.0 — Round recap
 

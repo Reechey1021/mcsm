@@ -408,12 +408,21 @@ export function createFakeBackend() {
             if (!entry || entry.status === 'withdrawn' || entry.approved === false || windowState(round, b.rounds[data.n] || {}) !== 'open' || data.status !== 'filed') fail('permission-denied');
           }
           const nid = 'p' + Date.now().toString(36);
-          b.protests[nid] = { ...clone(data), id: nid, createdAt: Date.now() }; persist(); return nid;
+          db.counters = db.counters || {}; const c = db.counters.protests || { next: 0 }; c.next = (c.next || 0) + 1; db.counters.protests = c;
+          b.protests[nid] = { ...clone(data), id: nid, no: c.next, createdAt: Date.now() }; persist(); return nid;
         }
         const own = cur.by === a.uid && Object.keys(data).every((k) => ['status', 'updatedAt'].includes(k)) && cur.status === 'filed' && data.status === 'withdrawn';
         if (!own && !isChairUid(a.uid)) fail('permission-denied');
         b.protests[id] = { ...cur, ...clone(data), updatedAt: Date.now() }; persist(); return id;
       },
+      async assignNo(sid, pid) {
+        await lag(); const a = me(); const r = roleOf(a.uid); if (!(r.admin || r.owner)) fail('permission-denied');
+        const p = bucket(sid).protests[pid]; if (!p) return null; if (p.no) return p.no;
+        db.counters = db.counters || {}; const c = db.counters.protests || { next: 0 }; c.next = (c.next || 0) + 1; db.counters.protests = c;
+        p.no = c.next; persist(); return p.no;
+      },
+      async counter() { await lag(); return clone((db.counters || {}).protests || null); },
+      async markNumbered() { await lag(); db.counters = db.counters || {}; db.counters.protests = { ...(db.counters.protests || { next: 0 }), backfilled: true }; persist(); },
     },
     votes: {
       async list(sid, pid) { await lag(); const a = me(); if (!isJudgeUid(a.uid)) fail('permission-denied'); return Object.values(clone(bucket(sid).votes[pid] || {})); },

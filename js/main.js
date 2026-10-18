@@ -65,6 +65,9 @@ async function boot() {
   // Admins: make sure the public copy of the function address exists (used for the Twitch live list).
   let epDone = false;
   on('session', () => { if (epDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; epDone = true; backend.content.get('endpoints').then((ep) => (ep && ep.fn ? null : backend.admin.functionsConfig().then((c) => (c && c.url && !String(c.url).startsWith('fake:') ? backend.content.save('endpoints', { fn: c.url }) : null)))).catch(() => {}); });
+  // Admins number older protests once (#1, #2, …), like tickets.
+  let numDone = false;
+  on('session', () => { if (numDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; numDone = true; setTimeout(() => import('./services/protest-numbers.js').then((m) => m.ensureProtestNumbers()).catch(() => {}), 5000); });
   // Admins quietly keep finished seasons' summaries up to date.
   let sumDone = false;
   on('session', () => { if (sumDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; sumDone = true; setTimeout(() => import('./services/season-summary.js').then((m) => m.ensureSummaries()).catch(() => {}), 4000); });

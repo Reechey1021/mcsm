@@ -102,6 +102,14 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    // Protest numbers (#1, #2, …): filing takes the next one in the same transaction.
+    match /counters/protests {
+      allow read: if signedIn();
+      allow create: if signedIn() && (isAdmin() || (request.resource.data.keys().hasOnly(['next']) && request.resource.data.next == 1));
+      allow update: if signedIn() && (isAdmin()
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['next']) && request.resource.data.next == resource.data.get('next', 0) + 1));
+    }
+
     match /gtTeams/{id} {
       allow read: if true;
       allow write: if isAdmin();
@@ -166,6 +174,7 @@ service cloud.firestore {
         allow read: if (resource.data.status in ['published', 'notInvestigated'] && enteredHere()) || isJudge()
           || (signedIn() && (resource.data.by == request.auth.uid || resource.data.get('complainant', '') == request.auth.uid || request.auth.uid in resource.data.get('involved', [])));
         allow create: if signedIn() && request.resource.data.by == request.auth.uid
+          && request.resource.data.no == getAfter(/databases/$(database)/documents/counters/protests).data.next
           && (isAdmin()
               || (request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n)));
         // The filer may withdraw while nobody has picked the case up; everything else is the chair's.

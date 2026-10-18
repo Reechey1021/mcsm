@@ -79,11 +79,14 @@ function penaltyEditor(ctx, p, lines, onChange) {
 }
 
 /* ---------- cards ---------- */
+// Ticket-style case number (#16) for judges and above, so they can refer to cases by number.
+const caseNo = (p) => (isJudge() && p.no ? h('span', { class: 'case-no', title: t('caseNo', { n: p.no }) }, '#' + p.no) : null);
+
 function decisionCard(ctx, p, opts = {}) {
   const pub = p.status === 'published';
   const showVideo = p.video && (isJudge() || (pub && p.L === 'A'));
   return h('article', { class: 'panel pad', style: 'display:grid;gap:8px' },
-    h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('div', { style: 'display:flex;gap:8px;align-items:center' }, h('span', { class: 'lobby ' + p.L }, p.L), h('b', null, p.title)),
+    h('div', { class: 'row-between', style: 'flex-wrap:wrap' }, h('div', { style: 'display:flex;gap:8px;align-items:center;min-width:0' }, caseNo(p), h('span', { class: 'lobby ' + p.L }, p.L), h('b', null, p.title)),
       h('span', { class: 'status' + (pub ? '' : ' live') }, t('pst_' + p.status))),
     h('div', { class: 'faint', style: 'font-size:13px' }, t('caseMeta', { n: p.n, s: sesName(p.S), lap: p.lap || '–', corner: p.corner || '–' }), opts.season ? ` · MCSM${ctx.season.no}` : ''),
     h('div', { style: 'font-size:14px' }, t('caseParties', { by: p.type === 'judge' ? t('judgesCase') : nameOf(ctx, complainantOf(p)), vs: (p.involved || []).map((u) => nameOf(ctx, u)).join(', ') || '–' }),
@@ -230,7 +233,7 @@ export function screenJudges() {
     box.replaceChildren(...(show.length ? show.map(({ p, ctx }) => {
       const mineToVote = p.status === 'review' && (p.panel || []).includes(session.user.uid);
       return h('a', { class: 'round-item', href: `#/birosag/${ctx.season.id}/${p.id}` }, h('span', { class: 'lobby ' + p.L }, p.L),
-        h('span', { class: 't' }, h('b', null, p.title), h('span', { class: 'sub' }, `MCSM${ctx.season.no}, ${t('roundN', { n: p.n })}, ${sesName(p.S)}`, h('span', { class: 'status' + (mineToVote ? ' live' : '') }, mineToVote ? t('yourVote') : t('pst_' + p.status)))),
+        h('span', { class: 't' }, h('b', null, caseNo(p), caseNo(p) ? ' ' : null, p.title), h('span', { class: 'sub' }, `MCSM${ctx.season.no}, ${t('roundN', { n: p.n })}, ${sesName(p.S)}`, h('span', { class: 'status' + (mineToVote ? ' live' : '') }, mineToVote ? t('yourVote') : t('pst_' + p.status)))),
         icon('chevR', 'chev'));
     }) : [empty(t('noCases'))]));
   };
@@ -272,7 +275,7 @@ function caseView(ctx, p, votes, notes, us, reload) {
   const canVote = panel.includes(me) && ['review'].includes(p.status);
   const userName = (uid) => { const u = us.find((x) => x.uid === uid); return u ? fullName(u) : uid; };
   const sections = [];
-  sections.push(h('h1', { class: 'display page-title' }, p.title), decisionCard(ctx, p),
+  sections.push(h('h1', { class: 'display page-title' }, isJudge() && p.no ? h('span', { class: 'case-no-h' }, '#' + p.no + ' ') : null, p.title), decisionCard(ctx, p),
     h('div', { class: 'panel pad', style: 'margin-top:10px;white-space:pre-line' }, h('div', { class: 'label', style: 'margin-bottom:6px' }, t('description')), p.description));
   // panel
   sections.push(secHead(t('panel')), h('div', { class: 'stack', style: 'gap:6px' },

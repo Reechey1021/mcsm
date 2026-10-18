@@ -215,9 +215,30 @@ export async function createFirebaseBackend(config) {
         return wrap(async () => {
           if (id) { await F.updateDoc(F.doc(db, 'seasons', sid, 'protests', id), { ...data, updatedAt: Date.now() }); return id; }
           const ref = F.doc(F.collection(db, 'seasons', sid, 'protests'));
-          await F.setDoc(ref, { ...data, createdAt: Date.now() }); return ref.id;
+          const counter = F.doc(db, 'counters', 'protests');
+          await F.runTransaction(db, async (tx) => {
+            const c = await tx.get(counter);
+            const no = (c.exists() ? c.data().next || 0 : 0) + 1;
+            tx.set(counter, { next: no }, { merge: true });
+            tx.set(ref, { ...data, no, createdAt: Date.now() });
+          });
+          return ref.id;
         });
       },
+      // Give an older protest (filed before numbering) the next number; does nothing if it has one.
+      async assignNo(sid, pid) {
+        return wrap(() => F.runTransaction(db, async (tx) => {
+          const counter = F.doc(db, 'counters', 'protests'), ref = F.doc(db, 'seasons', sid, 'protests', pid);
+          const [c, p] = [await tx.get(counter), await tx.get(ref)];
+          if (!p.exists() || p.data().no) return p.exists() ? p.data().no : null;
+          const no = (c.exists() ? c.data().next || 0 : 0) + 1;
+          tx.set(counter, { next: no }, { merge: true });
+          tx.update(ref, { no });
+          return no;
+        }));
+      },
+      async counter() { try { const c = await F.getDoc(F.doc(db, 'counters', 'protests')); return c.exists() ? c.data() : null; } catch { return null; } },
+      async markNumbered() { return wrap(() => F.setDoc(F.doc(db, 'counters', 'protests'), { backfilled: true }, { merge: true })); },
     },
     votes: {
       async list(sid, pid) { return wrap(async () => (await F.getDocs(F.collection(db, 'seasons', sid, 'protests', pid, 'votes'))).docs.map((d) => ({ uid: d.id, ...d.data() }))); },

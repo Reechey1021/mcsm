@@ -1,3 +1,16 @@
+## v1.1.1
+
+- Results: a "Bajnokság / Forduló" switch. Bajnokság is the championship as before (after R1, after R2,
+  Végeredmény; arrows; Replay). Forduló ranks everyone by the points scored in one round, with a
+  Kv. / Sprint / GP / FL breakdown (a compact line on phones), the lobby averages for that round and a
+  "Forduló részletei →" link. Works for Egyéni, Csapat and MGTK.
+- Screenshot import: "Betöltés a szerkesztőbe" no longer stretches past its box (full-width buttons now
+  include their padding in their width everywhere).
+- Protests are numbered like tickets (#1, #2, … across all seasons), shown to judges and above on case
+  cards, the stewards' list and the case page. New protests take the next number in one transaction;
+  older ones are numbered once, oldest first, the next time an admin opens the site.
+- Firestore rules: the protest counter (counters/protests) and the number on new protests (publish).
+
 ## v1.1.0 — Round recap
 
 - "Eredményeid": when an admin marks a round's results final, every driver in it gets a recap note on their

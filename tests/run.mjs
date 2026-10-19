@@ -716,6 +716,21 @@ await test('round recap: rated (up/down, new high), ranked, calibrating, champio
   eq([c1.mode, c1.done, c2.done, c2.cards.g.st, 'after' in c2], ['calib', 1, 2, 'DNF', false], 'calibrating: 1/3 then 2/3, no rating exposed');
   eq(buildRecap(ctx, 2, 'nobody', P), null, 'did not race: no recap');
 });
+await test('rating: DNFs share one place after the finishers (draws among themselves)', async () => {
+  const RT3 = await import('../js/engine/rating.js');
+  const ids = Array.from({ length: 16 }, (_, i) => 'x' + String(i + 1).padStart(2, '0'));
+  const start = Object.fromEntries(ids.map((u) => [u, { q: 100, s: 100, g: 100, n: 9, established: true }]));
+  // 13 finishers, then three DNFs entered in some order (P14, P15, P16)
+  const rows = ids.map((id, i) => ({ id, pos: i + 1, status: i < 13 ? 'OK' : 'DNF' }));
+  const rd = { key: 'r', label: 'r', results: { A: { Q: ids.map((id, i) => ({ id, pos: i + 1, status: 'OK' })), S: rows, GP: rows } } };
+  const res = RT3.computeRatings([rd], start);
+  const g = ['x14', 'x15', 'x16'].map((u) => res.drivers[u].lat.g);
+  ok(Math.abs(g[0] - g[1]) < 1e-9 && Math.abs(g[1] - g[2]) < 1e-9, `the three DNFs change identically (${g.map((v) => v.toFixed(3)).join(', ')})`);
+  ok(res.drivers.x13.lat.g > g[0], 'the last finisher still does better than any DNF');
+  ok(res.audit[0].zeroSum.every((v) => Math.abs(v) < 1e-9), 'still zero-sum among established drivers');
+  const q = ['x14', 'x15', 'x16'].map((u) => res.drivers[u].lat.q);
+  ok(q[0] > q[1] && q[1] > q[2], 'qualifying unchanged: positions still count there');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

@@ -1,3 +1,9 @@
+## v1.1.2
+
+- MCSM Rating: DNFs in a race now share one position straight after the last finisher, drawing with each
+  other (they all get the same DNF points). Before, their entered order (P14, P15, P16) counted between them.
+  Finishers, DNS, DSQ, qualifying and championship points are unchanged. Recalculate once after deploying.
+
 ## v1.1.1
 
 - Results: a "Bajnokság / Forduló" switch. Bajnokság is the championship as before (after R1, after R2,

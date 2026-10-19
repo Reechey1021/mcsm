@@ -39,13 +39,16 @@ function globalPosition(lobby, pos) {
   return (lobby.charCodeAt(0) - 65) * LOBBY_STRIDE + rank;
 }
 
-// Official ranked positions only. No qualifying gaps, grid, overtaking, DNF or discipline modifiers.
-// A classified DNF with a rank is treated exactly like any other result at that rank.
-// Unranked qualifying attempts, DNS and DSQ do not provide a comparable finishing position.
+// Official ranked positions only. No qualifying gaps, grid, overtaking or discipline modifiers.
+// DNFs in a race all share one position, straight after the last finisher: they lose to every
+// finisher and draw with each other (they all get the same DNF points), whatever order they were
+// entered in. Unranked qualifying attempts, DNS and DSQ do not provide a comparable finishing position.
 function sessionField(rows, session, lobby) {
   const ranked = (r) => session === 'Q' ? r.status === 'OK' : r.status === 'OK' || r.status === 'DNF';
-  return (rows || []).filter((r) => ranked(r) && r.pos > 0).map((r) => ({
-    id: r.id, pos: globalPosition(lobby, r.pos),
+  const field = (rows || []).filter((r) => ranked(r) && r.pos > 0);
+  const dnfRank = session === 'Q' ? Infinity : Math.min(Infinity, ...field.filter((r) => r.status === 'DNF').map((r) => r.pos));
+  return field.map((r) => ({
+    id: r.id, pos: globalPosition(lobby, r.status === 'DNF' && dnfRank !== Infinity ? dnfRank : r.pos),
   }));
 }
 

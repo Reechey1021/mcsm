@@ -27,7 +27,7 @@ SETUP = """() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage
   db.entries.mcsm31[P] = { ...e, uid: P, snapshot: { ...e.snapshot, firstName: u.firstName, lastName: u.lastName, psn: u.psn, psnLower: u.psnLower, raceNumber: u.raceNumber } };
   const A = db.race.mcsm31.rounds['1'].lobbies.A; const drivers = {}; A.forEach((uid, i) => { drivers[uid] = { e: 1, r: 120 - i, q: 120, s: 120, g: 120, n: 9, h: [{ l: 'MCSM30', r: 118 - i }, { l: 'MCSM31 / 1', r: 120 - i }] }; });
   db.content = db.content || {}; db.content.ratings = { version: '3.2', drivers };
-  localStorage.setItem(k, JSON.stringify(db)); return [P, X, A.length]; }"""
+  localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); return [P, X, A.length]; }"""
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, vw in (('m', (390, 844)), ('d', (1440, 900))):

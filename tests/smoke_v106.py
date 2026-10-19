@@ -11,7 +11,7 @@ def check(c, m):
     else: fails.append(m)
 def db(pg, js):
     pg.goto(BASE + 'tests/'); pg.wait_for_timeout(150)
-    return pg.evaluate("() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const r=(" + js + ")(db); localStorage.setItem(k, JSON.stringify(db)); return r; }")
+    return pg.evaluate("() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const r=(" + js + ")(db); localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); return r; }")
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, vw in (('m', (390, 844)), ('d', (1440, 900))):

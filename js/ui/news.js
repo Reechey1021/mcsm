@@ -3,6 +3,7 @@
 // admin writing (title, picture, formatted text with links), and the welcome carousel shown when
 // someone opens the site or signs in. "Don't show again" hides the articles that were shown; a new
 // carousel article still appears.
+import { persisted } from '../core/persist.js';
 import { h, frag } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { busy, field, toggle } from './controls.js';
@@ -17,7 +18,7 @@ import { cached, invalidate } from '../core/data.js';
 import { store } from '../core/storage.js';
 import { emit } from '../core/bus.js';
 
-export const loadNews = () => cached('news', () => backend.content.get('news').then((d) => ((d && d.items) || []).slice().sort((a, b) => b.at - a.at)).catch(() => []));
+export const loadNews = () => cached('news', () => persisted('news', 'news', () => backend.content.get('news')).then((d) => ((d && d.items) || []).slice().sort((a, b) => b.at - a.at)).catch(() => []));
 async function saveNews(items) { await backend.content.save('news', { items }); invalidate('news'); emit('news'); }
 
 const seenIds = () => new Set(store.get('newsDismissed', []));

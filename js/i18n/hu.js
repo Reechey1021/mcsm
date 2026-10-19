@@ -330,4 +330,7 @@ export const hu = {
   caseNo: '{n}. számú ügy',
   roundTotalTab: 'Összesítés',
   pushMenuHint: 'Mit küldjünk a telefonodra', pushMenuInstall: 'Csak a telepített appban állítható',
+  offTitle: 'Nincs internetkapcsolat', offText: 'Amint visszajön a kapcsolat, magától folytatjuk. Addig nem kell semmit tenned.',
+  cmpHistory: 'MCSM Rating előzmények', cmpUnrankedNote: '{name} még besorolatlan, ezért csak a másik pilóta vonala látszik.',
+  rcContinue: 'Tovább', fnKicker: 'VÉGEREDMÉNY', fnChampion: 'BAJNOK!', fnSilver: 'Ezüstérem', fnBronze: 'Bronzérem', fnTitle: 'Szezon vége', fnSubChamp: 'Megnyerted az MCSM{no} bajnokságot!', fnSub: 'Az MCSM{no} szezont a(z) {p}. helyen zártad.', fnPoints: 'Pontok', fnWinsPodiums: 'Győzelem · dobogó', fnRating: 'Rating változás', fnTeam: 'Csapat', fnGt: '{tag} bajnokság: {p}. hely', fnStandings: 'Szezon végeredménye',
 };

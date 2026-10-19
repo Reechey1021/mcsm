@@ -43,7 +43,7 @@ with sync_playwright() as p:
         pg.query_selector_all('.sheet .row-card')[0].click(); pg.wait_for_timeout(1800)
         # pilota races in round 2, lobby A (only affected drivers can protest)
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(200)
-        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const uid=db.accounts['pilota@mcsm.test'].uid; const L=db.race.mcsm31.rounds['2'].lobbies.A; if (!L.includes(uid)) L.push(uid); localStorage.setItem(k, JSON.stringify(db)); }""")
+        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const uid=db.accounts['pilota@mcsm.test'].uid; const L=db.race.mcsm31.rounds['2'].lobbies.A; if (!L.includes(uid)) L.push(uid); localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); }""")
         # pilota files a protest on round 2 (window extended in test data)
         go(pg, '/szezonok/mcsm31/fordulo/2', 'pilota')
         check(pg.query_selector('a.protest-btn') is not None, f'{size}: red protest button shown once the round started')

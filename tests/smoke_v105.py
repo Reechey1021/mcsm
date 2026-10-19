@@ -12,7 +12,7 @@ def check(c, m):
     else: fails.append(m)
 def db(pg, js):
     pg.goto(BASE + 'tests/'); pg.wait_for_timeout(150)
-    return pg.evaluate("() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const r=(" + js + ")(db); localStorage.setItem(k, JSON.stringify(db)); return r; }")
+    return pg.evaluate("() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const r=(" + js + ")(db); localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); return r; }")
 EXPECT = {'up': ['Eredményeid', '▲ +2,4', 'Új csúcs', '▲ 2'], 'down': ['Eredményeid', '▼ −1,3', 'DNF', '▼ 1'], 'ranked': ['Besorolva', '#23', '61'], 'calib': ['Eredményeid', '2/3', 'Kalibráció']}
 with sync_playwright() as p:
     b = p.chromium.launch()

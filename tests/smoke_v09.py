@@ -72,7 +72,7 @@ with sync_playwright() as p:
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(300)
         pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const uid=Object.keys(db.users).find(k=>db.users[k].psnLower==='mgtk_dudu'); const u={ uid };
           db.content = db.content || {}; db.content.ratings = { version: '3.2', computedAt: Date.now(), drivers: { [u.uid]: { e: 1, r: 131.46, q: 128.2, s: 134.9, g: 129.3, n: 7, hi: 133.1, dl: 1.84, h: [['MCSM25–30', 129.2, 126, 130, 128], ['MCSM31 / 1', 129.62, 127, 131, 128.5], ['MCSM31 / 2', 131.46, 128.2, 134.9, 129.3]] } } };
-          localStorage.setItem(k, JSON.stringify(db)); }""")
+          localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); }""")
         fresh_visit(pg, '/pilotak/mgtk_dudu', None, 2600)
         if pg.query_selector('.nc-overlay'): pg.click('.nc-bottom .btn.primary'); pg.wait_for_timeout(400)
         box = text(pg, '.mr-card')

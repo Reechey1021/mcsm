@@ -273,6 +273,7 @@ export async function createFirebaseBackend(config) {
     content: {
       async get(id) { const d = await F.getDoc(F.doc(db, 'content', id)); return d.exists() ? d.data() : null; },
       async save(id, data) { return wrap(() => F.setDoc(F.doc(db, 'content', id), { ...data, updatedAt: Date.now(), by: auth.currentUser.uid })); },
+      async bump(patch) { return wrap(() => F.setDoc(F.doc(db, 'content', 'versions'), patch, { merge: true })); },
     },
     config: {
       async get(id) { return wrap(async () => { const d = await F.getDoc(F.doc(db, 'config', id)); return d.exists() ? d.data() : null; }); },

@@ -51,12 +51,12 @@ with sync_playwright() as p:
         snap(pg, f'v95_compare_{size}')
         # podium on a finished season
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(200)
-        pg.evaluate("(() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.seasons.mcsm31.state='finished'; localStorage.setItem(k, JSON.stringify(db)); })()")
+        pg.evaluate("(() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.seasons.mcsm31.state='finished'; localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); })()")
         go(pg, '/szezonok/mcsm31', None, 3200)
         check(pg.query_selector('.pd-card') is not None and pg.query_selector('.p1 .pd-bar') is not None, f'{size}: podium on finished season')
         snap(pg, f'v95_podium_{size}')
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(200)
-        pg.evaluate("(() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.seasons.mcsm31.state='running'; localStorage.setItem(k, JSON.stringify(db)); })()")
+        pg.evaluate("(() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.seasons.mcsm31.state='running'; localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); })()")
         # admin changes a driver's team for this season
         go(pg, '/szezonok/mcsm31/nevezesek', 'owner', 2600)
         pg.query_selector_all('button.entry-row')[0].click(); pg.wait_for_timeout(700)
@@ -83,7 +83,7 @@ with sync_playwright() as p:
             gone = pg.evaluate(f"(() => {{ const db = JSON.parse(localStorage.getItem('mcsm:fakecloud:v1')); return !Object.values(db.users).some(u => u.psn === '{m.group(1)}'); }})()")
             check(gone, f'{size}: user deleted')
         # news: never on the sign-in screen
-        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.content = db.content || {}; db.content.news = { items: [{ id: 'n1', title: 'Hír', body: 'x', carousel: true, at: Date.now() }] }; localStorage.setItem(k, JSON.stringify(db)); sessionStorage.clear(); localStorage.removeItem('mcsm:newsDismissed'); }""")
+        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.content = db.content || {}; db.content.news = { items: [{ id: 'n1', title: 'Hír', body: 'x', carousel: true, at: Date.now() }] }; localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); sessionStorage.clear(); localStorage.removeItem('mcsm:newsDismissed'); }""")
         pg.goto(BASE + '?fakecloud&so=1#/belepes'); pg.wait_for_timeout(2600)
         check(pg.query_selector('.nc-overlay') is None, f'{size}: no news on the sign-in screen')
         go(pg, '/', 'owner', 2800)

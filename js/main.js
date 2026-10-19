@@ -39,11 +39,14 @@ async function boot() {
   try { backend = await createBackend(); }
   catch (e) {
     console.error("Firebase couldn't load", e);
+    if (!navigator.onLine) { import('./ui/offline.js').then((m) => m.showOffline({ reloadWhenBack: true })); return; }
     document.body.replaceChildren(h('main', { id: 'view' }, h('div', { class: 'empty', style: 'margin:40px 16px' }, h('b', { style: 'display:block;color:var(--ink);margin-bottom:6px' }, t('bootFailTitle')), t('bootFailText'),
       h('div', { style: 'margin-top:14px' }, h('button', { class: 'btn', type: 'button', onclick: () => location.reload() }, t('retry'))))));
     return;
   }
   buildShell();
+  import('./ui/offline.js').then((m) => m.initOffline()).catch(() => {});
+  import('./ui/ptr.js').then((m) => m.initPullToRefresh()).catch(() => {});
   initShell();
   initSession(backend);
   watchVerification(backend);
@@ -68,6 +71,9 @@ async function boot() {
   // Admins number older protests once (#1, #2, …), like tickets.
   let numDone = false;
   on('session', () => { if (numDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; numDone = true; setTimeout(() => import('./services/protest-numbers.js').then((m) => m.ensureProtestNumbers()).catch(() => {}), 5000); });
+  // Admins: make sure the "what's changed" document exists, so visitors can keep lists on their device.
+  let verDone = false;
+  on('session', () => { if (verDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; verDone = true; import('./core/persist.js').then((m) => m.versions().then((v) => { if (!v) m.bump(['seasons', 'teams', 'ratings', 'news']); })).catch(() => {}); });
   // Admins quietly keep finished seasons' summaries up to date.
   let sumDone = false;
   on('session', () => { if (sumDone || !session_ready() || !(session.profile && session.profile.roles && (session.profile.roles.admin === true || session.profile.roles.owner === true))) return; sumDone = true; setTimeout(() => import('./services/season-summary.js').then((m) => m.ensureSummaries()).catch(() => {}), 4000); });

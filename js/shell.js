@@ -61,6 +61,7 @@ function refreshBell() {
   const n = notes.unread;
   els.badge.textContent = n > 9 ? '9+' : String(n);
   els.badge.style.display = n ? '' : 'none';
+  try { if ('setAppBadge' in navigator) (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch { /* not supported */ }
 }
 const NOTE_ICON = { lobbiesOut: 'grid', resultsOut: 'trophy', regOpen: 'flag', seasonAnnounced: 'flag', protestAgainst: 'alert', protestNew: 'shield', decision: 'shield', promoted: 'up', reservePending: 'users', teamApproved: 'check', teamDeclined: 'close', raceToday: 'clock', claimDispute: 'alert', roleGranted: 'shield', lobbyHost: 'users' };
 function openNotes() {

@@ -60,12 +60,16 @@
     gtag('event', 'page_view', {
       page_location: page.url,
       page_title: page.title,
+      display_mode: displayMode(),
       ...(previousPage ? { page_referrer: previousPage } : {})
     });
 
     previousPage = page.url;
     lastPage = page.url;
   }
+
+  // 'app' when opened from the installed icon (home screen / desktop app), 'browser' otherwise
+  function displayMode() { try { return (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) ? 'app' : 'browser'; } catch (e) { return 'browser'; } }
 
   window.startMCSMAnalytics = function () {
     if (enabled) return;
@@ -77,6 +81,7 @@
     };
 
     gtag('js', new Date());
+    gtag('set', 'user_properties', { display_mode: displayMode() });
     gtag('config', GA_ID, {
       send_page_view: false,
       allow_google_signals: false,

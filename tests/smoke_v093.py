@@ -49,7 +49,7 @@ with sync_playwright() as p:
         else: check(False, f'{size}: AI panel on the PQ page')
         # news scroll fix: closing with the X restores scrolling
         pg.goto(BASE + '?fakecloud&fakeuser=owner&y=1#/'); pg.wait_for_timeout(1500)
-        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.content = db.content || {}; db.content.news = { items: [{ id: 'n1', title: 'Teszt', body: 'x', carousel: true, at: Date.now() }] }; localStorage.setItem(k, JSON.stringify(db)); sessionStorage.removeItem('mcsm:newsShown'); localStorage.removeItem('mcsm:newsDismissed'); }""")
+        pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); db.content = db.content || {}; db.content.news = { items: [{ id: 'n1', title: 'Teszt', body: 'x', carousel: true, at: Date.now() }] }; localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); sessionStorage.removeItem('mcsm:newsShown'); localStorage.removeItem('mcsm:newsDismissed'); }""")
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(200)
         for k, how in enumerate(('.nc-head .icon-btn', '.nc-bottom .btn.primary')):
             pg.evaluate("sessionStorage.removeItem('mcsm:newsShown')")

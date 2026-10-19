@@ -463,6 +463,7 @@ export function createFakeBackend() {
     },
     content: {
       async get(id) { await lag(); return clone((db.content || {})[id]) || null; },
+      async bump(patch) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); db.content = db.content || {}; db.content.versions = { ...(db.content.versions || {}), ...clone(patch) }; persist(); },
       async save(id, data) { await lag(); const a = me(); if (!isAdminUid(a.uid)) fail('permission-denied'); if (hasNestedArray(data)) fail('invalid-argument'); db.content = db.content || {}; db.content[id] = { ...clone(data), updatedAt: Date.now(), by: a.uid }; persist(); },
     },
     config: {

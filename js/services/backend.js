@@ -60,6 +60,17 @@ function installInvalidation(b) {
     if (['cars', 'tracks', 'ratings', 'news'].includes(id)) invalidate(id === 'ratings' ? 'mcsmRatings' : id);
   });
   after('admin', 'writeMany', () => invalidate());
+  // "What's changed" (core/persist.js): admin writes bump the version of what they changed
+  // this device first, synchronously (so a list re-read right after the write is fresh), then everyone
+  const dropLocal = (keys) => {
+    try { Object.keys(localStorage).filter((k) => k.startsWith('mcsm:pc:')).forEach((k) => { let c = null; try { c = JSON.parse(localStorage.getItem(k)); } catch { /* */ } if (!c || keys.includes(c.vk)) localStorage.removeItem(k); }); } catch { /* */ }
+    window.__mcsmVersionsStale = true;
+  };
+  const bumpV = (keys) => { dropLocal(keys); import('../core/persist.js').then((m) => m.bump(keys)).catch(() => {}); };
+  for (const method of ['save', 'patch', 'remove', 'purge']) after('seasons', method, () => bumpV(['seasons']));
+  for (const service of ['teams', 'gtTeams']) for (const method of ['save', 'remove']) after(service, method, () => bumpV(['teams']));
+  after('content', 'save', (id) => { if (id === 'ratings' || id === 'news') bumpV([id]); });
+  after('admin', 'writeMany', () => bumpV(['seasons', 'teams', 'ratings', 'news']));
   const touch = (sid) => { const id = typeof sid === 'string' ? sid : sid && sid.id; if (id) import('./season-summary.js').then((m) => m.touchSummary(id)).catch(() => {}); };
   for (const method of ['save', 'patch']) after('seasons', method, touch);
   for (const method of ['save', 'remove']) after('entries', method, touch);

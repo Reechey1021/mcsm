@@ -32,7 +32,7 @@ with sync_playwright() as p:
         pg.goto(BASE + 'tests/'); pg.wait_for_timeout(200)
         pg.evaluate("""() => { const k='mcsm:fakecloud:v1'; const db=JSON.parse(localStorage.getItem(k)); const uid=db.accounts['pilota@mcsm.test'].uid; const u=db.users[uid];
           db.entries.mcsm31[uid] = { uid, type: 'driver', status: 'entered', approved: true, order: 1, snapshot: { firstName: u.firstName, lastName: u.lastName, psn: u.psn, psnLower: u.psnLower, raceNumber: u.raceNumber, dr: u.dr, sr: u.sr, teamId: u.teamId || null }, availability: [], absences: [] };
-          db.race.mcsm31.rounds['1'].lobbies.A.push(uid); localStorage.setItem(k, JSON.stringify(db)); }""")
+          db.race.mcsm31.rounds['1'].lobbies.A.push(uid); localStorage.setItem(k, JSON.stringify(db)); Object.keys(localStorage).filter((x) => x.startsWith('mcsm:pc:')).forEach((x) => localStorage.removeItem(x)); }""")
         # round page: started round shows the red button; header has no big gap
         # round 1's results are final (the button gives way to the summary); round 2's window is open
         go(pg, '/szezonok/mcsm31/fordulo/2', 'pilota')

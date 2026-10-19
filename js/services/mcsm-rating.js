@@ -2,6 +2,7 @@
 // MCSM Rating v3.2 wiring. The historical bootstrap (MCSM25-30, imported once by an admin) lives in
 // an admin-only record (config/ratingBootstrap). Admins compute; only what drivers may see is
 // published to content/ratings: full numbers for established drivers, the round count otherwise.
+import { persisted } from '../core/persist.js';
 import { backend } from './backend.js';
 import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
@@ -92,7 +93,7 @@ export async function computeAndPublish(opts = {}) {
   invalidate('mcsmRatings');
   return { rounds: rounds.length, established, audit: res.audit };
 }
-export const publicRatings = () => cached('mcsmRatings', () => backend.content.get('ratings').then((d) => d || { drivers: {} }).catch(() => ({ drivers: {} })));
+export const publicRatings = () => cached('mcsmRatings', () => persisted('ratings', 'ratings', () => backend.content.get('ratings')).then((d) => d || { drivers: {} }).catch(() => ({ drivers: {} })));
 
 // A ranked driver's MCSM Rating as it stood after round n of season no (their last value at or
 // before then; the MCSM25–30 import counts as the start). null if they weren't ranked yet.

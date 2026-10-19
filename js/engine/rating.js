@@ -1,17 +1,20 @@
 // engine/rating.js
-// MCSM Rating v3.2: result-only, normalised cross-lobby Elo updates.
+// MCSM Rating v3.4: result-only Elo, each lobby compared within itself, neighbouring lobbies linked.
 //   Overall = 0.20 x Quali + 0.40 x Sprint + 0.40 x Grand Prix (public values).
 // Each component is a latent skill x; the public value is d(x) = 50 + 12*softplus(0.8/12*(x-100) + b),
 // so d(100) = 100, it never goes below 50 and has no upper cap. No forced mean or other bonuses.
 //   - Starting point: the imported MCSM25-30 historical bootstrap, never re-fitted.
-//   - Established drivers: chronological Elo per session (zero-sum when only established drivers race).
-//   - Compare classified results across all lobbies, using A16=B1 and B16=C1.
+//   - Established drivers: chronological Elo per session, K = 5, against the drivers they actually raced
+//     (their own lobby; K / (lobby size - 1) per opponent). Zero-sum within each lobby, so no lobby rises or
+//     sinks as a group. Any number of lobbies (A, B, C, D, ...).
+//   - Lobby links: the upper lobby's lowest-placed driver(s) (last finisher, or its DNFs) draw with the next
+//     lobby's winner(s) (A last = B1, B last = C1, ...). Promotion/relegation carries ratings between lobbies.
 //   - Provisional drivers (fewer than 3 completed rounds): per-round performance estimates, used as
 //     opponents in that round; their starting rating is the mean of their 3 calibration rounds.
 // Pure, deterministic: the same import and the same results always give the same ratings.
-export const RATING_VERSION = '3.3';
+export const RATING_VERSION = '3.4';
 export const RATING_CFG = {
-  K: 10, eloScale: 6,
+  K: 5, eloScale: 6,
   priorMean: 100, priorSd: 55, provisionalRounds: 3,
   wQ: 0.2, wS: 0.4, wG: 0.4, floor: 50, t: 12, slope: 0.8,
 };
@@ -27,31 +30,30 @@ const A = Math.LN10 / 400;
 const byKey = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const started = (st) => st === 'OK' || st === 'DNF' || st === 'DSQ';
 
-// The committee's position hierarchy is independent of the number of entrants or the
-// number of lobbies present in a particular round. A16 equals B1; B16 equals C1.
 const LOBBY_SIZE = 16;
-const LOBBY_STRIDE = LOBBY_SIZE - 1;
-function globalPosition(lobby, pos) {
-  if (!/^[A-Z]$/.test(lobby)) throw new Error(`Unsupported rating lobby: ${lobby}`);
-  const rank = Number(pos);
-  if (!Number.isInteger(rank) || rank < 1) throw new Error(`Invalid rating position in lobby ${lobby}: ${pos}`);
-  // Lobbies are normally 16; a bigger one keeps counting on (A17 sits just behind B1) instead of failing.
-  return (lobby.charCodeAt(0) - 65) * LOBBY_STRIDE + rank;
-}
 
 // Official ranked positions only. No qualifying gaps, grid, overtaking or discipline modifiers.
 // DNFs in a race all share their lobby's last place (16th, or behind the last finisher in a bigger
 // lobby): they lose to every finisher, draw with each other (they all get the same DNF points) and tie
 // with the next lobby's winner (A16 = B1). Entry order doesn't matter. Unranked qualifying attempts,
 // DNS and DSQ do not provide a comparable finishing position.
-function sessionField(rows, session, lobby) {
+function sessionField(rows, session) {
   const ranked = (r) => session === 'Q' ? r.status === 'OK' : r.status === 'OK' || r.status === 'DNF';
   const field = (rows || []).filter((r) => ranked(r) && r.pos > 0);
   const lastFinisher = Math.max(0, ...field.filter((r) => r.status === 'OK').map((r) => r.pos));
-  const dnfRank = session === 'Q' ? Infinity : Math.max(LOBBY_SIZE, lastFinisher + 1);
-  return field.map((r) => ({
-    id: r.id, pos: globalPosition(lobby, r.status === 'DNF' && dnfRank !== Infinity ? dnfRank : r.pos),
-  }));
+  return field.map((r) => ({ id: r.id, pos: r.status === 'DNF' && session !== 'Q' ? lastFinisher + 1 : r.pos }));
+}
+// The ladder's links between neighbouring lobbies (A–B, B–C, C–D, … among those that raced): the lowest-
+// placed driver(s) of the upper lobby (its last finisher, or its DNFs) draw with the next lobby's winner(s).
+function bridgePairs(byLobby) {
+  const out = [];
+  for (let i = 0; i + 1 < byLobby.length; i++) {
+    const up = byLobby[i].field, dn = byLobby[i + 1].field;
+    if (!up.length || !dn.length) continue;
+    const last = Math.max(...up.map((r) => r.pos)), first = Math.min(...dn.map((r) => r.pos));
+    up.filter((r) => r.pos === last).forEach((a) => dn.filter((r) => r.pos === first).forEach((b) => out.push([a, b])));
+  }
+  return out;
 }
 
 // Inverse of publicOf (public value -> latent). Values at or below the floor map to the floor's limit.
@@ -107,41 +109,54 @@ export function computeRatings(rounds, start = {}) {
       const res = rd.results[L] || {};
       for (const sess of ['S', 'GP']) (res[sess] || []).forEach((r) => { if (started(r.status)) startedRound.add(r.id); });
     }
-    // Pool every lobby within each session BEFORE calculating pairwise outcomes.
+    // Each lobby is its own race: drivers are compared only with the drivers they raced. Neighbouring
+    // lobbies are linked by one draw (the upper lobby's last place = the next lobby's winner).
     for (const sess of ['Q', 'S', 'GP']) {
       const c = SESSION_OF[sess];
-      const field = lobbies.flatMap((L) => sessionField((rd.results[L] || {})[sess], sess, L));
-      field.forEach((r) => rated.add(r.id));
-      const N = field.length;
-      if (N < 2) continue;
-      if (new Set(field.map((r) => r.id)).size !== N) throw new Error(`Duplicate driver in ${rd.key} ${sess} rating results`);
-      const w = 1 / (N - 1);
-      // 1) provisional round performance from this round's results only
-      const prov = field.filter((r) => !pre[r.id].est).map((r) => r.id).sort(byKey);
+      const byLobby = lobbies.map((L) => ({ L, field: sessionField((rd.results[L] || {})[sess], sess) })).filter((x) => x.field.length);
+      const all = byLobby.flatMap((x) => x.field.map((r) => r.id));
+      all.forEach((u) => rated.add(u));
+      if (new Set(all).size !== all.length) throw new Error(`Duplicate driver in ${rd.key} ${sess} rating results`);
+      const bridges = bridgePairs(byLobby);
+      const wB = 1 / (LOBBY_SIZE - 1);   // a bridge counts as one comparison in a full lobby
+      // 1) provisional round performance from this round's results only (their lobby, plus a bridge if any)
+      const prov = all.filter((u) => !pre[u].est).sort(byKey);
       if (prov.length) {
         const obs = [];
-        for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-          const a = field[i], b = field[j];
-          if (pre[a.id].est && pre[b.id].est) continue;
-          const y = a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5;
+        const add = (a, b, y, w) => {
+          if (pre[a.id].est && pre[b.id].est) return;
           if (!pre[a.id].est && pre[b.id].est) obs.push({ i: a.id, fixed: pre[b.id].lat[c], y, w });
           else if (pre[a.id].est && !pre[b.id].est) obs.push({ i: b.id, fixed: pre[a.id].lat[c], y: 1 - y, w });
           else obs.push({ i: a.id, j: b.id, y, w });
+        };
+        for (const { field } of byLobby) {
+          const n = field.length; if (n < 2) continue;
+          for (let i2 = 0; i2 < n; i2++) for (let j2 = i2 + 1; j2 < n; j2++) {
+            const a = field[i2], b = field[j2];
+            add(a, b, a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5, 1 / (n - 1));
+          }
         }
+        bridges.forEach(([a, b]) => add(a, b, 0.5, wB));
         const est = fitRound(prov, obs);
         prov.forEach((u) => { (perf[u] = perf[u] || {})[c] = est[u]; });
       }
-      // 2) established Elo over the full eligible field (provisional opponents at their round performance)
+      // 2) established Elo within each lobby (provisional opponents at their round performance), then the bridges
       const ratingOf = (r) => (pre[r.id].est ? pre[r.id].lat[c] : perf[r.id][c]);
-      for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-        const a = field[i], b = field[j];
+      const pair = (a, b, y, k) => {
         const ea = pre[a.id].est, eb = pre[b.id].est;
-        if (!ea && !eb) continue;
-        const y = a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5;
-        const T = (C.K / (N - 1)) * (y - expected(C.eloScale * (ratingOf(a) - ratingOf(b))));
+        if (!ea && !eb) return;
+        const T = k * (y - expected(C.eloScale * (ratingOf(a) - ratingOf(b))));
         if (ea) delta[a.id][c] += T;
         if (eb) delta[b.id][c] -= T;
+      };
+      for (const { field } of byLobby) {
+        const n = field.length; if (n < 2) continue;
+        for (let i2 = 0; i2 < n; i2++) for (let j2 = i2 + 1; j2 < n; j2++) {
+          const a = field[i2], b = field[j2];
+          pair(a, b, a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5, C.K / (n - 1));
+        }
       }
+      bridges.forEach(([a, b]) => pair(a, b, 0.5, C.K * wB));
     }
     for (const u of list) if (pre[u].est) COMPONENTS.forEach((c) => { S[u].lat[c] += delta[u][c]; });
     for (const u of list) {

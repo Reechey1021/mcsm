@@ -733,7 +733,63 @@ await test('rating: DNFs share their lobby\'s last place (16th): draw with each 
   // two lobbies: an A-lobby DNF against B's winner is a draw (A16 = B1), so equal ratings stay equal
   const two = { key: 't', label: 't', results: { A: { GP: [{ id: 'a1', pos: 1, status: 'OK' }, { id: 'adnf', pos: 2, status: 'DNF' }] }, B: { GP: [{ id: 'b1', pos: 1, status: 'OK' }] } } };
   const r2 = RT3.computeRatings([two], { a1: { q: 100, s: 100, g: 100, n: 9, established: true }, adnf: { q: 100, s: 100, g: 100, n: 9, established: true }, b1: { q: 100, s: 100, g: 100, n: 9, established: true } });
-  ok(Math.abs(r2.drivers.adnf.lat.g - r2.drivers.b1.lat.g) < 1e-9, `A-lobby DNF ties with B's winner (${r2.drivers.adnf.lat.g.toFixed(3)} vs ${r2.drivers.b1.lat.g.toFixed(3)})`);
+  // v3.4: the A-lobby DNF draws with B's winner (equal ratings: no change for b1) and loses to a1 inside A
+  ok(Math.abs(r2.drivers.b1.lat.g - 100) < 1e-9, `the bridge draw leaves equal ratings level (b1 ${r2.drivers.b1.lat.g.toFixed(3)})`);
+  ok(r2.drivers.adnf.lat.g < 100 && Math.abs(r2.drivers.a1.lat.g + r2.drivers.adnf.lat.g - 200) < 1e-9, 'inside A: a1 gains exactly what the DNF loses');
+});
+await test('season finale: only on the last round; place, points, wins/podiums, season rating change, team', async () => {
+  const { buildRecap } = await import('../js/model/recap.js');
+  const row = (id, pos) => ({ id, pos, status: 'OK' });
+  const mk = (n, order) => ({ n, lobbies: { A: order }, results: { A: { Q: order.map((u, i) => row(u, i + 1)), S: order.map((u, i) => row(u, i + 1)), GP: order.map((u, i) => row(u, i + 1)) } } });
+  const ctx = { season: { id: 's', no: 32, rounds: [{ n: 1 }, { n: 2 }], championships: { teams: true } }, ids: ['a', 'b', 'c'], built: [mk(1, ['a', 'b', 'c']), mk(2, ['b', 'a', 'c'])],
+    snaps: { a: { teamId: 't1' }, b: { teamId: 't2' }, c: { teamId: 't1' } }, tmap: { t1: { name: 'ALPHA' }, t2: { name: 'BETA' } },
+    teams: [{ id: 't1', members: ['a', 'c'] }, { id: 't2', members: ['b'] }] };
+  const P = { drivers: { a: { e: 1, r: 112, h: [{ l: 'MCSM31 / 3', r: 105 }, { l: 'MCSM32 / 1', r: 110 }, { l: 'MCSM32 / 2', r: 112 }] }, b: { e: 0, n: 2 }, c: { e: 1, r: 90, h: [{ l: 'MCSM32 / 2', r: 90 }] } } };
+  eq(buildRecap(ctx, 1, 'a', P).finale, undefined, 'not on an earlier round');
+  const f = buildRecap(ctx, 2, 'a', P).finale;
+  // level on points with b; the tie-break (latest round) puts b first. Wins/podiums count both races.
+  eq([f.pos, f.field, f.wins, f.podiums, Math.round(f.rating.change * 10) / 10, f.team], [2, 3, 2, 4, 7, { name: 'ALPHA', pos: 1 }], '2nd on tie-break, 2 race wins, 4 podiums, +7 over the season, team 1st');
+  eq(buildRecap(ctx, 2, 'b', P).finale.pos, 1, 'b is champion');
+  eq(buildRecap(ctx, 2, 'b', P).finale.calib, { done: 2, total: 3 }, 'calibrating driver: progress instead of a rating');
+  eq(buildRecap(ctx, 2, 'c', P).finale.rating.change, null, 'first rated this season: no change shown');
+});
+await test('rating v3.4: lobbies are their own races, linked by one draw; no lobby rises or sinks as a group', async () => {
+  const RT4 = await import('../js/engine/rating.js');
+  eq(RT4.RATING_CFG.K, 5, 'K = 5');
+  const mk = (pre, n) => Array.from({ length: n }, (_, i) => pre + String(i + 1).padStart(2, '0'));
+  const A = mk('a', 16), B = mk('b', 16), C = mk('c', 16);
+  const start = {};
+  A.forEach((u, i) => { start[u] = { q: 130 - i, s: 130 - i, g: 130 - i, n: 9, established: true }; });
+  B.forEach((u, i) => { start[u] = { q: 105 - i, s: 105 - i, g: 105 - i, n: 9, established: true }; });
+  C.forEach((u, i) => { start[u] = { q: 80 - i, s: 80 - i, g: 80 - i, n: 9, established: true }; });
+  // everyone finishes in rating order except: C's lowest-rated driver wins C, A's top driver finishes last in A
+  const ord = (ids) => ids.map((id, i) => ({ id, pos: i + 1, status: 'OK' }));
+  const Cord = [C[15], ...C.slice(0, 15)], Aord = [...A.slice(1), A[0]];
+  const rd = { key: 'r', label: 'r', results: { A: { Q: ord(Aord), S: ord(Aord), GP: ord(Aord) }, B: { Q: ord(B), S: ord(B), GP: ord(B) }, C: { Q: ord(Cord), S: ord(Cord), GP: ord(Cord) } } };
+  const res = RT4.computeRatings([rd], start);
+  const g = (u) => res.drivers[u].lat.g - start[u].g;
+  ok(g(C[15]) > 1, `the C winner (lowest-rated in C) gains (${g(C[15]).toFixed(2)})`);
+  ok(g(A[0]) < -1, `A's top driver finishing last in A loses (${g(A[0]).toFixed(2)})`);
+  // lobby totals: only the two bridge draws move anything between lobbies
+  const sum = (ids) => ids.reduce((x, u) => x + g(u), 0);
+  const bridgeAB = 5 / 15 * (0.5 - RT4.expected(6 * (start[A[0]].g - start[B[0]].g)));
+  ok(Math.abs(sum(A) - bridgeAB) < 1e-9, `lobby A as a group moves only by the A–B bridge draw (${sum(A).toFixed(3)})`);
+  ok(Math.abs(sum(A) + sum(B) + sum(C)) < 1e-9, 'zero-sum overall');
+  // a short lobby: A had only 14 drivers -> its 14th draws with B's winner
+  const A14 = A.slice(0, 14), r14 = { key: 's', label: 's', results: { A: { GP: ord(A14) }, B: { GP: ord(B) } } };
+  const res14 = RT4.computeRatings([r14], start);
+  const exp14 = 5 / 15 * (0.5 - RT4.expected(6 * (start[A[13]].g - start[B[0]].g)));
+  const bOnly = RT4.computeRatings([{ key: 's', label: 's', results: { B: { GP: ord(B) } } }], start);
+  const bridgePart = res14.drivers[B[0]].lat.g - bOnly.drivers[B[0]].lat.g;   // B1's change from the bridge alone
+  ok(Math.abs(bridgePart + exp14) < 1e-9, `B1 draws with A14 when A had 14 drivers (${bridgePart.toFixed(4)})`);
+  // any number of lobbies: A+B only, and A–D
+  const D = mk('d', 16); D.forEach((u, i) => { start[u] = { q: 60 - i, s: 60 - i, g: 60 - i, n: 9, established: true }; });
+  const r4 = { key: 't', label: 't', results: { A: { GP: ord(A) }, B: { GP: ord(B) }, C: { GP: ord(C) }, D: { GP: ord(D) } } };
+  const res4 = RT4.computeRatings([r4], start);
+  const sum4 = [A, B, C, D].map((ids) => ids.reduce((x, u) => x + (res4.drivers[u].lat.g - start[u].g), 0));
+  ok(Math.abs(sum4.reduce((x, y) => x + y, 0)) < 1e-9 && Math.abs(res4.drivers[D[0]].lat.g - start[D[0]].g) > 0, 'four lobbies: zero-sum, D linked to C by its bridge');
+  const r2l = { key: 'u', label: 'u', results: { A: { GP: ord(A) }, B: { GP: ord(B) } } };
+  ok(RT4.computeRatings([r2l], start).audit[0].zeroSum.every((v) => Math.abs(v) < 1e-9), 'two lobbies only: fine');
 });
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);

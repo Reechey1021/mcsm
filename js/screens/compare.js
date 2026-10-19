@@ -11,6 +11,7 @@ import { honours } from '../services/honours.js';
 import { medalsForUser } from '../model/honours.js';
 import { publicRatings } from '../services/mcsm-rating.js';
 import { trophy } from '../ui/trophy.js';
+import { seg } from '../ui/controls.js';
 
 const f1 = (v) => (v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ','));
 const SR_RANK = { S: 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
@@ -44,6 +45,7 @@ export function screenCompare({ a, b }) {
       h('div', { class: 'cmp-head' }, head(A), h('span', { class: 'cmp-vs display' }, 'VS'), head(B)),
       h('section', { class: 'panel cmp-table cmp-mr' }, h('div', { class: 'cmp-sec' }, 'MCSM Rating'),
         rr('MCSM Rating', 'r', true), rr(t('quali'), 'q'), rr('Sprint', 's'), rr("Gran'Prix", 'g')),
+      compareHistory(A, B, ma, mb),
       h('section', { class: 'panel cmp-table' }, h('div', { class: 'cmp-sec' }, t('cmpTitles')),
         row(h('span', { class: 'cmp-tk' }, trophy(0, 14), t('medalGold')), med(A).medals[0], med(B).medals[0]),
         row(h('span', { class: 'cmp-tk' }, trophy(1, 14), t('medalSilver')), med(A).medals[1], med(B).medals[1]),
@@ -55,4 +57,45 @@ export function screenCompare({ a, b }) {
         row(t('cmpGtWins'), A.gtStats ? A.gtStats.wins : null, B.gtStats ? B.gtStats.wins : null)));
   }).catch(() => box.replaceChildren(empty(t('loadFailed'))));
   return frag(backLink(t('drivers'), '#/pilotak'), h('h1', { class: 'display page-title' }, t('compareTitle')), box);
+}
+
+// Both drivers' MCSM Rating over time on one chart: the first a solid line, the second dashed.
+// Only rounds each of them raced as a ranked driver; ranges: last 5 / 10 / all.
+const keyOf = (l) => { const m = /MCSM(\d+)\s*\/\s*(\d+)/.exec(String(l)); return m ? +m[1] * 1000 + +m[2] : /MCSM25/.test(String(l)) ? 0 : null; };
+const pts = (x) => (x && x.e ? (x.h || []).map((e) => (Array.isArray(e) ? { l: e[0], r: e[1] } : e)).filter((e) => keyOf(e.l) != null) : []);
+function compareHistory(A, B, ma, mb) {
+  const pa = pts(ma), pb = pts(mb);
+  if (pa.length + pb.length < 2) return null;
+  const box = h('section', { class: 'panel cmp-hist' });
+  const all = [...new Map([...pa, ...pb].map((e) => [keyOf(e.l), e.l])).entries()].sort((a, b) => a[0] - b[0]);
+  const ranges = [5, 10].filter((n) => n < all.length);
+  let range = ranges.includes(10) ? 10 : 0;
+  const NS = 'http://www.w3.org/2000/svg';
+  const draw = () => {
+    const xs = range ? all.slice(-range) : all;
+    const idx = new Map(xs.map(([k], i) => [k, i]));
+    const sa = pa.filter((e) => idx.has(keyOf(e.l))), sb = pb.filter((e) => idx.has(keyOf(e.l)));
+    const vals = [...sa, ...sb].map((e) => e.r);
+    const lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2);
+    const W = 640, H = 240, L = 40, R = 12, T = 12, Bt = 54;
+    const X = (k) => L + (xs.length < 2 ? (W - L - R) / 2 : (idx.get(k) / (xs.length - 1)) * (W - L - R));
+    const Y = (v) => T + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - T - Bt);
+    const line = (ser, color, dash) => (ser.length > 1 ? `<polyline points="${ser.map((e) => `${X(keyOf(e.l)).toFixed(1)},${Y(e.r).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" ${dash ? 'stroke-dasharray="7 6"' : ''}/>` : '')
+      + ser.map((e) => `<circle cx="${X(keyOf(e.l))}" cy="${Y(e.r)}" r="3.4" fill="${dash ? 'var(--bg-2)' : color}" stroke="${color}" stroke-width="2"><title>${e.l}: ${String((Math.round(e.r * 10) / 10).toFixed(1)).replace('.', ',')}</title></circle>`).join('');
+    const ticks = [lo, (lo + hi) / 2, hi].map((v) => `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" class="mh-tick">${Math.round(v)}</text><line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" class="mh-grid"/>`).join('');
+    const labels = xs.map(([k, l]) => `<text x="${X(k)}" y="${H - Bt + 16}" text-anchor="end" transform="rotate(-35 ${X(k)} ${H - Bt + 16})" class="mh-tick">${l}</text>`).join('');
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('class', 'mh-chart');
+    svg.innerHTML = ticks + line(sb, '#38BDF8', true) + line(sa, 'var(--accent)', false) + labels;
+    chart.replaceChildren(svg);
+  };
+  const chart = h('div');
+  const legend = h('div', { class: 'mh-legend' },
+    ma ? h('span', null, h('i', { class: 'lg-solid' }), fullName(A)) : null,
+    mb ? h('span', null, h('i', { class: 'lg-dash' }), fullName(B)) : null);
+  const note = !ma || !mb ? h('p', { class: 'note', style: 'margin:6px 0 0' }, t('cmpUnrankedNote', { name: fullName(!ma ? A : B) })) : null;
+  const ctrl = ranges.length ? seg([...ranges.map((n) => ({ value: n, label: t('mrLastN', { n }) })), { value: 0, label: t('mrAllTime') }], range, (v) => { range = v; draw(); }, { scroll: true }) : null;
+  box.append(h('div', { class: 'cmp-sec' }, t('cmpHistory')), ctrl ? h('div', { style: 'margin:4px 0 8px' }, ctrl) : null, legend, chart, note);
+  draw();
+  return box;
 }

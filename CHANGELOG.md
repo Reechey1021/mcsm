@@ -1,3 +1,39 @@
+## v1.3.0 — MCSM Rating V3.4
+
+- Each lobby is its own race: drivers are compared only with the drivers they actually raced (their own
+  lobby), separately for Kvalifikáció, Sprint and Gran'Prix, K = 5 per lobby (K / (lobby size − 1) per
+  opponent). Lobbies no longer "beat" each other automatically, so no lobby rises or sinks as a group:
+  winning C gains rating, finishing last in A loses it, and the A–C gap no longer widens on its own.
+- Lobby links: the upper lobby's lowest-placed driver(s) — its last finisher, or its DNFs — draw with the next
+  lobby's winner(s) (A last = B1, B last = C1, …). Works for any number of lobbies (A+B only, or a D lobby).
+  Promotion/relegation carries ratings between lobbies.
+- Unchanged: MCSM25–30 bootstrap, 20/40/40, the public scale, 3-round calibration (each round's estimate now
+  from the driver's own lobby plus the link), privacy, the DNF rule (DNFs share the last place, behind every
+  finisher), star bands.
+- The "?" explanation's lobby sentence updated to match.
+- Recalculate once after deploying (Admin → Haladó → MCSM Rating → Újraszámolás és közzététel).
+
+## v1.2.0
+
+- Season finale: after the last round's recap, "Tovább" opens the season card. Champion: a gold trophy
+  springs in with a ring pulse, a gold particle burst and a gold shine across "BAJNOK!". 2nd / 3rd: silver or
+  bronze with a single shine. Everyone else: their final place rolls down from the back of the field (P12).
+  Then points, race wins · podiums, rating change over the season (or calibration), team place, and the MGTK
+  place for MGTK drivers. "Szezon végeredménye" opens the season's final standings. The round page's
+  "Összefoglaló" replays both cards. Previews: ?resultsdemo=champion | silver | bronze | final.
+- Pull to refresh in the installed app: a ring fills as you pull; let go when full and dots bounce while the
+  page reloads. Browsers keep their own pull-to-refresh.
+- Faster repeat visits: seasons, teams, GT teams, ratings and news are kept on the device. One small document
+  (content/versions) says when each last changed; unchanged ones aren't re-read. Admin edits record changes
+  automatically (and refresh the admin's own device at once); anything kept is re-read after 6 hours anyway,
+  so direct edits in the Firebase console also come through. An admin's first visit creates the document.
+- Compare: "MCSM Rating előzmények" with both drivers on one chart (solid green / dashed blue), last 5 / 10 /
+  all; a note if one driver is unranked.
+- Offline screen: when the connection drops (or the site can't load), a calm notice that carries on by itself.
+- App icon badge: the unread notification count on the installed app's icon (a dot when a push arrives).
+- Analytics: every page view is tagged display_mode = app or browser.
+- Hall of Fame on phones: each season's individual podium, then the team podium under it, then MGTK.
+
 ## v1.1.2
 
 - MCSM Rating: DNFs in a race now share their lobby's last place (16th: A16 = 16th, B16 = 31st, C16 = 46th

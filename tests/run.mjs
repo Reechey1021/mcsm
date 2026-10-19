@@ -716,7 +716,7 @@ await test('round recap: rated (up/down, new high), ranked, calibrating, champio
   eq([c1.mode, c1.done, c2.done, c2.cards.g.st, 'after' in c2], ['calib', 1, 2, 'DNF', false], 'calibrating: 1/3 then 2/3, no rating exposed');
   eq(buildRecap(ctx, 2, 'nobody', P), null, 'did not race: no recap');
 });
-await test('rating: DNFs share one place after the finishers (draws among themselves)', async () => {
+await test('rating: DNFs share their lobby\'s last place (16th): draw with each other and with the next lobby\'s winner', async () => {
   const RT3 = await import('../js/engine/rating.js');
   const ids = Array.from({ length: 16 }, (_, i) => 'x' + String(i + 1).padStart(2, '0'));
   const start = Object.fromEntries(ids.map((u) => [u, { q: 100, s: 100, g: 100, n: 9, established: true }]));
@@ -730,6 +730,10 @@ await test('rating: DNFs share one place after the finishers (draws among themse
   ok(res.audit[0].zeroSum.every((v) => Math.abs(v) < 1e-9), 'still zero-sum among established drivers');
   const q = ['x14', 'x15', 'x16'].map((u) => res.drivers[u].lat.q);
   ok(q[0] > q[1] && q[1] > q[2], 'qualifying unchanged: positions still count there');
+  // two lobbies: an A-lobby DNF against B's winner is a draw (A16 = B1), so equal ratings stay equal
+  const two = { key: 't', label: 't', results: { A: { GP: [{ id: 'a1', pos: 1, status: 'OK' }, { id: 'adnf', pos: 2, status: 'DNF' }] }, B: { GP: [{ id: 'b1', pos: 1, status: 'OK' }] } } };
+  const r2 = RT3.computeRatings([two], { a1: { q: 100, s: 100, g: 100, n: 9, established: true }, adnf: { q: 100, s: 100, g: 100, n: 9, established: true }, b1: { q: 100, s: 100, g: 100, n: 9, established: true } });
+  ok(Math.abs(r2.drivers.adnf.lat.g - r2.drivers.b1.lat.g) < 1e-9, `A-lobby DNF ties with B's winner (${r2.drivers.adnf.lat.g.toFixed(3)} vs ${r2.drivers.b1.lat.g.toFixed(3)})`);
 });
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);

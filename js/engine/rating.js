@@ -40,13 +40,15 @@ function globalPosition(lobby, pos) {
 }
 
 // Official ranked positions only. No qualifying gaps, grid, overtaking or discipline modifiers.
-// DNFs in a race all share one position, straight after the last finisher: they lose to every
-// finisher and draw with each other (they all get the same DNF points), whatever order they were
-// entered in. Unranked qualifying attempts, DNS and DSQ do not provide a comparable finishing position.
+// DNFs in a race all share their lobby's last place (16th, or behind the last finisher in a bigger
+// lobby): they lose to every finisher, draw with each other (they all get the same DNF points) and tie
+// with the next lobby's winner (A16 = B1). Entry order doesn't matter. Unranked qualifying attempts,
+// DNS and DSQ do not provide a comparable finishing position.
 function sessionField(rows, session, lobby) {
   const ranked = (r) => session === 'Q' ? r.status === 'OK' : r.status === 'OK' || r.status === 'DNF';
   const field = (rows || []).filter((r) => ranked(r) && r.pos > 0);
-  const dnfRank = session === 'Q' ? Infinity : Math.min(Infinity, ...field.filter((r) => r.status === 'DNF').map((r) => r.pos));
+  const lastFinisher = Math.max(0, ...field.filter((r) => r.status === 'OK').map((r) => r.pos));
+  const dnfRank = session === 'Q' ? Infinity : Math.max(LOBBY_SIZE, lastFinisher + 1);
   return field.map((r) => ({
     id: r.id, pos: globalPosition(lobby, r.status === 'DNF' && dnfRank !== Infinity ? dnfRank : r.pos),
   }));

@@ -1,7 +1,8 @@
 ## v1.1.2
 
-- MCSM Rating: DNFs in a race now share one position straight after the last finisher, drawing with each
-  other (they all get the same DNF points). Before, their entered order (P14, P15, P16) counted between them.
+- MCSM Rating: DNFs in a race now share their lobby's last place (16th: A16 = 16th, B16 = 31st, C16 = 46th
+  overall), drawing with each other and with the next lobby's winner (they all get the same DNF points).
+  Before, their entered order (P14, P15, P16) counted between them.
   Finishers, DNS, DSQ, qualifying and championship points are unchanged. Recalculate once after deploying.
 
 ## v1.1.1

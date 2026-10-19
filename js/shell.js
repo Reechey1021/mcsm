@@ -114,7 +114,12 @@ export function openMenu() {
   }
   const signOut = signedIn() ? h('button', { class: 'menu-item', type: 'button', onclick: async () => { sh.close(true); await backend.auth.signOut(); toast(t('signedOut')); go('/'); } }, icon('logout'), t('signOut')) : null;
   const install = isInstalled() ? null : h('button', { class: 'menu-item install-item', type: 'button', onclick: () => { sh.close(true); openInstall(); } }, icon('download'), h('span', null, t('installTitle'), h('small', null, t('installHint'))), icon('chevR', 'chev'));
-  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, install, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg), h('p', { class: 'app-version' }, 'MCSM ' + APP_VERSION)) });
+  // Notifications: usable in the installed app; greyed out (with a hint) in the browser
+  const installed = isInstalled();
+  const notif = !signedIn() ? null : h('button', { class: 'menu-item notif-item' + (installed ? '' : ' is-disabled'), type: 'button', 'aria-disabled': installed ? 'false' : 'true',
+    onclick: () => { if (!installed) return; sh.close(true); import('./screens/me.js').then((m) => m.pushSettings(() => {})); } },
+    icon('bell'), h('span', null, t('pushTitle'), h('small', null, installed ? t('pushMenuHint') : t('pushMenuInstall'))), installed ? icon('chevR', 'chev') : null);
+  const sh = openSheet({ title: signedIn() && p.lastName ? fullName(p) : t('menu'), body: frag(dev, items, install, notif, signOut, block(t('language'), langSeg), block(t('theme'), themeSeg), h('p', { class: 'app-version' }, 'MCSM ' + APP_VERSION)) });
 }
 
 export function initShell() {

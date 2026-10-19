@@ -313,4 +313,5 @@ export const en = {
   modeChamp: 'Championship', modeRound: 'Round', standingsMode: 'View', roundOnly: 'Round', roundDetails: 'Round details', qualiShort: 'Q',
   caseNo: 'Case #{n}',
   roundTotalTab: 'Total',
+  pushMenuHint: 'What we send to your phone', pushMenuInstall: 'Only in the installed app',
 };

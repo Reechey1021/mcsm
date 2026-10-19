@@ -1331,3 +1331,9 @@ details > summary .chev{ transition:transform .28s var(--ease-out), color var(--
 /* protest numbers (judges and above) */
 .case-no{ flex:0 0 auto; display:inline-flex; align-items:center; padding:1px 8px; border-radius:8px; background:var(--bg-3); border:1px solid var(--line-2); color:var(--ink); font-size:12.5px; font-weight:850; font-variant-numeric:tabular-nums; letter-spacing:.02em; }
 .case-no-h{ color:var(--ink-3); }
+
+/* menu: an item that needs the installed app */
+.menu-item.is-disabled{ opacity:.45; cursor:default; }
+.menu-item.is-disabled:hover{ background:none; }
+.menu-item.notif-item > span{ display:grid; gap:2px; text-align:left; }
+.menu-item.notif-item small{ font-size:12px; font-weight:500; color:var(--ink-3); }

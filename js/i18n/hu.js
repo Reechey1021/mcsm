@@ -329,4 +329,5 @@ export const hu = {
   modeChamp: 'Bajnokság', modeRound: 'Forduló', standingsMode: 'Nézet', roundOnly: 'Forduló', roundDetails: 'Forduló részletei', qualiShort: 'Kv.',
   caseNo: '{n}. számú ügy',
   roundTotalTab: 'Összesítés',
+  pushMenuHint: 'Mit küldjünk a telefonodra', pushMenuInstall: 'Csak a telepített appban állítható',
 };

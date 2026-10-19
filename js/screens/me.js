@@ -152,7 +152,7 @@ function pushRow() {
 }
 
 // Phone notifications: switch this device on/off, and pick which kinds are sent to the phone.
-function pushSettings(onDone) {
+export function pushSettings(onDone) {
   const st = pushState();
   const prefs = { ...((session.profile && session.profile.pushPrefs) || {}) };
   const devNote = h('small', null, t('pushState_' + st));

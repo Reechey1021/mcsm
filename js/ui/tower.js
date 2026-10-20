@@ -71,7 +71,7 @@ function roundLobbies(ctx, rd, HISTORY) {
   const byPsn = {};
   Object.entries(ctx.snaps).forEach(([uid, p]) => { if (p && p.psn) byPsn[normName(p.psn)] = uid; });
   const out = { A: [], B: [], C: [] };
-  HISTORY.filter((r) => r[0] === ctx.season.no && r[1] === rd.n).forEach((r) => { const uid = byPsn[normName(r[3])]; if (uid && out[r[2]] && !out[r[2]].includes(uid)) out[r[2]].push(uid); });
+  HISTORY.filter((r) => r[0] === ctx.season.no && r[1] === rd.n).forEach((r) => { const uid = byPsn[normName(r[3])] || (r[8] ? byPsn[normName(r[8])] : null); if (uid && out[r[2]] && !out[r[2]].includes(uid)) out[r[2]].push(uid); });
   return out;
 }
 

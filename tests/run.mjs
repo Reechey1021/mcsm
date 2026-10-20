@@ -553,102 +553,12 @@ await test('times typed as digits; lobby sizes per lobby', async () => {
   eq(SM.lobbySizes({ lobbySize: 16, lobbies: { A: { size: 15 } } }), { A: 15, B: 16, C: 16 });
 });
 
-// ---------- MCSM Rating v3.2 ----------
+// ---------- MCSM Rating V2.0 ----------
 const RT = await import('../js/engine/rating.js');
 const ids16 = Array.from({ length: 16 }, (_, i) => 'd' + String(i + 1).padStart(2, '0'));
 const rowsOf = (ids, extra = () => ({})) => ids.map((id, i) => ({ id, pos: i + 1, status: 'OK', ...extra(id, i) }));
 const est = (ids, x = 100) => Object.fromEntries(ids.map((u) => [u, { q: x, s: x, g: x, n: 9, established: true }]));
 const round = (key, ids, extra = {}) => ({ key, label: key, results: { A: { Q: rowsOf(ids), S: rowsOf(ids), GP: rowsOf(ids), ...extra } }, grids: { A: { S: ids, GP: ids } } });
-await test('rating v3.2: public scale and overall formula', async () => {
-  ok(Math.abs(RT.publicOf(100) - 100) < 1e-9, 'd(100) = 100');
-  ok(RT.publicOf(-400) > 50 && RT.publicOf(-400) < 50.01, 'never below 50');
-  ok(RT.publicOf(400) > 200, 'no upper cap');
-  const fs = await import('fs');
-  const J = JSON.parse(fs.readFileSync('/mnt/user-data/uploads/MCSM_Rating_V3_2_Latent_Import.json', 'utf8'));
-  const bad = J.entries.filter((e) => Math.abs(Math.round(RT.overallOf({ q: e.latent_q, s: e.latent_sprint, g: e.latent_gp }) * 10) / 10 - e.public_overall) > 0.05);
-  eq(bad.map((e) => e.psn_id), [], 'every imported overall reproduced from latents (e.g. Saby 171.9)');
-  ok(J.entries.every((e) => Math.abs(RT.publicOf(e.latent_q) - e.public_q) < 1e-6), 'public Q matches');
-});
-await test('rating v3.2: established Elo is zero-sum per component, no forced mean', () => {
-  const r = RT.computeRatings([round('a', ids16), round('b', ids16.slice().reverse())], est(ids16));
-  ok(r.audit.every((a) => a.zeroSum.every((v) => Math.abs(v) < 1e-9)), 'each component sums to zero among established drivers');
-  const one = RT.computeRatings([round('a', ids16)], est(ids16));
-  ok(one.drivers.d01.lat.q > 100 && one.drivers.d16.lat.q < 100, 'qualifying moves with qualifying results');
-});
-await test('rating v3.3: a newcomer affects established drivers from their first round, at that round\'s performance', () => {
-  const vets = ids16.slice(0, 15);
-  const withNew = RT.computeRatings([round('r0', ['new', ...vets])], est(vets));
-  const without = RT.computeRatings([round('r0', vets)], est(vets));
-  ok(vets.some((u) => Math.abs(withNew.drivers[u].lat.q - without.drivers[u].lat.q) > 1e-6), 'established ratings move when a newcomer races');
-  const a = withNew.audit[0];
-  ok(a.perf.new && a.perf.new.q > 120 && !withNew.drivers.new.established, `the round winner gets a strong round performance (${a.perf.new.q.toFixed(1)})`);
-  // every established delta equals the Elo formula over the full field (N-1), the newcomer at their round performance
-  const N = 16, K = RT.RATING_CFG.K, field = ['new', ...vets];
-  const rating = (u) => (u === 'new' ? a.perf.new.q : a.pre[u].lat.q);
-  const expectD = (u) => field.filter((v) => v !== u).reduce((acc, v) => { const y = field.indexOf(u) < field.indexOf(v) ? 1 : 0; return acc + (K / (N - 1)) * (y - RT.expected(RT.RATING_CFG.eloScale * (rating(u) - rating(v)))); }, 0);
-  ok(vets.every((u) => Math.abs(a.delta[u].q - expectD(u)) < 1e-9), 'established deltas use the round performance and N-1');
-});
-await test('rating v3.3: round two is judged against round two\'s performance, not the running average', () => {
-  const vets = ids16.slice(0, 15);
-  const r1 = round('r1', ['bob', ...vets]);                       // Bob wins
-  const r2 = round('r2', [...vets.slice(0, 7), 'bob', ...vets.slice(7)]);   // Bob 8th
-  const res = RT.computeRatings([r1, r2], est(vets));
-  const a2 = res.audit[1];
-  const runningLat = RT.latentOf((RT.publicOf(res.audit[0].perf.bob.q) + RT.publicOf(a2.perf.bob.q)) / 2);
-  ok(Math.abs(a2.perf.bob.q - runningLat) > 1, 'the two values differ, so the check means something');
-  const field = r2.results.A.Q.map((r) => r.id), N = field.length, K = RT.RATING_CFG.K;
-  const rating = (u) => (u === 'bob' ? a2.perf.bob.q : a2.pre[u].lat.q);
-  const d = (u) => field.filter((v) => v !== u).reduce((acc, v) => acc + (K / (N - 1)) * ((field.indexOf(u) < field.indexOf(v) ? 1 : 0) - RT.expected(RT.RATING_CFG.eloScale * (rating(u) - rating(v)))), 0);
-  ok(vets.every((u) => Math.abs(a2.delta[u].q - d(u)) < 1e-9), 'opponents measured against Bob\'s round-2 performance');
-});
-await test('rating v3.3: Bob 140 / 120 / 100 starts at exactly 120; ranked after round 3, normal Elo from round 4', () => {
-  // the averaging itself: public component performances averaged, converted back with latentOf
-  ok([50.5, 77, 100, 140, 188.3].every((y) => Math.abs(RT.publicOf(RT.latentOf(y)) - y) < 1e-9), 'latentOf inverts publicOf');
-  const mean = (140 + 120 + 100) / 3;
-  ok(Math.abs(RT.overallOf({ q: RT.latentOf(mean), s: RT.latentOf(mean), g: RT.latentOf(mean) }) - 120) < 1e-9, 'average 120 in public units, not a latent approximation');
-  // through the engine: the first official rating is the mean of the three recorded round performances
-  const vets = ids16.slice(0, 15);
-  const rounds = [round('r0', ['bob', ...vets]), round('r1', [...vets.slice(0, 5), 'bob', ...vets.slice(5)]), round('r2', [...vets.slice(0, 10), 'bob', ...vets.slice(10)]), round('r3', vets.concat(['bob']))];
-  const res = RT.computeRatings(rounds.slice(0, 3), est(vets));
-  const b = res.drivers.bob;
-  const avg = (c) => b.perfs.reduce((a, x) => a + x[c], 0) / b.perfs.length;
-  eq([b.n, b.established, b.graduatedAt, b.perfs.length], [3, true, 'r2', 3], 'established after the third completed round');
-  ok(Math.abs(RT.overallOf(b.lat) - (0.2 * avg('q') + 0.4 * avg('s') + 0.4 * avg('g'))) < 1e-9, 'starting rating = arithmetic mean of the three rounds');
-  const gradEntry = b.history[2];
-  eq([gradEntry.graduation, gradEntry.delta], [true, null], 'no change on the graduation round');
-  const pub = RT.publicEntry(b);
-  eq([pub.e, pub.dl, pub.h.length], [1, null, 1], 'first published rating: no delta, one baseline point');
-  ok(!('perfs' in pub) && Math.abs(pub.h[0].r - RT.overallOf(b.lat)) < 1e-3, 'no hidden calibration values published');
-  const res4 = RT.computeRatings(rounds, est(vets));
-  ok(res4.audit[3].pre.bob.est && Math.abs(res4.audit[3].delta.bob.q) > 0, 'round 4: normal Elo for Bob');
-  ok(res4.audit[3].zeroSum.every((v) => Math.abs(v) < 1e-9), 'all established again: zero-sum as before');
-  const p4 = RT.publicEntry(res4.drivers.bob);
-  ok(p4.dl != null && p4.h.length === 2, 'from round 4 the change shows again');
-  eq(RT.publicEntry({ established: false, n: 2, perfs: [{ q: 130 }], history: [] }), { e: 0, n: 2 }, 'provisional: round count only');
-});
-await test('rating v3.3: imported history: 3+ rounds established from the start, 1-2 rounds weighted into the mean', () => {
-  const vets = ids16.slice(0, 15);
-  const imp = { ...est(vets), three: { q: 130, s: 130, g: 130, n: 3, established: false }, two: { q: 125, s: 125, g: 125, n: 2, established: false } };
-  const res = RT.computeRatings([round('r0', ['two', ...vets])], imp);
-  eq([res.drivers.three.established, res.drivers.three.lat.q], [true, 130], 'three imported rounds: established, imported value unchanged');
-  const t = res.drivers.two;
-  eq([t.n, t.established], [3, true], 'two imported + one live = ranked');
-  const live = t.perfs[0];
-  const m = (c) => (RT.publicOf(125) * 2 + live[c]) / 3;
-  ok(Math.abs(RT.overallOf(t.lat) - (0.2 * m('q') + 0.4 * m('s') + 0.4 * m('g'))) < 1e-9, 'imported aggregate counts as two rounds of the mean');
-  const again = RT.computeRatings([round('r0', ['two', ...vets])], imp);
-  eq(JSON.stringify(again.drivers), JSON.stringify(res.drivers), 'deterministic, nothing stacks on a re-run');
-});
-await test('rating v3.3: imported driver keeps their estimate; DNS is not an observation; deterministic', () => {
-  const start = { ...est(ids16.slice(0, 15)), p: { q: 140, s: 130, g: 135, n: 3, established: false } };
-  const field = [...ids16.slice(0, 15)];
-  const r = RT.computeRatings([round('x', field)], start);
-  eq([r.drivers.p.lat.q, r.drivers.p.n, r.drivers.p.established], [140, 3, true], 'did not race: unchanged; 3 imported rounds = established (3-round rule)');
-  const r2 = RT.computeRatings([round('y', ['p', ...field], { S: rowsOf(['p', ...field], (id) => (id === 'p' ? { status: 'DNS' } : {})), GP: rowsOf(['p', ...field], (id) => (id === 'p' ? { status: 'DNS' } : {})) })], start);
-  eq(r2.drivers.p.n, 3, 'qualifying only (both races DNS) does not count as a round');
-  const a = JSON.stringify(RT.computeRatings([round('z', ids16)], est(ids16)).drivers), b = JSON.stringify(RT.computeRatings([round('z', ids16)], est(ids16)).drivers);
-  eq(a === b, true);
-});
 await test('screenshot import: names as GT7 shows them match the lobby', async () => {
   const NM = await import('../js/model/name-match.js');
   const people = [
@@ -716,27 +626,6 @@ await test('round recap: rated (up/down, new high), ranked, calibrating, champio
   eq([c1.mode, c1.done, c2.done, c2.cards.g.st, 'after' in c2], ['calib', 1, 2, 'DNF', false], 'calibrating: 1/3 then 2/3, no rating exposed');
   eq(buildRecap(ctx, 2, 'nobody', P), null, 'did not race: no recap');
 });
-await test('rating: DNFs share their lobby\'s last place (16th): draw with each other and with the next lobby\'s winner', async () => {
-  const RT3 = await import('../js/engine/rating.js');
-  const ids = Array.from({ length: 16 }, (_, i) => 'x' + String(i + 1).padStart(2, '0'));
-  const start = Object.fromEntries(ids.map((u) => [u, { q: 100, s: 100, g: 100, n: 9, established: true }]));
-  // 13 finishers, then three DNFs entered in some order (P14, P15, P16)
-  const rows = ids.map((id, i) => ({ id, pos: i + 1, status: i < 13 ? 'OK' : 'DNF' }));
-  const rd = { key: 'r', label: 'r', results: { A: { Q: ids.map((id, i) => ({ id, pos: i + 1, status: 'OK' })), S: rows, GP: rows } } };
-  const res = RT3.computeRatings([rd], start);
-  const g = ['x14', 'x15', 'x16'].map((u) => res.drivers[u].lat.g);
-  ok(Math.abs(g[0] - g[1]) < 1e-9 && Math.abs(g[1] - g[2]) < 1e-9, `the three DNFs change identically (${g.map((v) => v.toFixed(3)).join(', ')})`);
-  ok(res.drivers.x13.lat.g > g[0], 'the last finisher still does better than any DNF');
-  ok(res.audit[0].zeroSum.every((v) => Math.abs(v) < 1e-9), 'still zero-sum among established drivers');
-  const q = ['x14', 'x15', 'x16'].map((u) => res.drivers[u].lat.q);
-  ok(q[0] > q[1] && q[1] > q[2], 'qualifying unchanged: positions still count there');
-  // two lobbies: an A-lobby DNF against B's winner is a draw (A16 = B1), so equal ratings stay equal
-  const two = { key: 't', label: 't', results: { A: { GP: [{ id: 'a1', pos: 1, status: 'OK' }, { id: 'adnf', pos: 2, status: 'DNF' }] }, B: { GP: [{ id: 'b1', pos: 1, status: 'OK' }] } } };
-  const r2 = RT3.computeRatings([two], { a1: { q: 100, s: 100, g: 100, n: 9, established: true }, adnf: { q: 100, s: 100, g: 100, n: 9, established: true }, b1: { q: 100, s: 100, g: 100, n: 9, established: true } });
-  // v3.4: the A-lobby DNF draws with B's winner (equal ratings: no change for b1) and loses to a1 inside A
-  ok(Math.abs(r2.drivers.b1.lat.g - 100) < 1e-9, `the bridge draw leaves equal ratings level (b1 ${r2.drivers.b1.lat.g.toFixed(3)})`);
-  ok(r2.drivers.adnf.lat.g < 100 && Math.abs(r2.drivers.a1.lat.g + r2.drivers.adnf.lat.g - 200) < 1e-9, 'inside A: a1 gains exactly what the DNF loses');
-});
 await test('season finale: only on the last round; place, points, wins/podiums, season rating change, team', async () => {
   const { buildRecap } = await import('../js/model/recap.js');
   const row = (id, pos) => ({ id, pos, status: 'OK' });
@@ -753,43 +642,51 @@ await test('season finale: only on the last round; place, points, wins/podiums, 
   eq(buildRecap(ctx, 2, 'b', P).finale.calib, { done: 2, total: 3 }, 'calibrating driver: progress instead of a rating');
   eq(buildRecap(ctx, 2, 'c', P).finale.rating.change, null, 'first rated this season: no change shown');
 });
-await test('rating v3.4: lobbies are their own races, linked by one draw; no lobby rises or sinks as a group', async () => {
-  const RT4 = await import('../js/engine/rating.js');
-  eq(RT4.RATING_CFG.K, 5, 'K = 5');
-  const mk = (pre, n) => Array.from({ length: n }, (_, i) => pre + String(i + 1).padStart(2, '0'));
-  const A = mk('a', 16), B = mk('b', 16), C = mk('c', 16);
-  const start = {};
-  A.forEach((u, i) => { start[u] = { q: 130 - i, s: 130 - i, g: 130 - i, n: 9, established: true }; });
-  B.forEach((u, i) => { start[u] = { q: 105 - i, s: 105 - i, g: 105 - i, n: 9, established: true }; });
-  C.forEach((u, i) => { start[u] = { q: 80 - i, s: 80 - i, g: 80 - i, n: 9, established: true }; });
-  // everyone finishes in rating order except: C's lowest-rated driver wins C, A's top driver finishes last in A
-  const ord = (ids) => ids.map((id, i) => ({ id, pos: i + 1, status: 'OK' }));
-  const Cord = [C[15], ...C.slice(0, 15)], Aord = [...A.slice(1), A[0]];
-  const rd = { key: 'r', label: 'r', results: { A: { Q: ord(Aord), S: ord(Aord), GP: ord(Aord) }, B: { Q: ord(B), S: ord(B), GP: ord(B) }, C: { Q: ord(Cord), S: ord(Cord), GP: ord(Cord) } } };
-  const res = RT4.computeRatings([rd], start);
-  const g = (u) => res.drivers[u].lat.g - start[u].g;
-  ok(g(C[15]) > 1, `the C winner (lowest-rated in C) gains (${g(C[15]).toFixed(2)})`);
-  ok(g(A[0]) < -1, `A's top driver finishing last in A loses (${g(A[0]).toFixed(2)})`);
-  // lobby totals: only the two bridge draws move anything between lobbies
-  const sum = (ids) => ids.reduce((x, u) => x + g(u), 0);
-  const bridgeAB = 5 / 15 * (0.5 - RT4.expected(6 * (start[A[0]].g - start[B[0]].g)));
-  ok(Math.abs(sum(A) - bridgeAB) < 1e-9, `lobby A as a group moves only by the A–B bridge draw (${sum(A).toFixed(3)})`);
-  ok(Math.abs(sum(A) + sum(B) + sum(C)) < 1e-9, 'zero-sum overall');
-  // a short lobby: A had only 14 drivers -> its 14th draws with B's winner
-  const A14 = A.slice(0, 14), r14 = { key: 's', label: 's', results: { A: { GP: ord(A14) }, B: { GP: ord(B) } } };
-  const res14 = RT4.computeRatings([r14], start);
-  const exp14 = 5 / 15 * (0.5 - RT4.expected(6 * (start[A[13]].g - start[B[0]].g)));
-  const bOnly = RT4.computeRatings([{ key: 's', label: 's', results: { B: { GP: ord(B) } } }], start);
-  const bridgePart = res14.drivers[B[0]].lat.g - bOnly.drivers[B[0]].lat.g;   // B1's change from the bridge alone
-  ok(Math.abs(bridgePart + exp14) < 1e-9, `B1 draws with A14 when A had 14 drivers (${bridgePart.toFixed(4)})`);
-  // any number of lobbies: A+B only, and A–D
-  const D = mk('d', 16); D.forEach((u, i) => { start[u] = { q: 60 - i, s: 60 - i, g: 60 - i, n: 9, established: true }; });
-  const r4 = { key: 't', label: 't', results: { A: { GP: ord(A) }, B: { GP: ord(B) }, C: { GP: ord(C) }, D: { GP: ord(D) } } };
-  const res4 = RT4.computeRatings([r4], start);
-  const sum4 = [A, B, C, D].map((ids) => ids.reduce((x, u) => x + (res4.drivers[u].lat.g - start[u].g), 0));
-  ok(Math.abs(sum4.reduce((x, y) => x + y, 0)) < 1e-9 && Math.abs(res4.drivers[D[0]].lat.g - start[D[0]].g) > 0, 'four lobbies: zero-sum, D linked to C by its bridge');
-  const r2l = { key: 'u', label: 'u', results: { A: { GP: ord(A) }, B: { GP: ord(B) } } };
-  ok(RT4.computeRatings([r2l], start).audit[0].zeroSum.every((v) => Math.abs(v) < 1e-9), 'two lobbies only: fine');
+await test('rating V2.0: position values, DNF = P16, 20/40/40', async () => {
+  eq([RT.positionValue('A', 1), RT.positionValue('A', 2), RT.positionValue('A', 16), RT.positionValue('B', 1), RT.positionValue('B', 16), RT.positionValue('C', 1), RT.positionValue('C', 16)], [150, 148, 120, 120, 90, 90, 60], 'the points table');
+  const rd = { key: 'r1', label: 'MCSM31 / 1', results: { B: {
+    Q: [{ id: 'x', pos: 3, status: 'OK' }], S: [{ id: 'x', pos: 0, status: 'DNF' }], GP: [{ id: 'x', pos: 1, status: 'OK' }] } } };
+  eq(RT.roundEntry(rd, 'x'), { key: 'r1', label: 'MCSM31 / 1', lobby: 'B', q: 116, s: 90, g: 120 }, 'Q P3 116, Sprint DNF = B16 = 90, GP P1 120');
+  eq(Math.round(RT.overallOf({ q: 116, s: 90, g: 120 }) * 100) / 100, 107.2, '0.2*116 + 0.4*90 + 0.4*120');
+});
+await test('rating V2.0: fixed values whatever the number of starters; DNS / DSQ / no time', async () => {
+  // C lobby with only 12 starters: the 12th gets C12 (68)
+  const C12 = Array.from({ length: 12 }, (_, i) => ({ id: 'c' + i, pos: i + 1, status: 'OK' }));
+  eq(RT.roundEntry({ key: 'k', label: 'l', results: { C: { GP: C12 } } }, 'c11').g, 68, 'C 12th of 12 = 68');
+  // DSQ and no qualifying time: a race night that adds nothing to those averages; DNS everywhere: not a night
+  const e1 = RT.roundEntry({ key: 'k', label: 'l', results: { A: { Q: [{ id: 'y', pos: 0, status: 'NT' }], S: [{ id: 'y', pos: 2, status: 'OK' }], GP: [{ id: 'y', pos: 0, status: 'DSQ' }] } } }, 'y');
+  eq([e1.q, e1.s, e1.g], [null, 148, null], 'no time and DSQ add nothing; the Sprint counts');
+  eq(RT.roundEntry({ key: 'k', label: 'l', results: { A: { S: [{ id: 'z', pos: 0, status: 'DNS' }], GP: [{ id: 'z', pos: 0, status: 'DNS' }] } } }, 'z'), null, 'did not start: no race night');
+  const e2 = RT.roundEntry({ key: 'k', label: 'l', results: { A: { GP: [{ id: 'w', pos: 0, status: 'DSQ' }] } } }, 'w');
+  ok(e2 && e2.g === null, 'a DSQ-only night still counts as a race night (it takes a slot in the 10)');
+});
+await test('rating V2.0: rolling 10 race nights, separate averages, history included', async () => {
+  const hist = Array.from({ length: 10 }, (_, i) => [25 + Math.floor(i / 3), (i % 3) + 1, 'A', 'p', 1, 1, 1]);   // 10 nights, all wins in A
+  const start = { u: { hist: RT.historyEntries(hist) } };
+  const r = (n, pos) => ({ key: 'r' + n, label: 'MCSM31 / ' + n, results: { A: { Q: [{ id: 'u', pos, status: 'OK' }], S: [{ id: 'u', pos, status: 'OK' }], GP: [{ id: 'u', pos, status: 'OK' }] } } });
+  const res1 = RT.computeRatings([r(1, 16)], start);
+  eq(Math.round(res1.drivers.u.cur.r * 100) / 100, 147, '11th night (A16 = 120) pushes out the oldest win: (9*150 + 120) / 10 = 147');
+  eq(res1.drivers.u.entries.length, 11, 'all nights kept, only the last 10 counted');
+  const pub = RT.publicEntry(res1.drivers.u, { baseline: { l: 'MCSM25–30', r: 150 } });
+  eq([pub.e, Math.round(pub.dl * 100) / 100, pub.h.length], [1, -3, 2], 'published: ranked, change -3, history from the MCSM25–30 baseline');
+  // a skipped round (DNS) changes nothing
+  const res2 = RT.computeRatings([r(1, 16), { key: 'r2', label: 'MCSM31 / 2', results: { A: { GP: [{ id: 'u', pos: 0, status: 'DNS' }] } } }], start);
+  eq([res2.drivers.u.entries.length, Math.round(res2.drivers.u.cur.r * 100) / 100], [11, 147], 'DNS: no new night, same rating');
+});
+await test('rating V2.0: calibration: shown from the 3rd race night, no change on the first rating', async () => {
+  const r = (n, pos) => ({ key: 'r' + n, label: 'MCSM31 / ' + n, results: { B: { Q: [{ id: 'n', pos, status: 'OK' }], S: [{ id: 'n', pos, status: 'OK' }], GP: [{ id: 'n', pos, status: 'OK' }] } } });
+  const two = RT.computeRatings([r(1, 1), r(2, 3)], {});
+  eq(RT.publicEntry(two.drivers.n), { e: 0, n: 2 }, 'after 2 nights: unranked, round count only');
+  const three = RT.computeRatings([r(1, 1), r(2, 3), r(3, 5)], {});
+  const st = three.drivers.n, pub = RT.publicEntry(st);
+  eq([pub.e, Math.round(pub.r * 100) / 100, pub.dl, pub.h.length, st.graduatedAt], [1, 116, null, 1, 'r3'], 'after 3: ranked at (120 + 116 + 112) / 3 = 116, no change shown, one history point');
+  // history: 1 or 2 MCSM25–30 nights + live nights count together
+  const hist = RT.historyEntries([[30, 2, 'C', 'p', 1, 1, 1], [30, 3, 'C', 'p', 2, 2, 2]]);
+  const mix = RT.computeRatings([r(1, 16)], { n: { hist } });
+  eq([mix.drivers.n.established, Math.round(mix.drivers.n.cur.r * 100) / 100], [true, Math.round(((90 + 88 + 90) / 3) * 100) / 100], '2 history nights + 1 live = ranked');
+  const prev = { n: { e: 0, n: 2 } };
+  eq(RT.newlyRanked(prev, { n: RT.publicEntry(three.drivers.n) }, three.drivers).map((x) => [x.uid, x.label]), [['n', 'MCSM31 / 3']], 'the "Besorolva!" reveal: newly ranked through live rounds');
+  eq(RT.newlyRanked(null, { n: RT.publicEntry(three.drivers.n) }, three.drivers), [], 'never on the first publish');
 });
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);

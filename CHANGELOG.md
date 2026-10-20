@@ -1,3 +1,20 @@
+## v1.4.0 — MCSM Rating V2.0 (position-based)
+
+- The Elo rating is replaced. Every finishing position has a fixed value by lobby (A 150→120, B 120→90,
+  C 90→60, −2 per place), whatever the number of starters; a DNF counts as the lobby's 16th place.
+- A driver's last 10 race nights count (a race night = any round with a result in it, also DSQ or no
+  qualifying time; a round not started doesn't count). Qualifying, Sprint and Gran'Prix are averaged
+  separately, then combined 20% / 40% / 40%. An 11th night pushes the oldest out.
+- Calibration: the rating shows from the 3rd race night (MCSM25–30 history counts). The "Besorolva!" reveal,
+  round recaps, season card, driver of the round, lobby averages, Compare chart and stars work as before.
+- MCSM25–30 come from the V2.0 calibration ("Historical Results" sheet): data/history-s25-30.js rebuilt from
+  it (canonical PSN, plus the PSN as recorded then). Blank results there are no result. The app reproduces the
+  V2.0 import file's starting ratings exactly for all 85 drivers (szilcsiboy excluded, as in the file).
+- Admin → MCSM Rating: imports the V2.0 file and shows a check that the app's history gives the same starting
+  ratings; PSN matching as before.
+- "?" explanation rewritten; new "Pontrendszer" table above the stars.
+- Recalculate once after deploying (import the V2.0 file first).
+
 ## v1.3.0 — MCSM Rating V3.4
 
 - Each lobby is its own race: drivers are compared only with the drivers they actually raced (their own

@@ -6,7 +6,7 @@ import { persisted } from '../core/persist.js';
 import { backend } from './backend.js';
 import { seasons as loadSeasons, users as loadUsers, cached, invalidate } from '../core/data.js';
 import { loadRace } from '../core/race-data.js';
-import { computeRatings, overallOf, publicOf, publicEntry, newlyRanked, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
+import { computeRatings, publicEntry, newlyRanked, historyEntries, summarize, RATING_CFG, RATING_VERSION } from '../engine/rating.js';
 import { normName } from '../model/name-match.js';
 import { buildRecap } from '../model/recap.js';
 export const LIVE_FROM_SEASON = 31;
@@ -38,28 +38,46 @@ export function matchBootstrap(entries, users, map = {}) {
     return { ...e, key: k, uid };
   });
 }
-export function startFrom(boot, users) {
+// V2.0: each matched driver's MCSM25–30 race nights from the calibration history (data/history-s25-30.js).
+// The imported file decides who is included (and who is matched to which account).
+export async function startFrom(boot, users) {
   const start = {};
   if (!boot || !boot.entries) return start;
+  const { HISTORY } = await import('../data/history-s25-30.js');
+  const rowsOf = {};
+  HISTORY.forEach((r) => { const k = normName(r[3]); (rowsOf[k] = rowsOf[k] || []).push(r); });
   matchBootstrap(boot.entries, users, boot.map || {}).forEach((e) => {
     if (!e.uid || start[e.uid]) return;
-    start[e.uid] = { q: e.q, s: e.s, g: e.g, n: e.rounds || 0, established: e.status === 'established' || (e.rounds || 0) >= RATING_CFG.provisionalRounds };
+    start[e.uid] = { hist: historyEntries(rowsOf[e.key] || rowsOf[ALIASES[e.key]] || []) };
   });
   return start;
+}
+// Admin check: the starting rating the app works out for each imported driver vs the file's value.
+export async function checkBootstrap(boot) {
+  if (!boot || !boot.entries) return { total: 0, same: 0, diff: [] };
+  const { HISTORY } = await import('../data/history-s25-30.js');
+  const rowsOf = {};
+  HISTORY.forEach((r) => { const k = normName(r[3]); (rowsOf[k] = rowsOf[k] || []).push(r); });
+  const diff = [];
+  boot.entries.forEach((e) => {
+    const k = normName(e.psn);
+    const sm = summarize(historyEntries(rowsOf[k] || rowsOf[ALIASES[k]] || []));
+    if (e.overall == null || sm.r == null || Math.abs(sm.r - e.overall) > 0.051) diff.push({ psn: e.psn, file: e.overall, app: sm.r });
+  });
+  return { total: boot.entries.length, same: boot.entries.length - diff.length, diff };
 }
 // opts.recap = { sid, n }: the round whose results were just made final; its drivers get a round recap.
 export async function computeAndPublish(opts = {}) {
   invalidate('users'); invalidate();
   const [boot, users, rounds, prevDoc] = await Promise.all([loadBootstrap(), loadUsers(), collectRounds(), backend.content.get('ratings').catch(() => null)]);
-  const start = startFrom(boot, users);
+  const start = await startFrom(boot, users);
   const res = computeRatings(rounds, start);
   const drivers = {};
   let established = 0;
   const f3 = (v) => +v.toFixed(3);
   for (const [uid, st] of Object.entries(res.drivers)) {
-    // drivers established from the historical import start their history at MCSM25–30
-    const baseline = start[uid] && (start[uid].established || (start[uid].n || 0) >= RATING_CFG.provisionalRounds)
-      ? { l: 'MCSM25–30', r: f3(overallOf(st.prior)), q: f3(publicOf(st.prior.q)), s: f3(publicOf(st.prior.s)), g: f3(publicOf(st.prior.g)) } : null;
+    // drivers already ranked from MCSM25–30 start their history with that rating
+    const baseline = st.prior ? { l: 'MCSM25–30', r: f3(st.prior.r), q: f3(st.prior.q), s: f3(st.prior.s), g: f3(st.prior.g) } : null;
     drivers[uid] = publicEntry(st, { baseline });
     if (drivers[uid].e) established++;
   }

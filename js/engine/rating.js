@@ -1,96 +1,79 @@
 // engine/rating.js
-// MCSM Rating v3.4: result-only Elo, each lobby compared within itself, neighbouring lobbies linked.
-//   Overall = 0.20 x Quali + 0.40 x Sprint + 0.40 x Grand Prix (public values).
-// Each component is a latent skill x; the public value is d(x) = 50 + 12*softplus(0.8/12*(x-100) + b),
-// so d(100) = 100, it never goes below 50 and has no upper cap. No forced mean or other bonuses.
-//   - Starting point: the imported MCSM25-30 historical bootstrap, never re-fitted.
-//   - Established drivers: chronological Elo per session, K = 5, against the drivers they actually raced
-//     (their own lobby; K / (lobby size - 1) per opponent). Zero-sum within each lobby, so no lobby rises or
-//     sinks as a group. Any number of lobbies (A, B, C, D, ...).
-//   - Lobby links: the upper lobby's lowest-placed driver(s) (last finisher, or its DNFs) draw with the next
-//     lobby's winner(s) (A last = B1, B last = C1, ...). Promotion/relegation carries ratings between lobbies.
-//   - Provisional drivers (fewer than 3 completed rounds): per-round performance estimates, used as
-//     opponents in that round; their starting rating is the mean of their 3 calibration rounds.
-// Pure, deterministic: the same import and the same results always give the same ratings.
-export const RATING_VERSION = '3.4';
-export const RATING_CFG = {
-  K: 5, eloScale: 6,
-  priorMean: 100, priorSd: 55, provisionalRounds: 3,
-  wQ: 0.2, wS: 0.4, wG: 0.4, floor: 50, t: 12, slope: 0.8,
-};
+// MCSM Rating V2.0: position-based, rolling 10 race nights. Pure and deterministic (no Firebase).
+//
+//   - Every finishing position has a fixed value by lobby: A 150..120, B 120..90, C 90..60 (−2 per place),
+//     whatever the number of starters. A DNF counts as the lobby's 16th place.
+//   - A driver's last 10 race nights count. A race night is any round with a result in it (also DSQ or
+//     no qualifying time); a round they didn't start (DNS) doesn't count and changes nothing.
+//   - Qualifying, Sprint and Gran'Prix are averaged separately over those nights (DNS, DSQ and no time
+//     add nothing to the average), then combined: 20% Q + 40% Sprint + 40% GP.
+//   - Calibration: the rating is shown from the 3rd race night (MCSM25–30 history included).
+//   - MCSM25–30 come from the V2.0 calibration history (blank = no result); live from MCSM31.
+export const RATING_VERSION = '2.0';
+export const RATING_CFG = { window: 10, provisionalRounds: 3, wQ: 0.2, wS: 0.4, wG: 0.4, lobbySize: 16, top: 150, lobbyStep: 30, placeStep: 2, floor: 50 };
 const C = RATING_CFG;
 export const COMPONENTS = ['q', 's', 'g'];
-const SESSION_OF = { Q: 'q', S: 's', GP: 'g' };
-const B = Math.log(Math.expm1(C.floor / C.t));
-const softplus = (z) => (z > 0 ? z + Math.log1p(Math.exp(-z)) : Math.log1p(Math.exp(z)));
-export const publicOf = (x) => C.floor + C.t * softplus((C.slope / C.t) * (x - C.priorMean) + B);
-export const overallOf = (lat) => C.wQ * publicOf(lat.q) + C.wS * publicOf(lat.s) + C.wG * publicOf(lat.g);
-export const expected = (eloDiff) => 1 / (1 + Math.pow(10, -eloDiff / 400));
-const A = Math.LN10 / 400;
+const SESSIONS = [['Q', 'q'], ['S', 's'], ['GP', 'g']];
 const byKey = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-const started = (st) => st === 'OK' || st === 'DNF' || st === 'DSQ';
 
-const LOBBY_SIZE = 16;
-
-// Official ranked positions only. No qualifying gaps, grid, overtaking or discipline modifiers.
-// DNFs in a race all share their lobby's last place (16th, or behind the last finisher in a bigger
-// lobby): they lose to every finisher, draw with each other (they all get the same DNF points) and tie
-// with the next lobby's winner (A16 = B1). Entry order doesn't matter. Unranked qualifying attempts,
-// DNS and DSQ do not provide a comparable finishing position.
-function sessionField(rows, session) {
-  const ranked = (r) => session === 'Q' ? r.status === 'OK' : r.status === 'OK' || r.status === 'DNF';
-  const field = (rows || []).filter((r) => ranked(r) && r.pos > 0);
-  const lastFinisher = Math.max(0, ...field.filter((r) => r.status === 'OK').map((r) => r.pos));
-  return field.map((r) => ({ id: r.id, pos: r.status === 'DNF' && session !== 'Q' ? lastFinisher + 1 : r.pos }));
+// The value of a finishing position: A1 150, A16 120, B1 120, B16 90, C1 90, C16 60.
+export function positionValue(lobby, pos) {
+  const li = Math.max(0, String(lobby || 'A').toUpperCase().charCodeAt(0) - 65);
+  const p = Math.min(Math.max(1, Number(pos) || C.lobbySize), C.lobbySize);
+  return Math.max(C.floor, C.top - li * C.lobbyStep - (p - 1) * C.placeStep);
 }
-// The ladder's links between neighbouring lobbies (A–B, B–C, C–D, … among those that raced): the lowest-
-// placed driver(s) of the upper lobby (its last finisher, or its DNFs) draw with the next lobby's winner(s).
-function bridgePairs(byLobby) {
-  const out = [];
-  for (let i = 0; i + 1 < byLobby.length; i++) {
-    const up = byLobby[i].field, dn = byLobby[i + 1].field;
-    if (!up.length || !dn.length) continue;
-    const last = Math.max(...up.map((r) => r.pos)), first = Math.min(...dn.map((r) => r.pos));
-    up.filter((r) => r.pos === last).forEach((a) => dn.filter((r) => r.pos === first).forEach((b) => out.push([a, b])));
+export const overallOf = (v) => C.wQ * v.q + C.wS * v.s + C.wG * v.g;
+// V2.0 values are already the displayed values (kept for older callers).
+export const publicOf = (x) => x;
+
+// One session row -> its value, or null if it adds nothing to the average.
+function sessionValue(lobby, sess, row) {
+  if (!row) return null;
+  if (row.status === 'OK' && row.pos > 0) return positionValue(lobby, row.pos);
+  if (row.status === 'DNF' && sess !== 'Q') return positionValue(lobby, C.lobbySize);
+  return null;                                   // DNS, DSQ, no time
+}
+// A live round for one driver -> a race-night entry, or null if they didn't start anything.
+export function roundEntry(rd, uid) {
+  for (const L of Object.keys(rd.results || {}).sort(byKey)) {
+    const res = rd.results[L] || {};
+    const rows = Object.fromEntries(SESSIONS.map(([S]) => [S, (res[S] || []).find((r) => r.id === uid) || null]));
+    if (!Object.values(rows).some(Boolean)) continue;
+    if (!Object.values(rows).some((r) => r && r.status !== 'DNS')) return null;
+    const e = { key: rd.key, label: rd.label, lobby: L };
+    SESSIONS.forEach(([S, c]) => { e[c] = sessionValue(L, S, rows[S]); });
+    return e;
   }
-  return out;
+  return null;
 }
-
-// Inverse of publicOf (public value -> latent). Values at or below the floor map to the floor's limit.
-export const latentOf = (y) => {
-  const v = Math.max(C.floor + 1e-9, y);
-  const z = Math.log(Math.expm1((v - C.floor) / C.t));
-  return C.priorMean + ((z - B) * C.t) / C.slope;
-};
+// MCSM25–30 rows ([season, round, lobby, psn, q, s, gp, ...], positions or null) -> race-night entries.
+export function historyEntries(rows) {
+  return rows.filter((r) => [r[4], r[5], r[6]].some((p) => Number.isInteger(p)))
+    .slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    .map((r) => ({ key: `h${r[0]}-${r[1]}`, label: `MCSM${r[0]} / ${r[1]}`, lobby: r[2],
+      q: Number.isInteger(r[4]) ? positionValue(r[2], r[4]) : null, s: Number.isInteger(r[5]) ? positionValue(r[2], r[5]) : null, g: Number.isInteger(r[6]) ? positionValue(r[2], r[6]) : null }));
+}
+// The rating from the last 10 race nights (null if a component has no result in them).
+export function summarize(entries) {
+  const win = entries.slice(-C.window);
+  const avg = (c) => { const v = win.map((e) => e[c]).filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const q = avg('q'), s = avg('s'), g = avg('g');
+  return { q, s, g, r: q != null && s != null && g != null ? overallOf({ q, s, g }) : null };
+}
 
 /**
- * Calibration (provisional drivers, fewer than 3 completed rounds):
- *  - Each round, every provisional driver gets a ROUND PERFORMANCE estimate from that round's
- *    results only (regularised Bradley–Terry against established drivers' frozen pre-round ratings
- *    and the other provisional drivers; prior 100, SD 55). It is never seeded from earlier rounds.
- *  - Established drivers' Elo that round compares them with provisional drivers' round performance,
- *    normalised over the full eligible field (N − 1). Provisional drivers get no Elo deltas.
- *  - The hidden running estimate is the arithmetic mean of the PUBLIC component performances over
- *    the completed calibration rounds (imported provisional history counts as its own weight).
- *  - After the 3rd completed round that mean becomes the official starting rating (converted back to
- *    latent with latentOf); no Elo delta for that round, no published change. Normal Elo from round 4.
- *
- * start: { uid: { q, s, g, n, established } } (imported latent units; others start at 100).
- * rounds: chronological [{ key, label, results: { L: { Q, S, GP } } }].
- * Returns { drivers: { uid: state }, audit: [...] }.
+ * start: { uid: { hist: [race-night entries] } } (MCSM25–30, oldest first).
+ * rounds: chronological final rounds [{ key, label, results: { L: { Q, S, GP } } }].
+ * Returns { drivers: { uid: state }, audit }.
  */
 export function computeRatings(rounds, start = {}) {
   const S = {};
   const get = (u) => {
     if (!S[u]) {
-      const b = start[u];
-      const lat = b ? { q: b.q, s: b.s, g: b.g } : { q: C.priorMean, s: C.priorMean, g: C.priorMean };
-      const n = b ? b.n || 0 : 0;
-      // imported drivers with enough history are established from the start (3-round rule)
-      const established = !!(b && (b.established || n >= C.provisionalRounds));
-      // calibration sums in PUBLIC units; imported provisional history weighted by its rounds
-      const cal = Object.fromEntries(COMPONENTS.map((c) => [c, b && !established && n > 0 ? { sum: publicOf(lat[c]) * n, cnt: n } : { sum: 0, cnt: 0 }]));
-      S[u] = { lat, prior: { ...lat }, n, established, imported: !!b, cal, perfs: [], history: [], highest: established ? overallOf(lat) : null };
+      const entries = ((start[u] && start[u].hist) || []).slice();
+      const cur = summarize(entries);
+      const established = entries.length >= C.provisionalRounds && cur.r != null;
+      S[u] = { entries, n: entries.length, cur, established, imported: entries.length > 0, prior: established ? { ...cur } : null, history: [], highest: established ? cur.r : null };
     }
     return S[u];
   };
@@ -99,138 +82,43 @@ export function computeRatings(rounds, start = {}) {
   for (const rd of rounds) {
     const ids = new Set();
     Object.values(rd.results || {}).forEach((res) => Object.values(res).forEach((rows) => (rows || []).forEach((r) => ids.add(r.id))));
-    const list = [...ids].sort(byKey); list.forEach(get);
-    const pre = Object.fromEntries(list.map((u) => [u, { lat: { ...S[u].lat }, est: S[u].established, overall: overallOf(S[u].lat) }]));
-    const delta = Object.fromEntries(list.map((u) => [u, { q: 0, s: 0, g: 0 }]));
-    const perf = {};   // this round's latent performance per provisional driver and component
-    const startedRound = new Set(), rated = new Set();
-    const lobbies = Object.keys(rd.results || {}).sort(byKey);
-    for (const L of lobbies) {
-      const res = rd.results[L] || {};
-      for (const sess of ['S', 'GP']) (res[sess] || []).forEach((r) => { if (started(r.status)) startedRound.add(r.id); });
-    }
-    // Each lobby is its own race: drivers are compared only with the drivers they raced. Neighbouring
-    // lobbies are linked by one draw (the upper lobby's last place = the next lobby's winner).
-    for (const sess of ['Q', 'S', 'GP']) {
-      const c = SESSION_OF[sess];
-      const byLobby = lobbies.map((L) => ({ L, field: sessionField((rd.results[L] || {})[sess], sess) })).filter((x) => x.field.length);
-      const all = byLobby.flatMap((x) => x.field.map((r) => r.id));
-      all.forEach((u) => rated.add(u));
-      if (new Set(all).size !== all.length) throw new Error(`Duplicate driver in ${rd.key} ${sess} rating results`);
-      const bridges = bridgePairs(byLobby);
-      const wB = 1 / (LOBBY_SIZE - 1);   // a bridge counts as one comparison in a full lobby
-      // 1) provisional round performance from this round's results only (their lobby, plus a bridge if any)
-      const prov = all.filter((u) => !pre[u].est).sort(byKey);
-      if (prov.length) {
-        const obs = [];
-        const add = (a, b, y, w) => {
-          if (pre[a.id].est && pre[b.id].est) return;
-          if (!pre[a.id].est && pre[b.id].est) obs.push({ i: a.id, fixed: pre[b.id].lat[c], y, w });
-          else if (pre[a.id].est && !pre[b.id].est) obs.push({ i: b.id, fixed: pre[a.id].lat[c], y: 1 - y, w });
-          else obs.push({ i: a.id, j: b.id, y, w });
-        };
-        for (const { field } of byLobby) {
-          const n = field.length; if (n < 2) continue;
-          for (let i2 = 0; i2 < n; i2++) for (let j2 = i2 + 1; j2 < n; j2++) {
-            const a = field[i2], b = field[j2];
-            add(a, b, a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5, 1 / (n - 1));
-          }
-        }
-        bridges.forEach(([a, b]) => add(a, b, 0.5, wB));
-        const est = fitRound(prov, obs);
-        prov.forEach((u) => { (perf[u] = perf[u] || {})[c] = est[u]; });
-      }
-      // 2) established Elo within each lobby (provisional opponents at their round performance), then the bridges
-      const ratingOf = (r) => (pre[r.id].est ? pre[r.id].lat[c] : perf[r.id][c]);
-      const pair = (a, b, y, k) => {
-        const ea = pre[a.id].est, eb = pre[b.id].est;
-        if (!ea && !eb) return;
-        const T = k * (y - expected(C.eloScale * (ratingOf(a) - ratingOf(b))));
-        if (ea) delta[a.id][c] += T;
-        if (eb) delta[b.id][c] -= T;
-      };
-      for (const { field } of byLobby) {
-        const n = field.length; if (n < 2) continue;
-        for (let i2 = 0; i2 < n; i2++) for (let j2 = i2 + 1; j2 < n; j2++) {
-          const a = field[i2], b = field[j2];
-          pair(a, b, a.pos < b.pos ? 1 : a.pos > b.pos ? 0 : 0.5, C.K / (n - 1));
-        }
-      }
-      bridges.forEach(([a, b]) => pair(a, b, 0.5, C.K * wB));
-    }
-    for (const u of list) if (pre[u].est) COMPONENTS.forEach((c) => { S[u].lat[c] += delta[u][c]; });
-    for (const u of list) {
-      const st = S[u];
-      const completed = startedRound.has(u);
-      if (completed) st.n++;
+    let counted = 0;
+    for (const u of [...ids].sort(byKey)) {
+      const e = roundEntry(rd, u);
+      if (!e) continue;                          // didn't start: nothing changes
+      const st = get(u);
+      const wasEst = st.established, before = wasEst ? st.cur.r : null;
+      st.entries.push(e); st.n++; counted++;
+      const sm = summarize(st.entries);
+      if (sm.r != null || !wasEst) st.cur = sm;  // a ranked driver keeps his rating if a component has no result left in his window
       let graduation = false;
-      if (!pre[u].est) {
-        // calibration: completed rounds add their public component performances to the mean
-        if (completed && perf[u]) {
-          COMPONENTS.forEach((c) => { if (perf[u][c] != null) { st.cal[c].sum += publicOf(perf[u][c]); st.cal[c].cnt++; } });
-          st.perfs.push({ key: rd.key, ...Object.fromEntries(COMPONENTS.map((c) => [c, perf[u][c] != null ? publicOf(perf[u][c]) : null])) });
-        }
-        const mean = (c) => (st.cal[c].cnt ? st.cal[c].sum / st.cal[c].cnt : publicOf(C.priorMean));
-        st.lat = Object.fromEntries(COMPONENTS.map((c) => [c, latentOf(mean(c))]));
-        if (st.n >= C.provisionalRounds) { st.established = true; st.graduatedAt = rd.key; graduation = true; }
-      }
-      const after = overallOf(st.lat);
-      if (rated.has(u) || completed) st.history.push({ key: rd.key, label: rd.label, before: pre[u].overall, after, delta: pre[u].est ? after - pre[u].overall : null,
-        q: publicOf(st.lat.q), s: publicOf(st.lat.s), g: publicOf(st.lat.g), provisional: !pre[u].est, graduation });
-      if (st.established) st.highest = graduation ? after : Math.max(st.highest || 0, after);
+      if (!st.established && st.n >= C.provisionalRounds && st.cur.r != null) { st.established = true; st.graduatedAt = rd.key; graduation = true; }
+      const after = st.cur.r;
+      st.history.push({ key: rd.key, label: rd.label, before, after, delta: wasEst && after != null && before != null ? after - before : null,
+        q: st.cur.q, s: st.cur.s, g: st.cur.g, provisional: !wasEst, graduation });
+      if (st.established && after != null) st.highest = graduation ? after : Math.max(st.highest || 0, after);
     }
-    const estList = list.filter((u) => pre[u].est);
-    audit.push({ key: rd.key, drivers: list.length, zeroSum: COMPONENTS.map((c) => estList.reduce((a, u) => a + delta[u][c], 0)), perf, delta, pre });
+    audit.push({ key: rd.key, drivers: counted });
   }
   return { drivers: S, audit };
 }
 
-// One round's regularised Bradley–Terry fit over the provisional drivers in a session
-// (established values are constants). Prior: neutral 100, SD 55. Deterministic.
-function fitRound(prov, obs) {
-  const x = Object.fromEntries(prov.map((u) => [u, C.priorMean]));
-  const inv = 1 / (C.priorSd * C.priorSd);
-  const k = C.eloScale * A;
-  const by = Object.fromEntries(prov.map((u) => [u, []]));
-  obs.forEach((o) => { by[o.i].push(o); if (o.j) by[o.j].push(o); });
-  for (let sweep = 0; sweep < 300; sweep++) {
-    let maxStep = 0;
-    for (const u of prov) {
-      let grad = (x[u] - C.priorMean) * inv, hess = inv;
-      for (const o of by[u]) {
-        const xi = x[o.i], xj = o.j ? x[o.j] : o.fixed;
-        const p = 1 / (1 + Math.exp(-k * (xi - xj)));
-        const r = o.w * (p - o.y) * k;
-        grad += o.i === u ? r : -r;
-        hess += o.w * p * (1 - p) * k * k;
-      }
-      const step = grad / hess;
-      x[u] -= step;
-      maxStep = Math.max(maxStep, Math.abs(step));
-    }
-    if (maxStep < 1e-10) break;
-  }
-  return x;
-}
-
-// What drivers may see (content/ratings): established drivers' numbers and history from their
-// official start; provisional drivers only their round count. The first published rating has no
-// change (dl: null) and nothing from calibration is exposed.
+// What drivers may see (content/ratings): ranked drivers' values and history from their first rating;
+// unranked drivers only their round count. The first published rating has no change (dl: null).
 export function publicEntry(st, { baseline = null } = {}) {
-  if (!st.established) return { e: 0, n: st.n };
-  const f3 = (v) => +v.toFixed(3);
+  if (!st.established || st.cur.r == null) return { e: 0, n: st.n };
+  const f3 = (v) => (v == null ? null : +v.toFixed(3));
   const last = st.history[st.history.length - 1];
-  const pts = st.history.filter((x) => !x.provisional || x.graduation).map((x) => ({ l: x.label, r: f3(x.after), q: f3(x.q), s: f3(x.s), g: f3(x.g) }));
+  const pts = st.history.filter((x) => (!x.provisional || x.graduation) && x.after != null).map((x) => ({ l: x.label, r: f3(x.after), q: f3(x.q), s: f3(x.s), g: f3(x.g) }));
   return {
-    e: 1, r: overallOf(st.lat), q: publicOf(st.lat.q), s: publicOf(st.lat.s), g: publicOf(st.lat.g), n: st.n, hi: st.highest,
+    e: 1, r: st.cur.r, q: st.cur.q, s: st.cur.s, g: st.cur.g, n: st.n, hi: st.highest,
     dl: last && !last.provisional && !last.graduation && last.delta != null ? last.delta : null,
     h: [...(baseline ? [baseline] : []), ...pts],
   };
 }
 
 // Drivers who have just become ranked: unranked (or absent) in the previously published ratings, ranked
-// now, and ranked through calibration (not the historical import). Nothing on the very first publish.
-// Returns [{ uid, rank, total, r, q, s, g, label }] with their position among all ranked drivers.
+// now, through their race nights since MCSM31 (not straight from the history). Never on the first publish.
 export function newlyRanked(prevDrivers, nextDrivers, states) {
   if (!prevDrivers) return [];
   const ranked = Object.entries(nextDrivers).filter(([, x]) => x && x.e).sort((a, b) => b[1].r - a[1].r || (a[0] < b[0] ? -1 : 1));

@@ -9,7 +9,7 @@ import { starsFor, starRow } from './stars.js';
 import { openSheet } from './sheet.js';
 import { t, LANG } from '../i18n/index.js';
 import { publicRatings } from '../services/mcsm-rating.js';
-import { RATING_CFG } from '../engine/rating.js';
+import { RATING_CFG, positionValue } from '../engine/rating.js';
 
 const f1 = (v) => (v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ','));
 const signed = (v) => (v > 0.05 ? '+' : v < -0.05 ? '−' : '±') + f1(Math.abs(v));
@@ -101,42 +101,52 @@ export function mcsmRatingCard(uid) {
 // a paragraph (p) or the formula box (f). Hungarian is shown by default, English when chosen.
 const EXPLAIN = {
   hu: [
-    { p: 'Az MCSM Rating egy teljesítményalapú értékelési rendszer, amely megmutatja, hogyan teljesítesz a többi MCSM-pilótához képest. Minél jobb eredményeket érsz el, különösen erősebb ellenfelekkel szemben, annál magasabb lehet az értékelésed.' },
-    { p: 'A rendszer kizárólag a kvalifikáción, a sprinten és a Gran Prix-n elért helyezéseidet veszi figyelembe.' },
+    { p: 'Az MCSM Rating megmutatja, milyen eredményeket értél el az utóbbi időben. Minél előrébb végzel, és minél erősebb lobbiban versenyzel, annál magasabb.' },
+    { h: 'Hogyan számoljuk?' },
+    { p: 'A kvalifikáció, a sprint és a Gran Prix eredményeidet külön átlagoljuk, majd így adjuk össze:' },
     { f: 'MCSM Rating = 20% Kvalifikáció + 40% Sprint + 40% Gran Prix' },
-    { h: 'Hogyan változik a Rating?' },
-    { p: 'Minden forduló után összehasonlítjuk az eredményedet az ellenfeleidével, figyelembe véve az ő értékelésüket is.' },
-    { p: 'Ha egy nálad erősebb pilótát győzöl le, többet nyerhetsz, míg egy gyengébb ellenfél legyőzése kevesebbet ér. Ugyanez fordítva is igaz: ha a vártnál gyengébben teljesítesz, csökkenhet az értékelésed.' },
-    { p: 'Csak azokhoz a pilótákhoz mérünk, akikkel abban a fordulóban ténylegesen együtt versenyeztél, vagyis a saját lobbid pilótáihoz. A lobbikat a feljutás és a kiesés köti össze, valamint egy lobbi utolsó helyezettje és az alatta lévő lobbi győztese döntetlennek számít. Így egyetlen lobbi sem emelkedik vagy süllyed csak azért, mert ott versenyez, és minden pilóta ugyanazon a skálán szerepel.' },
-    { h: 'Az első 3 forduló – Kalibráció' },
-    { p: 'Új pilótaként az első három teljesített fordulódban a Ratinged még rejtett.' },
-    { p: 'A rendszer minden fordulóban megbecsüli, milyen erős teljesítményt nyújtottál az adott mezőnyben. Ezek az eredmények már a többi pilóta értékelésére is hatással vannak.' },
-    { p: 'A harmadik fordulód után a három teljesítményed átlagából megkapod az első hivatalos MCSM Ratingedet. Ettől kezdve az értékelésed minden további forduló után a megszokott módon változik.' },
-    { h: 'Előzmények és a skála' },
-    { p: 'A korábbi pilóták kezdőértékelését az MCSM25–30 eredményei alapján számoltuk ki. Az MCSM31-től kezdve a Rating minden lezárt forduló után frissül. Ha nem versenyzel, az értékelésed nem változik.' },
+    { h: 'Mi számít bele?' },
+    { ul: [
+      'A legutóbbi 10 fordulód. Ha teljesíted a 11.-et, a legrégebbi kiesik.',
+      'Ha kiesel (DNF), a lobbid utolsó helyének értékét kapod.',
+      'Ha nem indulsz el, az a forduló nem számít bele, és a ratinged sem változik.',
+      'A rating akkor frissül, amikor egy forduló eredményei véglegesek.',
+    ] },
+    { h: 'Pontrendszer' },
+    { points: ['Helyezés', 'A', 'B', 'C'] },
     { h: 'Csillagok' },
     { stars: ['Csillagérték', 'Összpontszám'] },
     { note: 'Ugyanez a skála vonatkozik a Kvalifikáció, a Sprint és a Gran\'Prix értékére is.' },
   ],
   en: [
-    { p: 'The MCSM Rating is a performance-based rating that shows how you perform compared with the other MCSM drivers. The better your results, especially against stronger opponents, the higher your rating can be.' },
-    { p: 'It only takes your finishing positions in qualifying, the sprint and the Grand Prix into account.' },
+    { p: 'The MCSM Rating shows how well you\'ve been doing recently. The further up you finish, and the stronger the lobby you race in, the higher it is.' },
+    { h: 'How is it calculated?' },
+    { p: 'Your qualifying, Sprint and Grand Prix results are averaged separately, then combined:' },
     { f: 'MCSM Rating = 20% Qualifying + 40% Sprint + 40% Grand Prix' },
-    { h: 'How does the rating change?' },
-    { p: "After every round your result is compared with your opponents', taking their ratings into account too." },
-    { p: 'Beating a stronger driver can gain you more, while beating a weaker one is worth less. It works the other way too: if you do worse than expected, your rating can drop.' },
-    { p: 'You are only compared with the drivers you actually raced that round, your own lobby. Lobbies are linked by promotion and relegation, and a lobby\'s last place counts as a draw with the next lobby\'s winner. So no lobby rises or sinks just for being that lobby, and every driver stays on the same scale.' },
-    { h: 'The first 3 rounds – calibration' },
-    { p: 'As a new driver, your rating stays hidden for your first three completed rounds.' },
-    { p: 'Each round, the system estimates how strong your performance was in that field. These results already count towards the other drivers\' ratings.' },
-    { p: 'After your third round, the average of those three performances becomes your first official MCSM Rating. From then on it changes after every round as normal.' },
-    { h: 'History and the scale' },
-    { p: "Returning drivers' starting ratings were calculated from the MCSM25–30 results. From MCSM31 the rating updates after every finished round. If you don't race, your rating doesn't change." },
+    { h: 'What counts?' },
+    { ul: [
+      'Your last 10 rounds. When you complete an 11th, the oldest one drops out.',
+      'A DNF counts as your lobby\'s last place.',
+      'If you don\'t start, that round doesn\'t count and your rating doesn\'t change.',
+      'The rating updates when a round\'s results are final.',
+    ] },
+    { h: 'Points system' },
+    { points: ['Position', 'A', 'B', 'C'] },
     { h: 'Stars' },
     { stars: ['Star rating', 'Rating'] },
     { note: "The same scale applies to the Qualifying, Sprint and Gran'Prix values." },
   ],
 };
+
+// The points system: what each finishing position is worth in lobby A, B and C (from the engine).
+function pointsTable(cols) {
+  const cell = 'display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));align-items:center;padding:5px 12px;font-size:12.5px;text-align:center';
+  return h('div', { style: 'border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:6px 0 0' },
+    h('div', { style: cell + ';background:var(--bg-3);font-size:11px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)' }, ...cols.map((c) => h('span', null, c))),
+    ...Array.from({ length: 16 }, (_, i) => h('div', { style: cell + ';border-top:1px solid var(--line)' },
+      h('b', { style: 'font-variant-numeric:tabular-nums' }, (i + 1) + '.'),
+      ...['A', 'B', 'C'].map((L) => h('span', { style: 'font-variant-numeric:tabular-nums;color:var(--ink-2)' }, positionValue(L, i + 1))))));
+}
 
 // The star bands as a small table: value, the stars themselves, and the rating needed.
 function starTable([colStars, colRating]) {
@@ -153,7 +163,7 @@ function starTable([colStars, colRating]) {
 export function explainRating() {
   const blocks = EXPLAIN[LANG] || EXPLAIN.hu;
   openSheet({ title: t('mrHowTitle'), body: h('div', { class: 'md mr-explain' },
-    blocks.map((b) => (b.h ? h('h3', null, b.h) : b.f ? h('div', { class: 'mr-formula' }, b.f) : b.stars ? starTable(b.stars) : b.note ? h('p', { style: 'font-size:13px;color:var(--ink-3);margin-top:8px' }, b.note) : h('p', null, b.p)))) });
+    blocks.map((b) => (b.h ? h('h3', null, b.h) : b.f ? h('div', { class: 'mr-formula' }, b.f) : b.ul ? h('ul', null, b.ul.map((x) => h('li', null, x))) : b.points ? pointsTable(b.points) : b.stars ? starTable(b.stars) : b.note ? h('p', { style: 'font-size:13px;color:var(--ink-3);margin-top:8px' }, b.note) : h('p', null, b.p)))) });
 }
 
 // Rating history: one point per round raced as an established driver, newest last.

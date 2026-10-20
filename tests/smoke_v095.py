@@ -26,7 +26,7 @@ with sync_playwright() as p:
         pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
         pg.goto(BASE + '?fakecloud&fakereset&fakeuser=owner#/admin/mcsm-rating'); pg.wait_for_timeout(2200)
-        pg.set_input_files('input[type=file]', '/mnt/user-data/uploads/MCSM_Rating_V3_2_Latent_Import.json'); pg.wait_for_timeout(800)
+        pg.set_input_files('input[type=file]', '/mnt/user-data/uploads/MCSM_Rating_V2_0_Latent_Import.json'); pg.wait_for_timeout(1500)
         check('párosítva fiókkal' in text(pg), f'{size}: bootstrap read and matched')
         pg.click('button:has-text("Kiindulás mentése")'); pg.wait_for_timeout(900)
         pg.click('button:has-text("Újraszámolás és közzététel")'); pg.wait_for_timeout(4000)
@@ -35,7 +35,7 @@ with sync_playwright() as p:
         card = text(pg, '.mr-card')
         check('Besorolatlan' not in card and 'SPRINT' in card.upper() and 'GRAN' in card.upper(), f'{size}: Saby ranked with Q/Sprint/GP ({card[:80]!r})')
         big = pg.evaluate("document.querySelector('.mr-big') && document.querySelector('.mr-big').textContent")
-        check(big and 160 < float(big.replace(',', '.')) < 185, f'{size}: Saby around his V3.2 value ({big})')
+        check(big and 146 < float(big.replace(',', '.')) < 150, f'{size}: Saby around his V2.0 value, 147,6 ({big})')
         check('MCSM25–30 eredmények' in text(pg) and 'MCSM30 / 3' in text(pg), f'{size}: MCSM25–30 results on the profile')
         if pg.query_selector('.mr-card button:has-text("előzmények")'):
             pg.click('.mr-card button:has-text("előzmények")'); pg.wait_for_timeout(700)

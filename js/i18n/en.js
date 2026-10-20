@@ -317,4 +317,5 @@ export const en = {
   offTitle: 'No internet connection', offText: "We'll carry on by ourselves as soon as you're back online. Nothing to do meanwhile.",
   cmpHistory: 'MCSM Rating history', cmpUnrankedNote: "{name} isn't ranked yet, so only the other driver's line shows.",
   rcContinue: 'Continue', fnKicker: 'FINAL RESULT', fnChampion: 'CHAMPION!', fnSilver: 'Silver', fnBronze: 'Bronze', fnTitle: 'Season over', fnSubChamp: 'You won the MCSM{no} championship!', fnSub: 'You finished MCSM{no} in {p}. place.', fnPoints: 'Points', fnWinsPodiums: 'Wins · podiums', fnRating: 'Rating change', fnTeam: 'Team', fnGt: '{tag} championship: {p}. place', fnStandings: 'Season standings',
+  mrCheckOk: 'Checked: the MCSM25–30 history gives exactly the file\'s starting rating for all {n} drivers.', mrCheckDiff: '{m}/{n} drivers match the file. Different: {list}',
 };

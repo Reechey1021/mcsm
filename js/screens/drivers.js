@@ -129,7 +129,7 @@ async function driverResults(uid, p = {}) {
     if (!ctx || !ctx.built.some((r) => (r.legacy && r.legacy.some((x) => x.id === uid)) || Object.values(r.lobbies).some((l) => l.includes(uid)))) continue;
     out.shown.add(s.no);
     const names = new Set([p.psn, (ctx.snaps[uid] || {}).psn].filter(Boolean).map(normName));
-    const histRow = (n) => HISTORY.find((r) => r[0] === s.no && r[1] === n && names.has(normName(r[3])));
+    const histRow = (n) => HISTORY.find((r) => r[0] === s.no && r[1] === n && (names.has(normName(r[3])) || (r[8] && names.has(normName(r[8])))));
     const rows = ctx.built.map((rd) => {
       const tot = roundTotals(rd, ctx.points)[uid]; if (!tot) return null;
       const hr = rd.legacy ? histRow(rd.n) : null;
@@ -163,7 +163,7 @@ function oldResults(p, skip = new Set()) {
   const box = h('section');
   import('../data/history-s25-30.js').then(({ HISTORY }) => {
     const me = normName(p.psn);
-    const rows = HISTORY.filter((r) => normName(r[3]) === me && !skip.has(r[0])).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+    const rows = HISTORY.filter((r) => (normName(r[3]) === me || (r[8] && normName(r[8]) === me)) && !skip.has(r[0])).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
     if (!rows.length) { box.remove(); return; }
     const pos = (v) => (v == null ? '–' : typeof v === 'number' ? 'P' + v : v);
     const ss = rows.map((r) => r[0]);

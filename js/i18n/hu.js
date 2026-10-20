@@ -333,4 +333,5 @@ export const hu = {
   offTitle: 'Nincs internetkapcsolat', offText: 'Amint visszajön a kapcsolat, magától folytatjuk. Addig nem kell semmit tenned.',
   cmpHistory: 'MCSM Rating előzmények', cmpUnrankedNote: '{name} még besorolatlan, ezért csak a másik pilóta vonala látszik.',
   rcContinue: 'Tovább', fnKicker: 'VÉGEREDMÉNY', fnChampion: 'BAJNOK!', fnSilver: 'Ezüstérem', fnBronze: 'Bronzérem', fnTitle: 'Szezon vége', fnSubChamp: 'Megnyerted az MCSM{no} bajnokságot!', fnSub: 'Az MCSM{no} szezont a(z) {p}. helyen zártad.', fnPoints: 'Pontok', fnWinsPodiums: 'Győzelem · dobogó', fnRating: 'Rating változás', fnTeam: 'Csapat', fnGt: '{tag} bajnokság: {p}. hely', fnStandings: 'Szezon végeredménye',
+  mrCheckOk: 'Ellenőrizve: az MCSM25–30 előzményekből mind a(z) {n} pilóta kezdő ratingje pontosan egyezik a fájllal.', mrCheckDiff: '{m}/{n} pilóta egyezik a fájllal. Eltér: {list}',
 };

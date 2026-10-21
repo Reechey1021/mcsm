@@ -56,6 +56,9 @@ const FAKE_TRACKS = [
   { id: 2, name_short: 'Kyoto Driving Park', full_name: 'Kyoto Driving Park - Yamagiwa', trackphoto: FAKE_PHOTO('#4a7a4f', '#d8c7a0'), track_map: FAKE_MAP('M15 50 C15 10 85 10 85 45 C85 70 60 60 55 85 C40 95 15 85 15 50 Z'), corner_count: 15, track_length: 4.3 },
   { id: 3, name_short: 'Dragon Trail', full_name: 'Dragon Trail - Gardens', trackphoto: FAKE_PHOTO('#7a5c3c', '#5ab0c9'), track_map: FAKE_MAP('M10 20 L80 15 L90 40 L50 50 L85 80 L20 88 Z'), corner_count: 17, track_length: 4.4 },
   { id: 4, name_short: 'Suzuka Circuit', full_name: 'Suzuka Circuit', trackphoto: FAKE_PHOTO('#5d6d8a', '#a3c27a'), track_map: FAKE_MAP('M10 60 C30 20 50 80 70 30 S95 50 80 80 L20 85 Z'), corner_count: 18, track_length: 5.81 },
+
+  { id: 5, name_short: 'Sportland SUGO', full_name: 'Sportland SUGO', trackphoto: FAKE_PHOTO('#3f6b4a', '#b8c9d8'), track_map: FAKE_MAP('M12 60 C20 20 60 15 80 30 S90 75 60 82 L25 85 Z'), corner_count: 11, track_length: 2.26 },
+  { id: 6, name_short: 'Grand Valley', full_name: 'Grand Valley - South', trackphoto: FAKE_PHOTO('#3c6e91', '#c9a26b'), track_map: FAKE_MAP('M10 70 L40 30 L80 40 L70 80 Z'), corner_count: 9, track_length: 1.5 },
 ];
 export function fakeGridstats() {
   const quota = { limit: 1000, remaining: 1000 };

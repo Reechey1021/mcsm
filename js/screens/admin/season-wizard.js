@@ -14,7 +14,7 @@ import { seasons as loadSeasons, users as loadUsers, gtTeams as loadGt, invalida
 import { newSeason, defaultPq, defaultWindow, validateSeason, slugFor, FORMATS } from '../../model/season.js';
 import { budapestToMs, msToBudapestInput, shiftDay, DAY } from '../../model/time.js';
 import { DEFAULT_TABLE } from '../../engine/scoring.js';
-import { TRACKS, trackById, roundTitle } from '../../data/tracks.js';
+import { TRACKS, roundTitle, buildTrackCatalog } from '../../data/tracks.js';
 import { fullName, isComplete } from '../../model/profile.js';
 import { go } from '../../router.js';
 import { carField } from '../../ui/car-picker.js';
@@ -29,10 +29,13 @@ import { notifyAll } from '../../services/notify.js';
 
 const STEP_KEYS = ['swBasics', 'swPq', 'swRounds', 'swCars', 'swEntry', 'swLobbies', 'swScoring', 'swReview'];
 const STEP_OF_ERROR = { no: 0, name: 0, coverUrl: 0, rounds: 2, car: 3, window: 4, cap: 5, lobbySize: 5, points: 6 };
+const fold = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+let trackCat = null;   // GridStats locations (data/tracks.js buildTrackCatalog), loaded with the wizard
 
 export function screenSeasonWizard({ id }, query) {
   const root = h('div', { class: 'narrow', style: 'max-width:640px' }, loading());
-  Promise.all([loadSeasons(), loadUsers(), loadGt(), id ? backend.seasons.get(id) : null]).then(([all, us, gts, existing]) => {
+  Promise.all([loadSeasons(), loadUsers(), loadGt(), id ? backend.seasons.get(id) : null, backend.content.get('tracks').catch(() => null)]).then(([all, us, gts, existing, trackDoc]) => {
+    trackCat = buildTrackCatalog(trackDoc && trackDoc.tracks);
     if (id && !existing) { root.replaceChildren(empty(t('notFound'))); return; }
     const from = query.get('masol') ? all.find((s) => s.id === query.get('masol')) : null;
     const draft = existing ? JSON.parse(JSON.stringify(existing)) : newSeason(Math.max(0, ...all.map((s) => s.no)) + 1, from);
@@ -106,27 +109,33 @@ function build(d, editing, all, us, gts) {
       const list = h('div', { class: 'stack', style: 'gap:12px' });
       const drawRounds = () => list.replaceChildren(...d.rounds.map((r, i) => roundEditor(r, i)));
       const roundEditor = (r, i) => {
-        const tr = r.trackId === 'other' ? null : trackById(r.trackId);
+        // Locations and layouts from GT GridStats (grouped by location); the built-in list until the first refresh.
+        const cat = trackCat && trackCat.length ? trackCat : TRACKS.map((x) => ({ key: x.id, name: x.name, cc: x.cc, layouts: x.layouts.map((l) => ({ name: l, gsId: null })) }));
+        const find = () => (r.trackId === 'other' ? null : cat.find((x) => x.key === r.trackId) || (r.track ? cat.find((x) => fold(x.name) === fold(r.track)) : null));
         const layoutBox = h('div');
         const otherBox = h('div', { class: 'stack', style: 'gap:10px' });
         const drawTrack = () => {
-          const cur = r.trackId === 'other' ? null : trackById(r.trackId);
+          const cur = find();
+          if (cur && r.trackId !== cur.key) r.trackId = cur.key;
           layoutBox.replaceChildren(cur && cur.layouts.length > 1 ? h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('layout')),
-            choice(cur.layouts.map((l) => ({ value: l, label: l || t('layoutDefault') })), r.layout ?? cur.layouts[0], (v) => { r.layout = v; })) : '');
+            choice(cur.layouts.map((l) => ({ value: l.name, label: l.name || t('layoutDefault') })), r.layout ?? cur.layouts[0].name, (v) => { r.layout = v; const l = cur.layouts.find((x) => x.name === v); r.gsId = l ? l.gsId : null; })) : '',
+            // a location we don't know the country of yet (e.g. a brand-new track): ask once
+            cur && !cur.cc ? h('div', { style: 'margin-top:10px' }, txt(t('countryCode'), r.cc, (v) => { r.cc = v.toUpperCase().slice(0, 3); }, { ph: 'JPN', max: 3 }).row) : '');
           otherBox.replaceChildren(...(r.trackId === 'other' ? [txt(t('trackName'), r.track, (v) => { r.track = v; }).row, txt(t('layout'), r.layout, (v) => { r.layout = v; }).row, txt(t('countryCode'), r.cc, (v) => { r.cc = v.toUpperCase().slice(0, 3); }, { ph: 'HUN', max: 3 }).row] : []));
         };
-        const sel = h('select', { class: 'select', style: 'width:100%;min-height:50px' }, h('option', { value: '' }, t('pickTrack')), TRACKS.map((x) => h('option', { value: x.id, selected: r.trackId === x.id }, x.name + (x.cc ? ` (${x.cc})` : ''))), h('option', { value: 'other', selected: r.trackId === 'other' }, t('otherTrack')));
+        const cur0 = find();
+        const sel = h('select', { class: 'select', style: 'width:100%;min-height:50px' }, h('option', { value: '' }, t('pickTrack')),
+          cat.map((x) => h('option', { value: x.key, selected: !!cur0 && cur0.key === x.key }, x.name + (x.cc ? ` (${x.cc})` : ''))), h('option', { value: 'other', selected: r.trackId === 'other' }, t('otherTrack')));
         sel.addEventListener('change', () => {
           r.trackId = sel.value || null;
-          const x = trackById(r.trackId);
-          if (x) { r.track = x.name; r.cc = x.cc; r.layout = x.layouts[0]; } else if (r.trackId !== 'other') { r.track = ''; }
-          if (r.trackId === 'other') { r.track = ''; r.layout = ''; r.cc = ''; }
+          const x = cat.find((c) => c.key === r.trackId);
+          if (x) { r.track = x.name; r.cc = x.cc || ''; r.layout = x.layouts[0].name; r.gsId = x.layouts[0].gsId; } else if (r.trackId !== 'other') { r.track = ''; r.gsId = null; }
+          if (r.trackId === 'other') { r.track = ''; r.layout = ''; r.cc = ''; r.gsId = null; }
           drawTrack();
         });
         drawTrack();
         const up = h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--ink)', 'aria-label': t('moveUp'), disabled: i === 0, onclick: () => { [d.rounds[i - 1], d.rounds[i]] = [d.rounds[i], d.rounds[i - 1]]; drawRounds(); } }, icon('up'));
         const del = h('button', { class: 'icon-btn', type: 'button', style: 'color:var(--red)', 'aria-label': t('delete'), onclick: () => { d.rounds.splice(i, 1); drawRounds(); } }, icon('trash'));
-        void tr;
         const trackPane = h('div', { class: 'stack', style: 'gap:10px' }, dt(t('roundStart'), r.date, (v) => { r.date = v; }).row, h('div', { class: 'f-row' }, h('span', { class: 'f-label' }, t('track')), sel), layoutBox, otherBox);
         const lobbyPane = h('div', { style: 'display:none' }, roundLobbyEditor(r, i));
         const tabs = seg([{ value: 'track', label: t('trackTab') }, { value: 'lobby', label: t('lobbyTab') }], 'track', (v) => { trackPane.style.display = v === 'track' ? '' : 'none'; lobbyPane.style.display = v === 'lobby' ? '' : 'none'; });

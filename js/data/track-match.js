@@ -10,6 +10,7 @@ export const MI_TO_KM = 1.609344;
 
 export function matchTrack(round, catalog) {
   if (!round || !catalog || !catalog.length) return null;
+  if (round.gsId != null) { const exact = catalog.find((tr) => tr.id === round.gsId); if (exact) return exact; }
   const place = words(round.track || '');
   const layoutWords = words(round.layout || '');
   if (!place.length) return null;

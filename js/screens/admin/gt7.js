@@ -198,7 +198,7 @@ export function screenGt7() {
           const res = await api.tracksPage(page);
           const rows = Array.isArray(res) ? res : res.data || [];
           const abs = (u) => (!u ? null : /^https?:|^data:/.test(u) ? u : 'https://gt-gridstats.com' + (u.startsWith('/') ? '' : '/') + u);
-          rows.forEach((x) => all.push({ id: x.id, name_short: x.name_short || x.name || '', full_name: x.full_name || x.name_short || x.name || '', trackphoto: abs(x.trackphoto || x.track_photo || x.trackPhoto || x.photo || x.image), track_map: abs(x.track_map || x.trackmap || x.trackMap || x.map), corner_count: x.corner_count ?? x.corners ?? null, track_length: x.track_length ?? x.length ?? null, elevation: x.elevation ?? null, longest_straight: x.longest_straight ?? null }));
+          rows.forEach((x) => all.push({ id: x.id, name_short: x.name_short || x.name || '', full_name: x.full_name || x.name_short || x.name || '', trackphoto: abs(x.trackphoto || x.track_photo || x.trackPhoto || x.photo || x.image), track_map: abs(x.track_map || x.trackmap || x.trackMap || x.map), corner_count: x.corner_count ?? x.corners ?? null, track_length: x.track_length ?? x.length ?? null, elevation: x.elevation ?? null, longest_straight: x.longest_straight ?? null, cc: (/^[A-Za-z]{3}$/.test(x.country_code || x.country || '') ? String(x.country_code || x.country).toUpperCase() : null) }));
           if (Array.isArray(res) || !res.next_page_url || !rows.length) break;
           if (!fake) await sleep(PACE_MS);
         }

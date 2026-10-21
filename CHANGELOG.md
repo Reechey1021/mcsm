@@ -1,3 +1,14 @@
+## v1.4.1
+
+- Tracks come from GT GridStats: the round picker lists every location GridStats has (after Admin → GT7 adatok
+  → Pályalista frissítése), layouts grouped under each location ("Grand Valley - Highway 1" → Grand Valley /
+  Highway 1), so new GT7 tracks (e.g. Sportland SUGO) appear without code changes. A round picked this way
+  remembers its exact GridStats track for the photo and map.
+- Countries (the flag badge) from a lookup, since GridStats has none; Sportland SUGO = JPN. A location with no
+  known country asks for the code once in the round editor.
+- The built-in list stays only as the fallback before the first refresh and for the country lookup. Existing
+  seasons are unchanged (rounds store the names).
+
 ## v1.4.0 — MCSM Rating V2.0 (position-based)
 
 - The Elo rating is replaced. Every finishing position has a fixed value by lobby (A 150→120, B 120→90,

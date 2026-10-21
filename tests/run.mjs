@@ -688,6 +688,19 @@ await test('rating V2.0: calibration: shown from the 3rd race night, no change o
   eq(RT.newlyRanked(prev, { n: RT.publicEntry(three.drivers.n) }, three.drivers).map((x) => [x.uid, x.label]), [['n', 'MCSM31 / 3']], 'the "Besorolva!" reveal: newly ranked through live rounds');
   eq(RT.newlyRanked(null, { n: RT.publicEntry(three.drivers.n) }, three.drivers), [], 'never on the first publish');
 });
+await test('tracks: the picker list from GridStats, grouped by location, with countries', async () => {
+  const TR = await import('../js/data/tracks.js');
+  const cat = TR.buildTrackCatalog([
+    { id: 1, name_short: 'Grand Valley', full_name: 'Grand Valley - Highway 1' }, { id: 6, name_short: 'Grand Valley', full_name: 'Grand Valley - South' },
+    { id: 4, name_short: 'Suzuka Circuit', full_name: 'Suzuka Circuit' }, { id: 5, name_short: 'Sportland SUGO', full_name: 'Sportland SUGO' },
+    { id: 7, name_short: 'Brand New Ring', full_name: 'Brand New Ring – East' }]);
+  eq(cat.map((x) => x.name), ['Brand New Ring', 'Grand Valley', 'Sportland SUGO', 'Suzuka Circuit'], 'one entry per location, alphabetical');
+  const gv = cat.find((x) => x.name === 'Grand Valley');
+  eq(gv.layouts, [{ name: 'Highway 1', gsId: 1 }, { name: 'South', gsId: 6 }], 'layouts under their location, each with its GridStats track');
+  eq([cat.find((x) => x.name === 'Suzuka Circuit').layouts[0].name, cat.find((x) => x.name === 'Sportland SUGO').cc, gv.cc, cat.find((x) => x.name === 'Brand New Ring').cc], ['', 'JPN', 'USA', null], 'default layout; countries from the lookup; unknown -> null (asked once)');
+  const M = await import('../js/data/track-match.js');
+  eq(M.matchTrack({ track: 'Something else', layout: '', gsId: 5 }, [{ id: 5, full_name: 'Sportland SUGO' }, { id: 4, full_name: 'Suzuka Circuit' }]).id, 5, 'a round picked from GridStats gets its exact photo/map');
+});
 console.log(failed.length ? failed.map((f) => '✗ ' + f).join('\n') : '');
 console.log(`${passed} passed, ${failed.length} failed`);
 process.exit(failed.length ? 1 : 0);

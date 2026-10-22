@@ -71,7 +71,7 @@ with sync_playwright() as p:
         # tracks + decorated rounds
         go(pg, '/admin/gt7', 'owner')
         pg.click('button:has-text("Pályalista frissítése")'); pg.wait_for_timeout(1500)
-        check('4 pálya' in text(pg), f'{size}: tracks imported')
+        check('6 pálya' in text(pg), f'{size}: tracks imported')   # test data: 6 GridStats tracks since v1.4.1 (SUGO, Grand Valley South)
         go(pg, '/szezonok/mcsm31/fordulok', None, 2200)
         check(len(pg.query_selector_all('.round-item.trk')) >= 3 and len(pg.query_selector_all('.trk-map')) >= 3, f'{size}: round boxes show photo and map')
         snap(pg, f'v6_rounds_{size}')

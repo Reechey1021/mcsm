@@ -10,7 +10,7 @@ export const WHEEL_BRANDS = ['Fanatec', 'Logitech', 'Thrustmaster', 'Moza', 'Sim
 // Open question: camera view vs display (TV/monitor/PSVR2). Easy to change here.
 export const VIEWS = ['tv', 'monitor', 'vr'];
 const LEGACY_VIEWS = ['cockpit', 'bonnet', 'bumper', 'chase'];
-export const ROLE_KEYS = ['owner', 'admin', 'judgeChair', 'judge', 'resultsEditor'];
+export const ROLE_KEYS = ['owner', 'admin', 'judgeChair', 'resultsEditor'];   // judgeChair is shown as "Bíró" (judge)
 
 const NAME_RE = /^[\p{L}][\p{L}' .-]{0,39}$/u;
 const PSN_RE = /^[A-Za-z][A-Za-z0-9_-]{2,15}$/;

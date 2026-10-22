@@ -81,14 +81,9 @@ function editPerson(u, tms, reload) {
     return h('div', { class: 'toggle-row' }, h('span', null, t('role_' + k), h('small', null, t('roleHint_' + k))),
       toggle(draft.roles[k] === true, (v) => { if (v) draft.roles[k] = true; else delete draft.roles[k]; syncScope(); }, { label: t('role_' + k), disabled: !grantableRoles().includes(k) }));
   });
-  const scope = new Set(Array.isArray(u.judgeScope) && u.judgeScope.length ? u.judgeScope : ['A', 'B', 'C']);
-  draft.judgeScope = [...scope];
-  const scopeRow = h('div', { class: 'f-row', style: 'margin-top:10px' }, h('span', { class: 'f-label' }, t('judgeScope')),
-    h('div', { class: 'choice multi' }, ['A', 'B', 'C'].map((L) => { const b = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(scope.has(L)) }, t('lobbyX', { l: L })); b.addEventListener('click', () => { scope.has(L) ? scope.delete(L) : scope.add(L); b.setAttribute('aria-pressed', String(scope.has(L))); draft.judgeScope = [...scope].sort(); }); return b; })),
-    h('span', { class: 'hint' }, t('judgeScopeHint')));
-  // judging scope matters only for judges and the judge chair
-  function syncScope() { scopeRow.style.display = draft.roles.judge === true || draft.roles.judgeChair === true ? '' : 'none'; }
-  syncScope();
+  // (judging scope is gone: there are no lobby-specific judges any more)
+  const scopeRow = null;
+  function syncScope() {}
   const until = h('input', { class: 'input', type: 'date', value: u.suspendedUntil ? new Date(u.suspendedUntil).toISOString().slice(0, 10) : '' });
   until.addEventListener('change', () => { draft.suspendedUntil = until.value ? Date.parse(until.value + 'T23:59:59') : null; });
   const note = h('input', { class: 'input', value: u.suspendNote || '', maxlength: 200, placeholder: t('suspendNotePh') });

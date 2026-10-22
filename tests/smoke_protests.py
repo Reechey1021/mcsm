@@ -51,6 +51,12 @@ with sync_playwright() as p:
         pg.click('.wizard-body .chip >> nth=0') if pg.query_selector('.wizard-body .chip') else None
         pg.click('button:has-text("Óvás benyújtása")'); pg.wait_for_timeout(700)
         check(pg.query_selector('[aria-invalid="true"]') is not None or 'érintett' in text(pg).lower(), f'{size}: form validates')
+        check('Panaszos' not in text(pg) and 'Videó link (opcionális)' in text(pg), f'{size}: no complainant picker; video link marked optional')
+        n_all = len(pg.query_selector_all('.choice.multi .chip-driver'))
+        pg.fill('.form input[type=search]', 'kindó'); pg.wait_for_timeout(300)
+        n_found = len(pg.query_selector_all('.choice.multi .chip-driver'))
+        check(n_all > 30 and 1 <= n_found < 4, f'{size}: involved drivers: anyone, with a search ({n_all} -> {n_found})')
+        pg.fill('.form input[type=search]', ''); pg.wait_for_timeout(200)
         pg.query_selector_all('.choice.multi .chip')[2].click()
         inputs = pg.query_selector_all('.form input.input')
         inputs[0].fill('4'); inputs[1].fill('T1')
@@ -65,7 +71,7 @@ with sync_playwright() as p:
         check('Kiszorítás a célegyenesben' not in text(pg), f'{size}: protest withdrawn')
         go(pg, '/birosag', 'pilota')
         check('jogosultságod' in text(pg), f'{size}: stewards area forbidden for drivers')
-        # owner as judge chair: open p2, assign, vote, publish
+        # owner (admin): open p2 and close it with a penalty; no panel or votes anywhere
         go(pg, '/birosag', 'owner', 2500)
         check('Rajt utáni érintkezés' in text(pg), f'{size}: case list')
         snap(pg, f'p4_cases_{size}')
@@ -73,43 +79,50 @@ with sync_playwright() as p:
         target = re.search(r'Érintett: ([^.]+)\.', text(pg))
         target = target.group(1).split()[0] if target else ''
         check(bool(target), f'{size}: case shows involved driver')
-        check('2 szavazat' in text(pg), f'{size}: two seeded votes')
-        pg.click('button:has-text("Testület")'); pg.wait_for_timeout(1500)
-        pg.click('.panel .chip:has-text("Időbüntetés") >> nth=0'); pg.wait_for_timeout(300)
-        pg.click('.panel .chip:has-text("+3 s") >> nth=0')
-        pg.click('button:has-text("Szavazok")'); pg.wait_for_timeout(1800)
-        check('3 szavazat' in text(pg), f'{size}: third vote counted ({text(pg)[:0]})')
-        snap(pg, f'p4_case_{size}')
-        # check the result before publishing
+        check('szavazat' not in text(pg).lower() and 'Testület' not in text(pg) and pg.query_selector('button:has-text("Ügy lezárása")') is not None, f'{size}: no panel or votes, just "Ügy lezárása"')
+        # the result before closing
         go(pg, '/szezonok/mcsm31/fordulo/2', None, 1800)
         pg.click('.seg button:has-text("A lobby")'); pg.click('.seg button:has-text("Sprint")'); pg.wait_for_timeout(600)
         before = sprint_row(pg, target)
         go(pg, '/birosag/mcsm31/p2', 'owner', 2200)
-        pg.fill('textarea[placeholder^="Mit láttatok"]', 'Hátulról érkezett, elkerülhető érintkezés: 3 másodperc.')
-        pg.click('button:has-text("Döntés közzététele")'); pg.wait_for_timeout(2200)
-        check('A döntés nyilvános' in text(pg), f'{size}: decision published')
+        pg.click('button:has-text("Büntetés hozzáadása")'); pg.wait_for_timeout(400)
+        pg.click('.pen-line .chip:has-text("+3 s")'); pg.wait_for_timeout(200)
+        pg.click('button:has-text("Ügy lezárása")'); pg.wait_for_timeout(2400)
+        check('A döntés nyilvános' in text(pg) and pg.query_selector('button:has-text("Ügy újranyitása")') is not None, f'{size}: case closed without an explanation (optional)')
         go(pg, '/szezonok/mcsm31/fordulo/2', None, 1800)
         pg.click('.seg button:has-text("A lobby")'); pg.click('.seg button:has-text("Sprint")'); pg.wait_for_timeout(600)
         after = sprint_row(pg, target)
         check(before and after and before != after, f'{size}: penalty changed the sprint result ({before!r} -> {after!r})')
         check('+3 mp' in text(pg), f'{size}: decision listed on round page')
-        # Spec picks: pilota enters MCSM32 then picks a car
-        go(pg, '/szezonok/mcsm32', 'pilota')
-        if pg.query_selector('.reg-card .btn.primary'):
-            pg.click('.reg-card .btn.primary'); pg.wait_for_timeout(900); pg.click('.sheet .btn.primary'); pg.wait_for_timeout(2000)
-        sels = pg.query_selector_all('.round-item select')
-        check(len(sels) == 3, f'{size}: spec selects for three rounds ({len(sels)})')
-        if sels:
-            sels[0].select_option('Porsche 911 RSR'); pg.wait_for_timeout(1800)
-            sels = pg.query_selector_all('.round-item select')
-            dis = pg.eval_on_selector_all('.round-item select', 'els => els[1] ? [...els[1].options].filter(o => o.disabled).map(o => o.value) : []')
-            check('Porsche 911 RSR' in dis, f'{size}: used car disabled for other rounds')
-        snap(pg, f'p4_spec_{size}')
+        pg.goto(BASE + 'tests/'); pg.wait_for_timeout(150)
+        told = pg.evaluate("""() => { const db = JSON.parse(localStorage.getItem('mcsm:fakecloud:v1')); const p = db.race.mcsm31.protests.p2;
+          const pen = Object.values(db.race.mcsm31.penalties || {}).filter((x) => x.protestId === 'p2').map((x) => x.uid);
+          const ns = Object.values(db.notifications || {}).filter((n) => JSON.stringify(n).includes('decision'));
+          const got = new Set(ns.flatMap((n) => n.uids || []));
+          const want = [p.by, ...(p.involved || []), ...pen].filter(Boolean);
+          return [want.every((u) => got.has(u)), want.length]; }""")
+        check(told[0] and told[1] >= 2, f'{size}: filer, involved and penalised drivers notified ({told})')
+        # a judge (Bíró) can't close a case they're involved in, but can close others; the old judge role has no access
+        pg.goto(BASE + 'tests/'); pg.wait_for_timeout(150)
+        pg.evaluate("""() => { const k = 'mcsm:fakecloud:v1'; const db = JSON.parse(localStorage.getItem(k)); const r = db.race.mcsm31;
+          const P = db.accounts['pilota@mcsm.test'].uid, O = db.accounts['owner@mcsm.test'].uid;
+          db.users[P].roles = { judgeChair: true };   // pilota is a judge (Bíró) for these checks
+          r.protests.j1 = { id: 'j1', no: 901, n: 2, L: 'A', S: 'GP', title: 'Bírót érintő ügy', description: 'A bíró is érintett ebben az esetben, nem zárhatja le.', involved: [P], by: O, type: 'driver', status: 'filed', createdAt: Date.now() };
+          r.protests.j2 = { id: 'j2', no: 902, n: 2, L: 'A', S: 'GP', title: 'Másik ügy', description: 'Ebben a bíró nem érintett, lezárhatja.', involved: [db.race.mcsm31.rounds['2'].lobbies.A[3]], by: O, type: 'driver', status: 'filed', createdAt: Date.now() };
+          localStorage.setItem(k, JSON.stringify(db)); }""")
+        go(pg, '/birosag/mcsm31/j1', 'pilota', 2200)
+        check('nem zárhatod le' in text(pg) and pg.query_selector('button:has-text("Ügy lezárása")') is None, f'{size}: a judge cannot close a case they are involved in')
+        go(pg, '/birosag/mcsm31/j2', 'pilota', 2200)
+        check(pg.query_selector('button:has-text("Ügy lezárása")') is not None, f'{size}: a judge can close someone else\'s case')
+        pg.goto(BASE + 'tests/'); pg.wait_for_timeout(150)
+        pg.evaluate("() => { const k = 'mcsm:fakecloud:v1'; const db = JSON.parse(localStorage.getItem(k)); db.users[db.accounts['pilota@mcsm.test'].uid].roles = { judge: true }; localStorage.setItem(k, JSON.stringify(db)); }")
+        go(pg, '/birosag', 'pilota', 1800)
+        check('jogosultságod' in text(pg), f'{size}: the old judge role has no access')
         # judge scope in admin
         go(pg, '/admin/felhasznalok', 'owner')
         pg.fill('input[type=search]', 'birgés'); pg.wait_for_timeout(500)
         pg.query_selector_all('.row-card')[0].click(); pg.wait_for_timeout(900)
-        check('Bírói hatáskör' in text(pg, '.sheet'), f'{size}: judge scope editor')
+        check('Bírói hatáskör' not in text(pg, '.sheet') and 'Bíró' in text(pg, '.sheet') and 'Bírói elnök' not in text(pg, '.sheet'), f'{size}: no judging scope; the role is "Bíró"')
         pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
         ow = pg.evaluate('document.documentElement.scrollWidth - innerWidth')
         check(ow <= 0, f'{size}: no horizontal overflow ({ow})')

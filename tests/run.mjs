@@ -308,19 +308,17 @@ await test('protest window: race night 21:30 to Monday 20:00, extendable', () =>
   eq(PM.windowState(round, {}, w.opensAt - 1), 'soon'); eq(PM.windowState(round, {}, w.opensAt + 1), 'open'); eq(PM.windowState(round, {}, w.closesAt), 'closed');
   eq(PM.windowState(round, { protestClosesAt: w.closesAt + 1000 }, w.closesAt), 'open');
 });
-await test('eligibility: involved, teammates and scope are excluded', () => {
-  const judges = [{ uid: 'j1', roles: { judge: true } }, { uid: 'j2', roles: { judge: true } }, { uid: 'j3', roles: { judge: true }, judgeScope: ['B', 'C'] }, { uid: 'x', roles: { judge: true } }, { uid: 'd', roles: {} }];
-  const teams = { j2: 't1', v: 't1', x: null };
-  const e = PM.eligibility({ by: 'x', involved: ['v'], L: 'A' }, judges, (u) => teams[u] || null);
-  eq(e.map((r) => [r.uid, r.reason]), [['j1', ''], ['j2', 'conflictTeammate'], ['j3', 'outOfScope'], ['x', 'conflictInvolved']]);
-  eq(PM.defaultPanel({ by: 'x', involved: ['v'], L: 'B' }, judges, (u) => teams[u] || null), ['j1', 'j3']);
-});
-await test('tally counts panel votes only and needs three', () => {
-  const v = (uid, o, s, tg = 'z') => ({ uid, outcome: o, seconds: s, target: tg });
-  let tl = PM.tally([v('a', 'time', 5), v('b', 'time', 5), v('outsider', 'none')], ['a', 'b', 'c']);
-  eq(tl.valid, 2); ok(!tl.enough);
-  tl = PM.tally([v('a', 'time', 5), v('b', 'time', 5), v('c', 'warning')], ['a', 'b', 'c']);
-  ok(tl.enough); eq(tl.leading.outcome, 'time'); ok(!tl.tie);
+await test('protests: who may close a case (admins always; a judge unless a party)', () => {
+  const p = { status: 'filed', by: 'filer', involved: ['v1', 'v2'] };
+  const admin = { admin: true }, judge = { judgeChair: true }, member = {}, oldJudge = { judge: true };
+  ok(PM.canClose(p, 'filer', admin) && PM.canClose(p, 'v1', admin), 'an admin may close even a case they filed or are involved in');
+  ok(PM.canClose(p, 'other', judge), 'a judge may close someone else\'s case');
+  ok(!PM.canClose(p, 'filer', judge) && !PM.canClose(p, 'v2', judge), 'a judge may not close a case they filed or are involved in');
+  ok(!PM.canClose(p, 'other', member) && !PM.canClose(p, 'other', oldJudge), 'members and the old "judge" role cannot');
+  ok(!PM.canClose({ ...p, status: 'published' }, 'other', admin) && PM.canClose({ ...p, status: 'review' }, 'other', admin), 'only open cases (old in-progress ones count as open)');
+  ok(PM.mayJudge({ ...p, status: 'published' }, 'other', judge), 'a judge may reopen a closed case they are not part of');
+  eq(PM.partiesOf(p, [{ target: 'x9' }, { target: 'v1' }]).sort(), ['filer', 'v1', 'v2', 'x9'], 'notified on close: filer, involved and everyone penalised');
+  ok(PM.isJudgeProfile({ roles: { judgeChair: true } }) && !PM.isJudgeProfile({ roles: { judge: true } }), 'judges: Bíró (judgeChair) and admins only');
 });
 await test('Biblia DSQ triggers', () => {
   const pens = [{ uid: 'a', n: 1, kind: 'time', seconds: 5 }, { uid: 'a', n: 1, kind: 'time', seconds: 3 }, { uid: 'a', n: 2, kind: 'time', seconds: 30 }];

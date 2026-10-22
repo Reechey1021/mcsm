@@ -152,8 +152,7 @@ function seedRace(db) {
 function seedProtests(db) {
   const now = Date.now();
   const race = db.race.mcsm31;
-  ['demo-4', 'demo-10', 'demo-11', 'demo-20'].forEach((uid) => { db.users[uid].roles = { judge: true }; db.users[uid].judgeScope = uid === 'demo-20' ? ['B', 'C'] : ['A', 'B', 'C']; });
-  db.users.owner.roles = { ...(db.users.owner.roles || {}), judgeChair: true };
+  db.users['demo-4'].roles = { judgeChair: true };   // a judge (Bíró)
   race.rounds[2].protestOpensAt = now - DAY;
   race.rounds[2].protestClosesAt = now + 3 * DAY;
   const A1 = race.rounds[1].lobbies.A, A2 = race.rounds[2].lobbies.A;
@@ -220,7 +219,7 @@ export function createFakeBackend() {
   const isStaff = (uid) => { const r = (db.users[uid] && db.users[uid].roles) || {}; return !!(r.admin || r.owner || r.resultsEditor); };
   const bucket = (sid) => { db.race = db.race || {}; db.race[sid] = db.race[sid] || { pq: {}, rounds: {}, sheets: {} }; const b = db.race[sid]; b.protests = b.protests || {}; b.votes = b.votes || {}; b.notes = b.notes || {}; b.penalties = b.penalties || {}; b.picks = b.picks || {}; return b; };
   const roleOf = (uid) => (db.users[uid] && db.users[uid].roles) || {};
-  const isJudgeUid = (uid) => { const r = roleOf(uid); return !!(r.judge || r.judgeChair || r.admin || r.owner); };
+  const isJudgeUid = (uid) => { const r = roleOf(uid); return !!(r.judgeChair || r.admin || r.owner); };   // judges = Bíró + admins
   const isChairUid = (uid) => { const r = roleOf(uid); return !!(r.judgeChair || r.admin || r.owner); };
 
   return {
@@ -412,7 +411,10 @@ export function createFakeBackend() {
           b.protests[nid] = { ...clone(data), id: nid, no: c.next, createdAt: Date.now() }; persist(); return nid;
         }
         const own = cur.by === a.uid && Object.keys(data).every((k) => ['status', 'updatedAt'].includes(k)) && cur.status === 'filed' && data.status === 'withdrawn';
-        if (!own && !isChairUid(a.uid)) fail('permission-denied');
+        const r1 = roleOf(a.uid);
+        const party = cur.by === a.uid || cur.complainant === a.uid || (cur.involved || []).includes(a.uid);
+        const judgeOk = r1.judgeChair && !party && (data.by === undefined || data.by === cur.by);
+        if (!own && !(r1.admin || r1.owner) && !judgeOk) fail('permission-denied');
         b.protests[id] = { ...cur, ...clone(data), updatedAt: Date.now() }; persist(); return id;
       },
       async assignNo(sid, pid) {
@@ -427,7 +429,7 @@ export function createFakeBackend() {
     votes: {
       async list(sid, pid) { await lag(); const a = me(); if (!isJudgeUid(a.uid)) fail('permission-denied'); return Object.values(clone(bucket(sid).votes[pid] || {})); },
       async save(sid, pid, vote) {
-        await lag(); const a = me(); if (!isJudgeUid(a.uid)) fail('permission-denied');
+        await lag(); fail('permission-denied');   // votes are no longer used
         const b = bucket(sid); b.votes[pid] = b.votes[pid] || {}; b.votes[pid][a.uid] = { ...clone(vote), uid: a.uid, at: Date.now() }; persist();
       },
       async saveFor(sid, pid, judgeUid, vote) {

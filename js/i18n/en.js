@@ -38,8 +38,8 @@ export const en = {
   errRecentLogin: 'For security, sign out and back in, then try again.', errPermission: "You don't have permission for that.", errGeneric: "Something didn't work. Try again.", errConsent: 'You need to agree to sign up.', errGtTag: '1–12 characters: letters, numbers, - and _.',
   myPage: 'My profile', account: 'Account', publicProfile: 'My public profile', changePassword: 'Change password', currentPassword: 'Current password', newPassword: 'New password', passwordChanged: 'Password changed',
   memberSince: 'Member since {date}', profileIncomplete: "Your profile isn't finished yet. Finish it so you can enter seasons.",
-  role_owner: 'Owner', role_admin: 'Admin', role_judgeChair: 'Judge chair', role_judge: 'Judge', role_resultsEditor: 'Results editor',
-  roleHint_owner: 'Full access, appoints admins.', roleHint_admin: 'Seasons, results, teams, users.', roleHint_judgeChair: 'Assigns cases, publishes decisions.', roleHint_judge: 'Reviews protests and votes.', roleHint_resultsEditor: 'Enters PQ times and results as drafts.',
+  role_owner: 'Owner', role_admin: 'Admin', role_judgeChair: 'Judge', role_judge: 'Judge (old)', role_resultsEditor: 'Results editor',
+  roleHint_owner: 'Full access, appoints admins.', roleHint_admin: 'Seasons, results, teams, users.', roleHint_judgeChair: 'Can close protests (penalties and an explanation). Not cases they filed or are involved in.', roleHint_judge: 'Reviews protests and votes.', roleHint_resultsEditor: 'Enters PQ times and results as drafts.',
   drivers: 'Drivers', driversSub: 'Everyone who has finished their profile.', searchDrivers: 'Name, PSN ID, team or number', all: 'All', filters: 'Filters',
   sortBy: 'Sort', sortDr: 'By DR', sortName: 'By name', sortNo: 'By number', sortNew: 'Newest first', nDrivers: '{n} drivers', noDrivers: 'No matches. Try a shorter search.',
   results: 'Results', resultsLater: 'Results appear here once seasons start.',
@@ -146,7 +146,7 @@ export const en = {
 
   // ----- phase 4: protests & penalties, Spec picks -----
   protests: 'Protests', fileProtest: 'File a protest', judgeCase: "Judges' case", protestOpenUntil: 'Protests close {date} ({rel}).', protestOpensAt: 'Protests open {date}.', protestClosed: 'The protest window has closed.',
-  noProtests: 'No visible protests for this round.', myProtests: 'My protests', decisions: 'Decisions', noDecisions: 'No decisions published yet.', judgesArea: 'Stewards', judgesSub: 'Cases, votes and decisions.',
+  noProtests: 'No visible protests for this round.', myProtests: 'My protests', decisions: 'Decisions', noDecisions: 'No decisions published yet.', judgesArea: 'Stewards', judgesSub: 'Open and closed protests.',
   pst_filed: 'Filed', pst_review: 'Under review', pst_decided: 'Decided', pst_published: 'Decision published', pst_notInvestigated: 'Not investigated', pst_withdrawn: 'Withdrawn',
   caseMeta: 'Round {n}, {s}, lap {lap}, corner: {corner}', caseParties: 'Filed by: {by}. Involved: {vs}.', judgesCase: 'Stewards', watchVideo: 'Open video', openCase: 'Open case',
   withdrawProtest: 'Withdraw protest', protestWithdrawn: 'Protest withdrawn',
@@ -318,4 +318,9 @@ export const en = {
   cmpHistory: 'MCSM Rating history', cmpUnrankedNote: "{name} isn't ranked yet, so only the other driver's line shows.",
   rcContinue: 'Continue', fnKicker: 'FINAL RESULT', fnChampion: 'CHAMPION!', fnSilver: 'Silver', fnBronze: 'Bronze', fnTitle: 'Season over', fnSubChamp: 'You won the MCSM{no} championship!', fnSub: 'You finished MCSM{no} in {p}. place.', fnPoints: 'Points', fnWinsPodiums: 'Wins · podiums', fnRating: 'Rating change', fnTeam: 'Team', fnGt: '{tag} championship: {p}. place', fnStandings: 'Season standings',
   mrCheckOk: 'Checked: the MCSM25–30 history gives exactly the file\'s starting rating for all {n} drivers.', mrCheckDiff: '{m}/{n} drivers match the file. Different: {list}',
+  searchDriverPh: 'Search: name, PSN or number', involvedHint: 'Select every driver involved, whether they caused it or were affected.', involvedPicked: '{n} drivers selected',
+  videoLinkOptional: 'Video link (optional)', closeCaseTitle: 'Decision', closeCase: 'Close the case', decisionTextOptional: 'Explanation (optional)',
+  confirmClose: 'Close this case? The filer, the involved drivers and anyone penalised will be notified.', caseClosed: 'Case closed.', reopenCase: 'Reopen the case',
+  cannotCloseOwn: "You can't close this case because you filed it or are involved in it. An admin or another judge will close it.",
+  'audit_protest.close': 'closed the protest', 'audit_protest.reopen': 'reopened the protest',
 };

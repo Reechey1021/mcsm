@@ -1,3 +1,17 @@
+## v1.5.0 — Protests, simplified
+
+- Roles: the old "Versenybíró" (judge) role is gone. "Bírói elnök" (judge chair) is now simply "Bíró" (judge):
+  their only extra permission is closing protests. Judges no longer grant roles; no judging scope.
+- Filing: the filer is always whoever is signed in (no complainant picker, no filing on someone's behalf).
+  Involved drivers: anyone (every driver in that round's lobbies and every entrant), with a search; offenders and
+  victims alike. "Videó link (opcionális)". Lap / turn / location fields and the case numbers are unchanged.
+- Closing: admins and judges open the case, add penalties for anyone in the round (any number, or none), an
+  optional explanation (no minimum), and close it. No panel, no votes, nothing about who judged shown anywhere.
+  A judge can't close a case they filed or are involved in; admins always can. A closed case can be reopened.
+- On close, the filer, every involved driver and everyone penalised get a notification.
+- Old cases mid-vote count as open; old votes are no longer shown or written.
+- Firestore rules: judges = Bíró + admins; closing rule as above; votes can't be written (publish the rules).
+
 ## v1.4.1
 
 - Tracks come from GT GridStats: the round picker lists every location GridStats has (after Admin → GT7 adatok

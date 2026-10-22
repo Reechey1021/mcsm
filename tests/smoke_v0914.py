@@ -37,26 +37,18 @@ with sync_playwright() as p:
         go(pg, '/pilotak/mgtk_khellcsaba', 'owner', '', 3000)
         v = text(pg)
         check('P40' not in v and 'P9' in v and 'P7' in v and 'P8' in v, f'{size}: imported round shows within-lobby places (C, P9 / P7 / P8)')
-        # 2. complainant picker (no switch); a driver files on another driver's behalf
+        # 2. (since the protests rework) no complainant picker: whoever is signed in is the filer, for everyone
         go(pg, '/szezonok/mcsm31/fordulo/2/ovas', 'owner')
-        opts = [o.inner_text() for o in pg.query_selector_all('.form .f-row:first-child select option')]
-        check(any('Bírói vizsgálat' in o for o in opts) and pg.query_selector('.toggle-row:has-text("Hivatalos")') is None, f'{size}: complainant picker with a stewards option for admins, no switch')
+        check(pg.query_selector('.form select') is None and 'Bírói vizsgálat' not in text(pg), f'{size}: no complainant picker, for admins either')
         db(pg, """(db) => { const P = db.accounts['pilota@mcsm.test'].uid; const u = db.users[P]; db.entries.mcsm31[P] = { uid: P, type: 'driver', status: 'entered', approved: true, order: 99, snapshot: { firstName: u.firstName, lastName: u.lastName, psn: u.psn, psnLower: u.psnLower, raceNumber: u.raceNumber } }; }""")
         go(pg, '/szezonok/mcsm31/fordulo/2/ovas', 'pilota')
-        sel = pg.query_selector('.form .f-row:first-child select')
-        if sel:
-            popts = [o.inner_text() for o in sel.query_selector_all('option')]
-            check(not any('Bírói vizsgálat' in o for o in popts), f'{size}: drivers have no stewards option')
-            sel.select_option(index=3); pg.wait_for_timeout(300)
-            comp = sel.input_value()
-            chips = pg.query_selector_all('.chip-driver')
-            if chips: chips[0].click()
-            pg.fill('.form input[maxlength="80"]', 'Kilökés a 3-as kanyarban')
-            pg.fill('.form textarea', 'A rajt után a 3-as kanyarban hátulról meglökött, emiatt kicsúsztam.')
-            pg.click('.form ~ * .btn.primary, .btn.primary.block:has-text("Óvás benyújtása")'); pg.wait_for_timeout(2200)
-            stored = db(pg, "(db) => { const ps = Object.values(db.race.mcsm31.protests); const x = ps.sort((a, b) => b.createdAt - a.createdAt)[0]; return [x.by === db.accounts['pilota@mcsm.test'].uid, x.complainant, x.type]; }")
-            check(stored[0] and stored[1] == comp and stored[2] == 'driver', f'{size}: filed on behalf of another driver ({stored})')
-        else: check(False, f'{size}: complainant picker for drivers')
+        chips = pg.query_selector_all('.chip-driver')
+        if chips: chips[0].click()
+        pg.fill('.form input[maxlength="80"]', 'Kilökés a 3-as kanyarban')
+        pg.fill('.form textarea', 'A rajt után a 3-as kanyarban hátulról meglökött, emiatt kicsúsztam.')
+        pg.click('.btn.primary.block:has-text("Óvás benyújtása")'); pg.wait_for_timeout(2200)
+        stored = db(pg, "(db) => { const ps = Object.values(db.race.mcsm31.protests); const x = ps.sort((a, b) => b.createdAt - a.createdAt)[0]; return [x.by === db.accounts['pilota@mcsm.test'].uid, x.complainant == null, x.type]; }")
+        check(stored[0] and stored[1] and stored[2] == 'driver', f'{size}: filed as the signed-in driver ({stored})')
         # 3. a case closed without investigation shows to every entrant
         db(pg, """(db) => { const P = db.accounts['pilota@mcsm.test'].uid; const u = db.users[P]; db.entries.mcsm31[P] = db.entries.mcsm31[P] || { uid: P, type: 'driver', status: 'entered', approved: true, order: 99, snapshot: { firstName: u.firstName, lastName: u.lastName, psn: u.psn, psnLower: u.psnLower, raceNumber: u.raceNumber } };
           db.race.mcsm31.protests.pni = { id: 'pni', n: 1, L: 'A', S: 'GP', title: 'Nem vizsgált ügy', description: 'x', involved: ['demo-2'], by: 'demo-3', type: 'driver', status: 'notInvestigated', decision: { outcome: 'none', text: 'Nincs elég bizonyíték.' }, createdAt: Date.now() }; }""")

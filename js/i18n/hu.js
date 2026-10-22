@@ -45,8 +45,8 @@ export const hu = {
   // me
   myPage: 'Saját profil', account: 'Fiók', publicProfile: 'Nyilvános profilom', changePassword: 'Jelszó módosítása', currentPassword: 'Jelenlegi jelszó', newPassword: 'Új jelszó', passwordChanged: 'Jelszó módosítva',
   memberSince: 'Tag {date} óta', profileIncomplete: 'A profilod még nincs kész. Fejezd be, hogy nevezhess a szezonokra.',
-  role_owner: 'Tulajdonos', role_admin: 'Admin', role_judgeChair: 'Bírói elnök', role_judge: 'Versenybíró', role_resultsEditor: 'Eredményrögzítő',
-  roleHint_owner: 'Mindenhez hozzáfér, adminokat nevez ki.', roleHint_admin: 'Szezonok, eredmények, csapatok, felhasználók.', roleHint_judgeChair: 'Ügyeket oszt ki, döntéseket tesz közzé.', roleHint_judge: 'Óvásokat vizsgál és szavaz.', roleHint_resultsEditor: 'PQ-időket és eredményeket rögzít piszkozatként.',
+  role_owner: 'Tulajdonos', role_admin: 'Admin', role_judgeChair: 'Bíró', role_judge: 'Bíró (régi)', role_resultsEditor: 'Eredményrögzítő',
+  roleHint_owner: 'Mindenhez hozzáfér, adminokat nevez ki.', roleHint_admin: 'Szezonok, eredmények, csapatok, felhasználók.', roleHint_judgeChair: 'Lezárhatja az óvásokat (büntetés és indoklás). Saját vagy őt érintő ügyet nem zárhat le.', roleHint_judge: 'Óvásokat vizsgál és szavaz.', roleHint_resultsEditor: 'PQ-időket és eredményeket rögzít piszkozatként.',
   // drivers & teams
   drivers: 'Pilóták', driversSub: 'Mindenki, aki kitöltötte a profilját.', searchDrivers: 'Név, PSN ID, csapat vagy rajtszám', all: 'Mind', filters: 'Szűrők',
   sortBy: 'Rendezés', sortDr: 'DR szerint', sortName: 'Név szerint', sortNo: 'Rajtszám szerint', sortNew: 'Legújabbak elöl', nDrivers: '{n} pilóta', noDrivers: 'Nincs találat. Próbálj rövidebb keresést.',
@@ -162,8 +162,8 @@ export const hu = {
 
   // ----- phase 4: protests & penalties, Spec picks -----
   protests: 'Óvások', fileProtest: 'Óvás benyújtása', judgeCase: 'Bírói ügy', protestOpenUntil: 'Óvni {date}-ig lehet ({rel}).', protestOpensAt: 'Az óvási időszak {date}-kor nyílik.', protestClosed: 'Az óvási időszak lezárult.',
-  noProtests: 'Ehhez a fordulóhoz nincs látható óvás.', myProtests: 'Az óvásaim', decisions: 'Döntések', noDecisions: 'Még nincs közzétett döntés.', judgesArea: 'Versenybíróság', judgesSub: 'Ügyek, szavazás és döntések.',
-  pst_filed: 'Benyújtva', pst_review: 'Vizsgálat alatt', pst_decided: 'Döntés született', pst_published: 'Döntés közzétéve', pst_notInvestigated: 'Nem vizsgált', pst_withdrawn: 'Visszavonva',
+  noProtests: 'Ehhez a fordulóhoz nincs látható óvás.', myProtests: 'Az óvásaim', decisions: 'Döntések', noDecisions: 'Még nincs közzétett döntés.', judgesArea: 'Versenybíróság', judgesSub: 'Nyitott és lezárt óvások.',
+  pst_filed: 'Benyújtva', pst_review: 'Nyitott', pst_decided: 'Nyitott', pst_published: 'Döntés közzétéve', pst_notInvestigated: 'Nem vizsgált', pst_withdrawn: 'Visszavonva',
   caseMeta: '{n}. forduló, {s}, {lap}. kör, kanyar: {corner}', caseParties: 'Óvó: {by}. Érintett: {vs}.', judgesCase: 'Versenybíróság', watchVideo: 'Videó megnyitása', openCase: 'Ügy megnyitása',
   withdrawProtest: 'Óvás visszavonása', protestWithdrawn: 'Óvás visszavonva',
   protestTitleH: 'Óvás benyújtása', judgeCaseTitle: 'Bírói ügy indítása', protestRules: 'Óvni a versenynap 21:30-tól hétfő 20:00-ig lehet, bármely esetet, amit láttál. Add meg a lobbyt, a versenyszakaszt, a kört, ha tudod a kanyart, és az érintetteket.',
@@ -177,7 +177,7 @@ export const hu = {
   outcome: 'Döntés', outcome_none: 'Nincs intézkedés', outcome_warning: 'Figyelmeztetés', outcome_time: 'Időbüntetés', outcome_dsq: 'Kizárás a fordulóból', outcome_other: 'Egyéb büntetés', outcomeTime: '{who}: +{s} mp időbüntetés',
   penalisedDriver: 'Kit érint?', seconds: 'Időbüntetés', otherPh: 'Pl. 3 helyes rajtrácsbüntetés', reasonShort: 'Indoklás', reasonVotePh: 'Röviden, miért?', castVote: 'Szavazok', updateVote: 'Szavazat módosítása', voteSaved: 'Szavazat mentve', pickPenalised: 'Válaszd ki, kit érint.',
   chairTools: 'Elnöki eszközök', assignPanel: 'Testület kijelölése ({n} bíró)', resetPanel: 'Testület újra kijelölése', markNotInvestigated: 'Nem vizsgáljuk', notInvestigatedPh: 'Miért? Pl. határidő után érkezett, vagy hiányos.',
-  finalDecision: 'Végső döntés', decisionText: 'Indoklás (nyilvános)', decisionTextHint: 'Ez jelenik meg mindenkinek a döntés mellett.', decisionTextPh: 'Mit láttatok, és mi alapján döntöttetek?',
+  finalDecision: 'Végső döntés', decisionText: 'Indoklás (nyilvános)', decisionTextHint: 'Ez jelenik meg mindenkinek a döntés mellett.', decisionTextPh: 'Indoklás (nem kötelező)…',
   publishDecision: 'Döntés közzététele', decisionNeedsText: 'Írj indoklást.', decisionPublished: 'Közzétéve; a büntetés beépült az eredménybe', needVotes: 'Közzétételhez legalább {min} jogosult bíró szavazata kell.',
   flagAutoDsq: 'Ez lenne a pilóta {n}. időbüntetése ebben a fordulóban: a BIBLIA szerint automatikus kizárás.', flagDsqPossible: 'A fordulóban így összesen {s} mp büntetése lenne: a BIBLIA szerint kizárás is lehetséges.',
   publishedNote: 'A döntés nyilvános, a büntetés az eredményekben van.', withdrawDecision: 'Döntés visszavonása',
@@ -334,4 +334,9 @@ export const hu = {
   cmpHistory: 'MCSM Rating előzmények', cmpUnrankedNote: '{name} még besorolatlan, ezért csak a másik pilóta vonala látszik.',
   rcContinue: 'Tovább', fnKicker: 'VÉGEREDMÉNY', fnChampion: 'BAJNOK!', fnSilver: 'Ezüstérem', fnBronze: 'Bronzérem', fnTitle: 'Szezon vége', fnSubChamp: 'Megnyerted az MCSM{no} bajnokságot!', fnSub: 'Az MCSM{no} szezont a(z) {p}. helyen zártad.', fnPoints: 'Pontok', fnWinsPodiums: 'Győzelem · dobogó', fnRating: 'Rating változás', fnTeam: 'Csapat', fnGt: '{tag} bajnokság: {p}. hely', fnStandings: 'Szezon végeredménye',
   mrCheckOk: 'Ellenőrizve: az MCSM25–30 előzményekből mind a(z) {n} pilóta kezdő ratingje pontosan egyezik a fájllal.', mrCheckDiff: '{m}/{n} pilóta egyezik a fájllal. Eltér: {list}',
+  searchDriverPh: 'Keresés: név, PSN vagy rajtszám', involvedHint: 'Jelöld be az összes érintett pilótát, okozót és elszenvedőt is.', involvedPicked: '{n} pilóta kijelölve',
+  videoLinkOptional: 'Videó link (opcionális)', closeCaseTitle: 'Döntés', closeCase: 'Ügy lezárása', decisionTextOptional: 'Indoklás (nem kötelező)',
+  confirmClose: 'Lezárod az ügyet? A beküldő, az érintettek és a megbüntetett pilóták értesítést kapnak.', caseClosed: 'Az ügy lezárva.', reopenCase: 'Ügy újranyitása',
+  cannotCloseOwn: 'Ezt az ügyet nem zárhatod le, mert te nyújtottad be, vagy érintett vagy benne. Egy admin vagy egy másik bíró zárja le.',
+  'audit_protest.close': 'lezárta az óvást:', 'audit_protest.reopen': 'újranyitotta az óvást:',
 };

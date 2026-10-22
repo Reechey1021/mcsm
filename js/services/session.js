@@ -36,12 +36,12 @@ export const isAdmin = () => on('admin') || on('owner');
 export const profileComplete = () => isComplete(session.profile);
 export const suspended = () => !!(session.profile && session.profile.suspendedUntil && session.profile.suspendedUntil > Date.now());
 export const isStaff = () => isAdmin() || on('resultsEditor');
-export const isJudgeRole = () => isAdmin() || on('judge') || on('judgeChair');
+// Judges' area: admins and judges (Bíró, stored as the judgeChair role; the old 'judge' role is gone).
+export const isJudgeRole = () => isAdmin() || on('judgeChair');
 // Who may hand out which roles: always one level below your own.
 export function grantableRoles() {
-  if (on('owner')) return ['admin', 'judgeChair', 'judge', 'resultsEditor'];
-  if (on('admin')) return ['judgeChair', 'judge', 'resultsEditor'];
-  if (on('judgeChair')) return ['judge'];
+  if (on('owner')) return ['admin', 'judgeChair', 'resultsEditor'];
+  if (on('admin')) return ['judgeChair', 'resultsEditor'];
   return [];
 }
 export const canGrantRoles = () => grantableRoles().length > 0;

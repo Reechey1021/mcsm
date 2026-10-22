@@ -1,2 +1,2 @@
 // version.js: shown at the bottom of the profile menu. Bump with every release.
-export const APP_VERSION = 'v1.4.1';
+export const APP_VERSION = 'v1.5.0';

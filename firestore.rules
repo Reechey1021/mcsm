@@ -14,7 +14,8 @@ service cloud.firestore {
     function isOwner() { return myRoles().get('owner', false) == true; }
     function isAdmin() { return isOwner() || myRoles().get('admin', false) == true; }
     function isStaff() { return isAdmin() || myRoles().get('resultsEditor', false) == true; }
-    function isJudge() { return isAdmin() || myRoles().get('judge', false) == true || myRoles().get('judgeChair', false) == true; }
+    // Judges (Bíró, stored as the judgeChair role) and admins; the old 'judge' role no longer counts.
+    function isJudge() { return isAdmin() || myRoles().get('judgeChair', false) == true; }
     function isChair() { return isAdmin() || myRoles().get('judgeChair', false) == true; }
 
     // Fields a driver may write on their own profile (mirrors model/profile.js SELF_KEYS).
@@ -58,12 +59,6 @@ service cloud.firestore {
       return before.get('owner', false) == after.get('owner', false)
         && (isOwner() || before.get('admin', false) == after.get('admin', false));
     }
-    // The judge chair (without being an admin) may only add or remove judges.
-    function chairJudgeOnly() {
-      return myRoles().get('judgeChair', false) == true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roles', 'updatedAt'])
-        && request.resource.data.get('roles', {}).diff(resource.data.get('roles', {})).affectedKeys().hasOnly(['judge']);
-    }
 
     match /users/{uid} {
       allow read: if true;
@@ -78,8 +73,7 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(selfKeys())
             && validProfile(request.resource.data) && psnLockOk(uid) && teamOk())
           || (isAdmin() && request.resource.data.keys().hasOnly(adminKeys())
-            && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk())
-          || chairJudgeOnly());
+            && validProfile(request.resource.data) && psnLockOk(uid) && ownerGrantOk()));
       allow delete: if isAdmin();
 
       match /private/{doc} {
@@ -177,15 +171,19 @@ service cloud.firestore {
           && request.resource.data.no == getAfter(/databases/$(database)/documents/counters/protests).data.next
           && (isAdmin()
               || (request.resource.data.type == 'driver' && request.resource.data.status == 'filed' && enteredHere() && protestOpen(request.resource.data.n)));
-        // The filer may withdraw while nobody has picked the case up; everything else is the chair's.
-        allow update: if isChair()
+        // Closing (or reopening) a case: admins always; a judge (Bíró) unless they filed it or are involved.
+        // The filer may withdraw while it is still open.
+        allow update: if isAdmin()
+          || (isChair() && resource.data.by != request.auth.uid && resource.data.get('complainant', '') != request.auth.uid
+              && !(request.auth.uid in resource.data.get('involved', [])) && request.resource.data.by == resource.data.by)
           || (signedIn() && (resource.data.by == request.auth.uid || resource.data.get('complainant', '') == request.auth.uid) && resource.data.status == 'filed'
               && request.resource.data.status == 'withdrawn'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
         allow delete: if isAdmin();
+        // Votes are no longer used (verdicts are logged directly); old ones stay readable to judges.
         match /votes/{judgeUid} {
           allow read: if isJudge();
-          allow write: if isJudge() && (judgeUid == request.auth.uid || isAdmin());
+          allow write: if false;
         }
         match /notes/{noteId} {
           allow read: if isJudge();
@@ -241,7 +239,7 @@ service cloud.firestore {
     match /config/{id} {
       allow read, write: if isAdmin();
     }
-    function isJudgeTop() { return isAdmin() || myRoles().get('judge', false) == true || myRoles().get('judgeChair', false) == true; }
+    function isJudgeTop() { return isAdmin() || myRoles().get('judgeChair', false) == true; }
     match /notifications/{id} {
       allow read: if resource.data.kind in ['all', 'season']
         || (signedIn() && request.auth.uid in resource.data.get('uids', []));
